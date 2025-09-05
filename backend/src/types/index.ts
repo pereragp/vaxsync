@@ -3,15 +3,14 @@ import { Request } from 'express';
 
 export interface IUser extends Document {
   _id: Types.ObjectId;
-  userId: string;
-  name: string;
+  username: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   dateOfBirth: Date;
   phone: string;
   avatar?: string;
-  role: 'user' | 'parent' | 'healthcare_provider' | 'admin';
-  verificationCode: string;
   dependents: Types.ObjectId[];
   guardians: Types.ObjectId[];
   isActive: boolean;

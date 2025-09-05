@@ -3,21 +3,30 @@ import bcrypt from 'bcryptjs';
 import { IUser } from '../../types';
 
 const userSchema = new Schema<IUser>({
-  userId: {
+
+  username: {
     type: String,
-    required: true,
+    required: [true, 'Username is required'],
     unique: true,
-    default: function() {
-      return 'USR' + Date.now() + Math.random().toString(36).substring(2, 7).toUpperCase();
-    }
+    trim: true,
+    minlength: [3, 'Username must be at least 3 characters long'],
+    maxlength: [10, 'Username cannot exceed 30 characters']
   },
-  name: {
+
+  firstName: {
     type: String,
-    required: [true, 'Name is required'],
+    required: [true, 'First name is required'],
     trim: true,
     minlength: [2, 'Name must be at least 2 characters long'],
-    maxlength: [50, 'Name cannot exceed 50 characters']
   },
+
+  lastName: {
+    type: String,
+    required: [true, 'Last name is required'],
+    trim: true,
+    minlength: [2, 'Name must be at least 2 characters long'],
+  },
+
   email: {
     type: String,
     required: [true, 'Email is required'],
@@ -25,74 +34,53 @@ const userSchema = new Schema<IUser>({
     lowercase: true,
     match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address']
   },
+  
   password: {
     type: String,
     required: [true, 'Password is required'],
     minlength: [6, 'Password must be at least 6 characters long']
   },
+
   dateOfBirth: {
     type: Date,
     required: [true, 'Date of birth is required'],
-    validate: {
-      validator: function(value: Date) {
-        return value <= new Date();
-      },
-      message: 'Date of birth cannot be in the future'
-    }
   },
   phone: {
     type: String,
     required: [true, 'Phone number is required'],
     match: [/^\+?[1-9]\d{1,14}$/, 'Please enter a valid phone number']
   },
+
   avatar: {
     type: String,
     default: ''
   },
-  role: {
-    type: String,
-    enum: {
-      values: ['user', 'parent', 'healthcare_provider', 'admin'],
-      message: 'Role must be one of: user, parent, healthcare_provider, admin'
-    },
-    default: 'user'
-  },
-  verificationCode: {
-    type: String,
-    default: function() {
-      return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    }
-  },
+  
   dependents: [{
     type: Schema.Types.ObjectId,
     ref: 'User'
   }],
+
   guardians: [{
     type: Schema.Types.ObjectId,
     ref: 'User'
   }],
+
   isActive: {
     type: Boolean,
     default: true
   },
+
   createdAt: {
     type: Date,
     default: Date.now
   },
+  
   updatedAt: {
     type: Date,
     default: Date.now
   }
-}, {
-  timestamps: true,
-  toJSON: {
-    transform: function(doc, ret) {
-      delete (ret as any).password;
-      delete (ret as any).__v;
-      return ret;
-    }
-  }
-});
+}, {timestamps: true});
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {
@@ -116,15 +104,11 @@ userSchema.methods.comparePassword = async function(candidatePassword: string): 
   }
 };
 
-// Update timestamp before saving
-userSchema.pre('save', function(next) {
-  if (!this.isNew) {
-    this.updatedAt = new Date();
-  }
-  next();
-});
-
 // Indexes for better performance
 userSchema.index({ phone: 1 });
+userSchema.index({ email: 1 });
 
-export default mongoose.model<IUser>('User', userSchema);
+const User = mongoose.model<IUser>('User', userSchema);
+
+export default User;
+      
