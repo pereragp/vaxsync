@@ -1,0 +1,103 @@
+/*import express from 'express';
+import { HealthCardController } from '../../controllers/reportControllers/healthCardController';
+import { authenticateToken, validateUser } from '../../middleware/auth';
+
+const router = express.Router();
+
+// Get user's digital health card
+router.get('/:userId', 
+  authenticateToken,
+  validateUser,
+  HealthCardController.getHealthCard
+);
+
+// Update health card with latest data
+router.put('/:userId',
+  authenticateToken,
+  validateUser,
+  HealthCardController.updateHealthCard
+);
+
+// Get health card by card ID (for verification/sharing)
+router.get('/card/:cardId',
+  HealthCardController.getHealthCardByCardId
+);
+
+// Get health card statistics
+router.get('/stats/:userId',
+  authenticateToken,
+  validateUser,
+  HealthCardController.getHealthCardStats
+);
+
+// Update user info on health card
+router.put('/user-info/:userId',
+  authenticateToken,
+  validateUser,
+  HealthCardController.updateUserInfo
+);
+
+
+export default router;  */
+
+import express from 'express';
+import { HealthCardController } from '../../controllers/reportControllers/healthCardController';
+// TEMPORARILY COMMENTED OUT FOR API TESTING - ENABLE WHEN AUTHENTICATION IS READY
+// import { authenticateToken, validateUser } from '../../middleware/auth';
+
+const router = express.Router();
+
+// TEMPORARY MOCK MIDDLEWARE FOR TESTING (Remove when auth is implemented)
+const mockAuth = (req: any, res: any, next: any) => {
+  // Simulate authenticated user for testing
+  req.user = { 
+    id: req.params.userId || '66b1234567890abcdef12345' 
+  };
+  next();
+};
+
+// Get user's digital health card
+router.get('/:userId', 
+  // authenticateToken,     // TEMPORARILY COMMENTED OUT
+  // validateUser,          // TEMPORARILY COMMENTED OUT
+  mockAuth,                 // TEMPORARY: Remove when enabling auth
+  HealthCardController.getHealthCard
+);
+
+// Update health card with latest data
+router.put('/:userId',
+  // authenticateToken,     // TEMPORARILY COMMENTED OUT
+  // validateUser,          // TEMPORARILY COMMENTED OUT
+  mockAuth,                 // TEMPORARY: Remove when enabling auth
+  HealthCardController.updateHealthCard
+);
+
+// Get health card by card ID (for verification/sharing)
+// This endpoint doesn't need auth - it's for public verification
+router.get('/card/:cardId',
+  HealthCardController.getHealthCardByCardId
+);
+
+// Get health card statistics
+router.get('/stats/:userId',
+  // authenticateToken,     // TEMPORARILY COMMENTED OUT
+  // validateUser,          // TEMPORARILY COMMENTED OUT
+  mockAuth,                 // TEMPORARY: Remove when enabling auth
+  HealthCardController.getHealthCardStats
+);
+
+// Update user info on health card
+router.put('/user-info/:userId',
+  // authenticateToken,     // TEMPORARILY COMMENTED OUT
+  // validateUser,          // TEMPORARILY COMMENTED OUT
+  mockAuth,                 // TEMPORARY: Remove when enabling auth
+  HealthCardController.updateUserInfo
+);
+
+export default router;
+
+// TO RE-ENABLE AUTHENTICATION LATER:
+// 1. Uncomment the import line at the top
+// 2. Uncomment all authenticateToken and validateUser middleware
+// 3. Remove the mockAuth middleware and its usage
+// 4. Remove this comment block
