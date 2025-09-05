@@ -109,7 +109,7 @@ const digitalHealthCardSchema = new Schema<IDigitalHealthCard>({
       required: true,
       min: 1
     },
-    dateAdministered: {
+    dateScheduled: {
       type: Date,
       required: true
     },
@@ -178,8 +178,8 @@ digitalHealthCardSchema.pre('save', async function(next) {
       if (this.completedVaccinations.length > 0) {
         // Find last vaccination date
         const lastVaccination = this.completedVaccinations
-          .sort((a, b) => new Date(b.dateAdministered).getTime() - new Date(a.dateAdministered).getTime())[0];
-        this.statistics.lastVaccinationDate = lastVaccination.dateAdministered;
+          .sort((a, b) => new Date(b.dateScheduled).getTime() - new Date(a.dateScheduled).getTime())[0];
+        this.statistics.lastVaccinationDate = lastVaccination.dateScheduled;
         
         // Calculate compliance score (simple: 20 points per completed vaccination, max 100)
         this.statistics.complianceScore = Math.min(this.completedVaccinations.length * 20, 100);
@@ -207,7 +207,7 @@ digitalHealthCardSchema.methods.addCompletedVaccination = function(vaccinationDa
     batchNumber: vaccinationData.batchNumber,
     doseNumber: vaccinationData.doseNumber,
     totalDoses: vaccinationData.totalDoses,
-    dateAdministered: vaccinationData.dateAdministered,
+    dateScheduled: vaccinationData.dateScheduled,
     administeredBy: vaccinationData.healthcareProvider?.name || vaccinationData.administeredBy,
     facility: vaccinationData.healthcareProvider?.facility || vaccinationData.facility,
     certificateNumber: vaccinationData.certificate?.certificateNumber || vaccinationData.certificateNumber,

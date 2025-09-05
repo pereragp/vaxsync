@@ -64,8 +64,8 @@ export class HealthCardController {
       // Get completed vaccinations
       const completedVaccinations = await VaccinationRecord.find({
         userId,
-        status: 'completed'
-      }).sort({ dateAdministered: -1 });
+        'doses.status': 'completed'
+      }).sort({ createdAt: -1 });
 
       // Create health card
       const healthCard = new DigitalHealthCard({
@@ -84,17 +84,22 @@ export class HealthCardController {
 
       // Add completed vaccinations to the card
       for (const vaccination of completedVaccinations) {
-        healthCard.completedVaccinations.push({
-          vaccineName: vaccination.vaccineName,
-          manufacturer: 'Unknown', // Not available in VaccinationRecord
-          batchNumber: vaccination.batchNumber,
-          doseNumber: vaccination.doseNumber,
-          totalDoses: vaccination.totalDoses,
-          dateAdministered: vaccination.dateAdministered,
-          administeredBy: vaccination.healthcareProvider.name,
-          facility: vaccination.healthcareProvider.facility,
-          certificateNumber: vaccination.certificate.certificateNumber || '',
-          nextDueDate: vaccination.nextDueDate
+        // Add each completed dose as a separate entry
+        vaccination.doses.forEach((dose: any) => {
+          if (dose.status === 'completed') {
+            healthCard.completedVaccinations.push({
+              vaccineName: vaccination.vaccineName,
+              manufacturer: 'Unknown', // Not available in VaccinationRecord
+              batchNumber: 'N/A', // Not available in simplified model
+              doseNumber: dose.doseNumber,
+              totalDoses: vaccination.totalDoses,
+              dateScheduled: dose.dateScheduled,
+              administeredBy: vaccination.healthcareProvider?.name || 'Unknown',
+              facility: vaccination.healthcareProvider?.facility || 'Unknown',
+              certificateNumber: 'N/A', // Not available in simplified model
+              nextDueDate: undefined // Not available in simplified model
+            });
+          }
         });
       }
 
@@ -123,29 +128,38 @@ export class HealthCardController {
         // Sync with latest vaccination records
         const completedVaccinations = await VaccinationRecord.find({
           userId,
-          status: 'completed'
-        }).sort({ dateAdministered: -1 });
+          'doses.status': 'completed'
+        }).sort({ createdAt: -1 });
 
         // Clear existing vaccinations and re-add all completed ones
-        healthCard.completedVaccinations = [];
-        
-        for (const vaccination of completedVaccinations) {
-          healthCard.completedVaccinations.push({
-            vaccineName: vaccination.vaccineName,
-            manufacturer: 'Unknown', // Not available in VaccinationRecord
-            batchNumber: vaccination.batchNumber,
-            doseNumber: vaccination.doseNumber,
-            totalDoses: vaccination.totalDoses,
-            dateAdministered: vaccination.dateAdministered,
-            administeredBy: vaccination.healthcareProvider.name,
-            facility: vaccination.healthcareProvider.facility,
-            certificateNumber: vaccination.certificate.certificateNumber || '',
-            nextDueDate: vaccination.nextDueDate
+        if (healthCard) {
+          healthCard.completedVaccinations = [];
+          
+          for (const vaccination of completedVaccinations) {
+            // Add each completed dose as a separate entry
+            vaccination.doses.forEach((dose: any) => {
+              if (dose.status === 'completed' && healthCard) {
+                healthCard.completedVaccinations.push({
+                vaccineName: vaccination.vaccineName,
+                manufacturer: 'Unknown', // Not available in VaccinationRecord
+                batchNumber: 'N/A', // Not available in simplified model
+                doseNumber: dose.doseNumber,
+                totalDoses: vaccination.totalDoses,
+                dateScheduled: dose.dateScheduled,
+                administeredBy: vaccination.healthcareProvider?.name || 'Unknown',
+                facility: vaccination.healthcareProvider?.facility || 'Unknown',
+                certificateNumber: 'N/A', // Not available in simplified model
+                nextDueDate: undefined // Not available in simplified model
+              });
+            }
           });
         }
 
-        await healthCard.save();
+        if (healthCard) {
+          await healthCard.save();
+        }
       }
+    }
 
       res.status(200).json({
         success: true,
@@ -244,7 +258,7 @@ export class HealthCardController {
         cardStatus: healthCard.status,
         cardAge: Math.floor((Date.now() - healthCard.issuedDate.getTime()) / (1000 * 60 * 60 * 24)), // days
         recentVaccinations: healthCard.completedVaccinations
-          .sort((a: any, b: any) => new Date(b.dateAdministered).getTime() - new Date(a.dateAdministered).getTime())
+          .sort((a: any, b: any) => new Date(b.dateScheduled).getTime() - new Date(a.dateScheduled).getTime())
           .slice(0, 3)
       };
 
