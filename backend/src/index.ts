@@ -8,6 +8,7 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 // Routes
 import reportRoutes from './routes/reportRoutes/reportRoutes';
 import healthCardRoutes from './routes/reportRoutes/healthCardRoutes';
+import scheduleRoutes from './routes/scheduleRoutes/scheduleRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -21,9 +22,29 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 app.use(helmet());
 
+// Health check routes
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'VaxSync Backend API is running',
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Server is healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // API routes
 app.use('/api/reports', reportRoutes);
 app.use('/api/health-card', healthCardRoutes);
+app.use('/api/v1/schedule', scheduleRoutes);
 
 // Error handling middleware (must be last)
 app.use(notFoundHandler);

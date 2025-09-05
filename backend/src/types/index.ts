@@ -43,40 +43,22 @@ export interface IVaccinationRecord extends Document {
   _id: Types.ObjectId;
   recordId: string;
   userId: Types.ObjectId;
-  vaccineId: Types.ObjectId;
+  vaccineId?: Types.ObjectId; // Made optional for manual entries
   vaccineName: string;
-  doseNumber: number;
   totalDoses: number;
-  dateAdministered: Date;
-  dateScheduled: Date;
-  nextDueDate?: Date;
-  status: 'scheduled' | 'completed' | 'missed' | 'cancelled';
-  healthcareProvider: {
-    name: string;
-    facility: string;
-    license: string;
-    contact: string;
-  };
-  location: {
-    name: string;
-    address: string;
-    coordinates?: {
-      latitude: number;
-      longitude: number;
-    };
-  };
-  batchNumber: string;
-  expiryDate: Date;
-  reactions: {
-    type: string;
-    severity: 'mild' | 'moderate' | 'severe';
-    description: string;
-    reportedAt: Date;
+  interval: number;
+  doses: {
+    doseNumber: number;
+    dateScheduled: Date;
+    dateCompleted?: Date;
+    status: 'scheduled' | 'completed' | 'missed' | 'cancelled';
+    notes?: string;
   }[];
-  certificate: {
-    issueDate: Date;
-    certificateNumber?: string;
-    isVerified: boolean;
+  overallStatus: 'in_progress' | 'completed' | 'cancelled';
+  healthcareProvider?: {
+    name?: string;
+    facility?: string;
+    contact?: string;
   };
   notes?: string;
   createdAt: Date;
@@ -112,7 +94,7 @@ export interface IDigitalHealthCard extends Document {
     batchNumber: string;
     doseNumber: number;
     totalDoses: number;
-    dateAdministered: Date;
+    dateScheduled: Date;
     administeredBy: string;
     facility: string;
     certificateNumber: string;

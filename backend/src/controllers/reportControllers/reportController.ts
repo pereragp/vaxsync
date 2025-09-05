@@ -30,26 +30,44 @@ export class ReportController {
       // Get all vaccination records for user
       const records = await VaccinationRecord.find({ userId })
         .populate('vaccineId', 'name type manufacturer')
-        .sort({ dateAdministered: -1 });
+        .sort({ dateScheduled: -1 });
 
       // Calculate analytics
       const currentDate = new Date();
       const thirtyDaysFromNow = new Date(currentDate.getTime() + 30 * 24 * 60 * 60 * 1000);
 
+      // Calculate analytics from the new model structure
+      let totalDoses = 0;
+      let completedDoses = 0;
+      let scheduledDoses = 0;
+      let missedDoses = 0;
+      let upcomingDoses = 0;
+
+      records.forEach(record => {
+        record.doses.forEach(dose => {
+          totalDoses++;
+          if (dose.status === 'completed') completedDoses++;
+          else if (dose.status === 'scheduled') {
+            scheduledDoses++;
+            if (new Date(dose.dateScheduled) > currentDate && 
+                new Date(dose.dateScheduled) <= thirtyDaysFromNow) {
+              upcomingDoses++;
+            }
+          }
+          else if (dose.status === 'missed') missedDoses++;
+        });
+      });
+
       const analytics: VaccinationAnalytics = {
-        totalVaccinations: records.length,
-        completedVaccinations: records.filter(r => r.status === 'completed').length,
-        pendingVaccinations: records.filter(r => r.status === 'scheduled').length,
-        missedVaccinations: records.filter(r => r.status === 'missed').length,
-        upcomingVaccinations: records.filter(r => {
-          return r.status === 'scheduled' && 
-                 new Date(r.dateScheduled) > currentDate &&
-                 new Date(r.dateScheduled) <= thirtyDaysFromNow;
-        }).length,
+        totalVaccinations: totalDoses,
+        completedVaccinations: completedDoses,
+        pendingVaccinations: scheduledDoses,
+        missedVaccinations: missedDoses,
+        upcomingVaccinations: upcomingDoses,
         vaccinationsByYear: await ReportController.getVaccinationsByYear(userId),
         vaccinationsByType: await ReportController.getVaccinationsByType(userId),
-        complianceRate: records.length > 0 ? 
-          parseFloat(((records.filter(r => r.status === 'completed').length / records.length) * 100).toFixed(2)) : 0
+        complianceRate: totalDoses > 0 ? 
+          parseFloat(((completedDoses / totalDoses) * 100).toFixed(2)) : 0
       };
 
       res.status(200).json({
@@ -67,10 +85,9 @@ export class ReportController {
             _id: record._id,
             recordId: record.recordId,
             vaccineName: record.vaccineName,
-            doseNumber: record.doseNumber,
             totalDoses: record.totalDoses,
-            dateAdministered: record.dateAdministered,
-            status: record.status,
+            overallStatus: record.overallStatus,
+            doses: record.doses,
             healthcareProvider: record.healthcareProvider
           }))
         }
@@ -111,20 +128,13 @@ export class ReportController {
       // Build query for vaccination records
       let query: any = { userId };
       
-      if (dateRange?.from && dateRange?.to) {
-        query.dateAdministered = {
-          $gte: new Date(dateRange.from),
-          $lte: new Date(dateRange.to)
-        };
-      }
-
       if (includeRecords && Array.isArray(includeRecords) && includeRecords.length > 0) {
         query._id = { $in: includeRecords };
       }
 
       const records = await VaccinationRecord.find(query)
         .populate('vaccineId', 'name manufacturer type')
-        .sort({ dateAdministered: -1 });
+        .sort({ createdAt: -1 });
 
       // Create report record
       const report = new Report({
@@ -272,7 +282,7 @@ export class ReportController {
         vaccineName,
         dateFrom,
         dateTo,
-        sortBy = 'dateAdministered',
+        sortBy = 'dateScheduled',
         sortOrder = 'desc'
       } = req.query;
 
@@ -288,12 +298,12 @@ export class ReportController {
       }
       
       if (dateFrom || dateTo) {
-        query.dateAdministered = {};
+        query.dateScheduled = {};
         if (dateFrom && typeof dateFrom === 'string') {
-          query.dateAdministered.$gte = new Date(dateFrom);
+          query.dateScheduled.$gte = new Date(dateFrom);
         }
         if (dateTo && typeof dateTo === 'string') {
-          query.dateAdministered.$lte = new Date(dateTo);
+          query.dateScheduled.$lte = new Date(dateTo);
         }
       }
 
@@ -611,21 +621,32 @@ export class ReportController {
             
             doc.fontSize(10)
                .fillColor('#4CAF50')
-               .text(`Status: ${record.status.toUpperCase()}`, { align: 'right', continued: false });
+               .text(`Status: ${record.overallStatus.toUpperCase()}`, { align: 'right', continued: false });
             
             doc.fontSize(11)
                .fillColor('#000');
             
-            doc.text(`Date Administered: ${record.dateAdministered.toLocaleDateString()}`);
-            doc.text(`Dose: ${record.doseNumber} of ${record.totalDoses}`);
-            doc.text(`Healthcare Provider: ${record.healthcareProvider.name}`);
-            doc.text(`Facility: ${record.healthcareProvider.facility}`);
-            doc.text(`Location: ${record.location.name}`);
-            doc.text(`Batch Number: ${record.batchNumber}`);
+            doc.text(`Total Doses: ${record.totalDoses}`);
+            doc.text(`Overall Status: ${record.overallStatus.toUpperCase()}`);
             
-            if (record.certificate && record.certificate.certificateNumber) {
-              doc.text(`Certificate Number: ${record.certificate.certificateNumber}`);
+            if (record.healthcareProvider?.name) {
+              doc.text(`Healthcare Provider: ${record.healthcareProvider.name}`);
             }
+            if (record.healthcareProvider?.facility) {
+              doc.text(`Facility: ${record.healthcareProvider.facility}`);
+            }
+            
+            // List all doses
+            doc.text('Dose Schedule:');
+            record.doses.forEach((dose: any, index: number) => {
+              doc.text(`  Dose ${dose.doseNumber}: ${dose.dateScheduled.toLocaleDateString()} - ${dose.status.toUpperCase()}`);
+              if (dose.dateCompleted) {
+                doc.text(`    Completed: ${dose.dateCompleted.toLocaleDateString()}`);
+              }
+              if (dose.notes) {
+                doc.text(`    Notes: ${dose.notes}`);
+              }
+            });
             
             if (record.notes) {
               doc.text(`Notes: ${record.notes}`);
@@ -690,23 +711,18 @@ export class ReportController {
         vaccinationRecords: records.map(record => ({
           recordId: record.recordId,
           vaccineName: record.vaccineName,
-          doseNumber: record.doseNumber,
           totalDoses: record.totalDoses,
-          dateAdministered: record.dateAdministered,
-          dateScheduled: record.dateScheduled,
-          status: record.status,
+          overallStatus: record.overallStatus,
+          doses: record.doses,
           healthcareProvider: record.healthcareProvider,
-          location: record.location,
-          batchNumber: record.batchNumber,
-          expiryDate: record.expiryDate,
-          certificate: record.certificate,
           notes: record.notes
         })),
         summary: {
           totalRecords: records.length,
-          completedVaccinations: records.filter(r => r.status === 'completed').length,
-          pendingVaccinations: records.filter(r => r.status === 'scheduled').length,
-          missedVaccinations: records.filter(r => r.status === 'missed').length
+          totalDoses: records.reduce((sum, r) => sum + r.doses.length, 0),
+          completedDoses: records.reduce((sum, r) => sum + r.doses.filter((d: any) => d.status === 'completed').length, 0),
+          scheduledDoses: records.reduce((sum, r) => sum + r.doses.filter((d: any) => d.status === 'scheduled').length, 0),
+          missedDoses: records.reduce((sum, r) => sum + r.doses.filter((d: any) => d.status === 'missed').length, 0)
         }
       };
 
@@ -758,22 +774,24 @@ export class ReportController {
 
       // Add data rows
       records.forEach(record => {
-        const row = [
-          record.recordId,
-          `"${record.vaccineName}"`,
-          record.doseNumber,
-          record.totalDoses,
-          record.dateAdministered.toISOString().split('T')[0],
-          record.dateScheduled.toISOString().split('T')[0],
-          record.status,
-          `"${record.healthcareProvider.name}"`,
-          `"${record.healthcareProvider.facility}"`,
-          `"${record.location.name}"`,
-          record.batchNumber,
-          record.certificate?.certificateNumber || '',
-          `"${record.notes || ''}"`
-        ];
-        csvContent += row.join(',') + '\n';
+        record.doses.forEach((dose: any) => {
+          const row = [
+            record.recordId,
+            `"${record.vaccineName}"`,
+            dose.doseNumber,
+            record.totalDoses,
+            dose.dateScheduled.toISOString().split('T')[0],
+            dose.dateCompleted?.toISOString().split('T')[0] || '',
+            dose.status,
+            `"${record.healthcareProvider?.name || ''}"`,
+            `"${record.healthcareProvider?.facility || ''}"`,
+            '',
+            '',
+            '',
+            `"${dose.notes || record.notes || ''}"`
+          ];
+          csvContent += row.join(',') + '\n';
+        });
       });
 
       fs.writeFileSync(filePath, csvContent);
@@ -792,13 +810,18 @@ export class ReportController {
       const result = await VaccinationRecord.aggregate([
         { 
           $match: { 
-            userId: new mongoose.Types.ObjectId(userId), 
-            status: 'completed' 
+            userId: new mongoose.Types.ObjectId(userId)
+          } 
+        },
+        { $unwind: '$doses' },
+        { 
+          $match: { 
+            'doses.status': 'completed' 
           } 
         },
         {
           $group: {
-            _id: { $year: '$dateAdministered' },
+            _id: { $year: '$doses.dateScheduled' },
             count: { $sum: 1 }
           }
         },
@@ -823,8 +846,13 @@ export class ReportController {
       const result = await VaccinationRecord.aggregate([
         { 
           $match: { 
-            userId: new mongoose.Types.ObjectId(userId), 
-            status: 'completed' 
+            userId: new mongoose.Types.ObjectId(userId)
+          } 
+        },
+        { $unwind: '$doses' },
+        { 
+          $match: { 
+            'doses.status': 'completed' 
           } 
         },
         {
