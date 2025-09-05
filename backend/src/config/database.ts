@@ -2,14 +2,18 @@ import mongoose from 'mongoose';
 
 export const connectDB = async (): Promise<void> => {
   try {
-    const mongoURI ='mongodb+srv://vaxsyncdb:vaxsyncdb%4001@cluster2.xd0c4vr.mongodb.net/';
-    
+    const mongoURI = 'mongodb+srv://vaxsyncdb:vaxsyncdb%4001@cluster2.xd0c4vr.mongodb.net/';
+
+    if (!mongoURI) {
+      throw new Error('MONGODB_URI is not set. Create a .env file or set the environment variable.');
+    }
+
     await mongoose.connect(mongoURI);
-    
+
     console.log('✅ MongoDB connected successfully');
   } catch (error) {
     console.error('❌ MongoDB connection error:', error);
-    process.exit(1);
+    throw error;
   }
 };
 
