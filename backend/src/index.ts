@@ -1,6 +1,13 @@
 import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
 import dotenv from 'dotenv';
 import { connectDB, disconnectDB } from './config/database';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+
+// Routes
+import reportRoutes from './routes/reportRoutes/reportRoutes';
+import healthCardRoutes from './routes/reportRoutes/healthCardRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -10,31 +17,24 @@ const PORT = process.env.PORT || 5000;
 
 // Basic middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cors());
+app.use(helmet());
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    message: 'VaxSync Backend is running',
-    timestamp: new Date().toISOString()
-  });
-});
+// API routes
+app.use('/api/reports', reportRoutes);
+app.use('/api/health-card', healthCardRoutes);
 
-// Root endpoint
-app.get('/', (req, res) => {
-  res.json({
-    message: 'VaxSync Backend API',
-    status: 'Running',
-    version: '1.0.0'
-  });
-});
+// Error handling middleware (must be last)
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 
 // Start server
 const startServer = async () => {
   try {
-    // Connect to MongoDB
     await connectDB();
-    
+
     app.listen(PORT, () => {
       console.log(`🚀 VaxSync Backend running on port ${PORT}`);
       console.log(`🔗 Server URL: http://localhost:${PORT}`);
@@ -46,17 +46,6 @@ const startServer = async () => {
   }
 };
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down server...');
-  await disconnectDB();
-  process.exit(0);
-});
 
-process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down server...');
-  await disconnectDB();
-  process.exit(0);
-});
 
 startServer();
