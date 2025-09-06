@@ -6,7 +6,6 @@ import { connectDB, disconnectDB } from './config/database';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 // Routes
-import reportRoutes from './routes/reportRoutes/reportRoutes';
 import healthCardRoutes from './routes/reportRoutes/healthCardRoutes';
 import scheduleRoutes from './routes/scheduleRoutes/scheduleRoutes';
 
@@ -42,7 +41,6 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
-app.use('/api/reports', reportRoutes);
 app.use('/api/health-card', healthCardRoutes);
 app.use('/api/v1/schedule', scheduleRoutes);
 
