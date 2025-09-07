@@ -1,13 +1,14 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import dotenv from 'dotenv';
-import { connectDB, disconnectDB } from './config/database';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import dotenv from "dotenv";
+import { connectDB, disconnectDB } from "./config/database";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+import userRoutes from "./routes/userRoutes";
 
 // Routes
-import reportRoutes from './routes/reportRoutes/reportRoutes';
-import healthCardRoutes from './routes/reportRoutes/healthCardRoutes';
+// import reportRoutes from './routes/reportRoutes/reportRoutes';
+// import healthCardRoutes from './routes/reportRoutes/healthCardRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -22,13 +23,13 @@ app.use(cors());
 app.use(helmet());
 
 // API routes
-app.use('/api/reports', reportRoutes);
-app.use('/api/health-card', healthCardRoutes);
+// app.use('/api/reports', reportRoutes);
+// app.use('/api/health-card', healthCardRoutes);
+app.use("/api/user", userRoutes);
 
 // Error handling middleware (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
-
 
 // Start server
 const startServer = async () => {
@@ -41,11 +42,9 @@ const startServer = async () => {
       console.log(`💚 Health Check: http://localhost:${PORT}/health`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error("❌ Failed to start server:", error);
     process.exit(1);
   }
 };
-
-
 
 startServer();
