@@ -94,6 +94,22 @@ router.put('/user-info/:userId',
   HealthCardController.updateUserInfo
 );
 
+// Delete a specific vaccination from health card
+router.delete('/vaccination/:userId/:vaccinationId',
+  // authenticateToken,     // TEMPORARILY COMMENTED OUT
+  // validateUser,          // TEMPORARILY COMMENTED OUT
+  mockAuth,                 // TEMPORARY: Remove when enabling auth
+  HealthCardController.deleteVaccination
+);
+
+// Delete multiple vaccinations from health card
+router.delete('/vaccinations/:userId',
+  // authenticateToken,     // TEMPORARILY COMMENTED OUT
+  // validateUser,          // TEMPORARILY COMMENTED OUT
+  mockAuth,                 // TEMPORARY: Remove when enabling auth
+  HealthCardController.deleteMultipleVaccinations
+);
+
 export default router;
 
 // TO RE-ENABLE AUTHENTICATION LATER:
