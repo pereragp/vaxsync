@@ -13,9 +13,11 @@ import {
   Dimensions,
   TextInput,
   StatusBar,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
+import healthCardAPI, { HealthCard, HealthCardVaccination } from '../api/healthCardApi';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -48,6 +50,7 @@ interface Profile {
   lastUpdated: string;
   vaccines: Vaccine[];
   avatar?: string;
+  healthCard?: HealthCard;
 }
 
 const { width } = Dimensions.get("window");
@@ -61,63 +64,30 @@ const vaccineConfig = {
 };
 
 export default function VaxCardScreen() {
-  const [profiles] = useState<Profile[]>([
+  // Sample user IDs - in a real app, these would come from authentication
+  const [profiles, setProfiles] = useState<Profile[]>([
     {
-      id: "p-mother",
+      id: "66b1234567890abcdef12345", // Sample MongoDB ObjectId
       name: "Lakshmi Perera",
       dob: "1988-08-12",
       relation: "Mother",
       idNumber: "NIC-19880812",
       lastUpdated: "2025-08-20",
-      vaccines: [
-        {
-          id: "v1",
-          name: "BCG",
-          type: "routine",
-          icon: "shield-checkmark",
-          totalDoses: 1,
-          doses: [
-            { doseNumber: 1, date: "01 Jan 2010", batch: "B123", provider: "District Hospital", verified: true },
-          ],
-        },
-        {
-          id: "v2",
-          name: "Hepatitis B",
-          type: "routine",
-          icon: "shield-checkmark",
-          totalDoses: 3,
-          doses: [
-            { doseNumber: 1, date: "15 Mar 2010", batch: "H456", provider: "District Hospital", verified: true },
-            { doseNumber: 2, date: "15 Apr 2010", batch: "H457", provider: "District Hospital", verified: true },
-            { doseNumber: 3, date: "15 May 2010", batch: "H458", provider: "District Hospital", verified: true },
-          ],
-        },
-      ],
+      vaccines: [],
     },
     {
-      id: "p-child1",
+      id: "66b1234567890abcdef12346", // Sample MongoDB ObjectId
       name: "Amal Perera",
       dob: "2020-01-15",
       relation: "Child",
       idNumber: "CH-001",
       lastUpdated: "2025-07-12",
-      vaccines: [
-        {
-          id: "c1",
-          name: "Polio",
-          type: "routine",
-          icon: "shield-checkmark",
-          totalDoses: 4,
-          doses: [
-            { doseNumber: 1, date: "03 Feb 2020", batch: "P321", provider: "Vaccination Camp", verified: true },
-            { doseNumber: 2, date: "03 Mar 2020", batch: "P322", provider: "Vaccination Camp", verified: true },
-            { doseNumber: 3, date: "03 Apr 2020", batch: "P323", provider: "Vaccination Camp", verified: true },
-            { doseNumber: 4, date: "03 May 2020", batch: "P324", provider: "Vaccination Camp", verified: true },
-          ],
-        },
-      ],
+      vaccines: [],
     },
   ]);
+
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
   const [selectedIdx, setSelectedIdx] = useState(0);
   const profile = profiles[selectedIdx];
@@ -133,6 +103,51 @@ export default function VaxCardScreen() {
   const cardAnimations = useRef<{[key: string]: Animated.Value}>({});
   const pulseAnim = useRef(new Animated.Value(0)).current;
   const progressAnimations = useRef<{[key: string]: Animated.Value}>({});
+
+  // Load health card data from backend
+  const loadHealthCardData = async (userId: string, profileIndex: number) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const healthCard = await healthCardAPI.getHealthCard(userId);
+      const groupedVaccines = healthCardAPI.groupVaccinationsByName(healthCard.completedVaccinations);
+
+      // Update the specific profile with health card data
+      setProfiles(prevProfiles => {
+        const updatedProfiles = [...prevProfiles];
+        updatedProfiles[profileIndex] = {
+          ...updatedProfiles[profileIndex],
+          vaccines: groupedVaccines,
+          healthCard: healthCard,
+          lastUpdated: new Date(healthCard.lastUpdated).toLocaleDateString()
+        };
+        return updatedProfiles;
+      });
+
+    } catch (error: any) {
+      console.error('Error loading health card:', error);
+      setError(error.message || 'Failed to load vaccination data');
+      // Show alert for user feedback
+      Alert.alert(
+        'Error Loading Data',
+        error.message || 'Failed to load vaccination data from server. Using offline data.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Load health card data when component mounts or profile changes
+  useEffect(() => {
+    if (profiles.length > 0) {
+      const currentProfile = profiles[selectedIdx];
+      if (currentProfile && !currentProfile.healthCard) {
+        loadHealthCardData(currentProfile.id, selectedIdx);
+      }
+    }
+  }, [selectedIdx]);
 
   // Initialize animations
   useEffect(() => {
@@ -188,8 +203,50 @@ export default function VaxCardScreen() {
     setShowVaccineModal(true);
   };
 
-  const handleDownload = () => Alert.alert("Download PDF", "Generate signed PDF (simulation)");
-  const handleShare = () => Alert.alert("Share", "Native Share invoked (simulation)");
+  const handleRefresh = async () => {
+    const currentProfile = profiles[selectedIdx];
+    if (currentProfile) {
+      await loadHealthCardData(currentProfile.id, selectedIdx);
+    }
+  };
+
+  const handleDownload = async () => {
+    const currentProfile = profiles[selectedIdx];
+    if (currentProfile?.healthCard) {
+      try {
+        // In a real implementation, this would generate and download a PDF
+        Alert.alert(
+          "Download Health Card", 
+          `Downloading vaccination certificate for ${currentProfile.name}...`,
+          [{ text: "OK" }]
+        );
+        // TODO: Implement actual PDF generation and download
+      } catch (error) {
+        Alert.alert("Error", "Failed to download health card");
+      }
+    } else {
+      Alert.alert("No Data", "No health card data available to download");
+    }
+  };
+
+  const handleShare = async () => {
+    const currentProfile = profiles[selectedIdx];
+    if (currentProfile?.healthCard) {
+      try {
+        // In a real implementation, this would share the health card
+        Alert.alert(
+          "Share Health Card", 
+          `Sharing vaccination certificate for ${currentProfile.name}...\n\nCard ID: ${currentProfile.healthCard.cardId}`,
+          [{ text: "OK" }]
+        );
+        // TODO: Implement actual sharing functionality
+      } catch (error) {
+        Alert.alert("Error", "Failed to share health card");
+      }
+    } else {
+      Alert.alert("No Data", "No health card data available to share");
+    }
+  };
 
   // Calculate completion stats
   const completionStats = {
@@ -262,7 +319,35 @@ export default function VaxCardScreen() {
       
       {/* Header with Stats */}
       <View className="pt-12 pb-6 px-4">
-        <Text className="text-2xl font-bold text-gray-800 mb-2">Vaccination Records</Text>
+        <View className="flex-row items-center justify-between mb-2">
+          <Text className="text-2xl font-bold text-gray-800">Vaccination Records</Text>
+          <TouchableOpacity 
+            onPress={handleRefresh}
+            disabled={loading}
+            className="p-2 rounded-full bg-blue-100"
+          >
+            <Ionicons 
+              name="refresh" 
+              size={20} 
+              color={loading ? "#94a3b8" : "#3b82f6"} 
+            />
+          </TouchableOpacity>
+        </View>
+        
+        {loading && (
+          <View className="bg-blue-50 rounded-xl p-3 mb-4 flex-row items-center">
+            <ActivityIndicator size="small" color="#3b82f6" />
+            <Text className="ml-2 text-blue-700 text-sm">Loading vaccination data...</Text>
+          </View>
+        )}
+
+        {error && (
+          <View className="bg-red-50 rounded-xl p-3 mb-4 flex-row items-center">
+            <Ionicons name="warning" size={20} color="#ef4444" />
+            <Text className="ml-2 text-red-700 text-sm flex-1">{error}</Text>
+          </View>
+        )}
+
         <View className="flex-row justify-between">
           <View className="bg-white rounded-xl p-3 flex-1 mr-2 shadow-sm">
             <Text className="text-2xl font-bold text-green-600">{completionStats.completed}</Text>
@@ -288,6 +373,7 @@ export default function VaxCardScreen() {
         {profiles.map((p, index) => {
           const isSelected = index === selectedIdx;
           const completedCount = p.vaccines.filter(v => v.doses.length === v.totalDoses).length;
+          const hasHealthCard = !!p.healthCard;
           
           return (
             <TouchableOpacity
@@ -309,6 +395,11 @@ export default function VaxCardScreen() {
                     size={24} 
                     color={isSelected ? "white" : "#3b82f6"} 
                   />
+                  {hasHealthCard && (
+                    <View className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full items-center justify-center">
+                      <Ionicons name="checkmark" size={10} color="white" />
+                    </View>
+                  )}
                 </View>
                 <Text className={`font-semibold text-center ${
                   isSelected ? 'text-white' : 'text-gray-800'
@@ -320,15 +411,27 @@ export default function VaxCardScreen() {
                 }`}>
                   {p.relation}
                 </Text>
-                <View className={`mt-1 px-2 py-1 rounded-full ${
-                  isSelected ? 'bg-white/20' : 'bg-green-100'
-                }`}>
-                  <Text className={`text-xs font-medium ${
-                    isSelected ? 'text-white' : 'text-green-700'
+                {hasHealthCard ? (
+                  <View className={`mt-1 px-2 py-1 rounded-full ${
+                    isSelected ? 'bg-white/20' : 'bg-green-100'
                   }`}>
-                    {completedCount} complete
-                  </Text>
-                </View>
+                    <Text className={`text-xs font-medium ${
+                      isSelected ? 'text-white' : 'text-green-700'
+                    }`}>
+                      {completedCount} complete
+                    </Text>
+                  </View>
+                ) : (
+                  <View className={`mt-1 px-2 py-1 rounded-full ${
+                    isSelected ? 'bg-white/20' : 'bg-yellow-100'
+                  }`}>
+                    <Text className={`text-xs font-medium ${
+                      isSelected ? 'text-white' : 'text-yellow-700'
+                    }`}>
+                      Loading...
+                    </Text>
+                  </View>
+                )}
               </View>
             </TouchableOpacity>
           );
@@ -557,6 +660,69 @@ export default function VaxCardScreen() {
               </Animated.View>
             );
           })
+        )}
+
+        {/* Health Card Information */}
+        {profile.healthCard && (
+          <View className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-4 shadow-lg mb-6">
+            <View className="flex-row items-center justify-between mb-3">
+              <View>
+                <Text className="text-white font-bold text-lg">Digital Health Card</Text>
+                <Text className="text-blue-100 text-sm">
+                  {profile.healthCard.userInfo.fullName}
+                </Text>
+              </View>
+              <View className="bg-white/20 rounded-xl px-3 py-2">
+                <Text className="text-white font-mono text-sm">
+                  {profile.healthCard.cardNumber}
+                </Text>
+              </View>
+            </View>
+            
+            <View className="flex-row justify-between items-center">
+              <View>
+                <Text className="text-blue-100 text-xs">Card ID</Text>
+                <Text className="text-white font-medium text-sm">
+                  {profile.healthCard.cardId}
+                </Text>
+              </View>
+              <View>
+                <Text className="text-blue-100 text-xs">Last Updated</Text>
+                <Text className="text-white font-medium text-sm">
+                  {new Date(profile.healthCard.lastUpdated).toLocaleDateString()}
+                </Text>
+              </View>
+              <View>
+                <Text className="text-blue-100 text-xs">Status</Text>
+                <Text className="text-white font-medium text-sm capitalize">
+                  {profile.healthCard.status}
+                </Text>
+              </View>
+            </View>
+
+            <View className="mt-3 pt-3 border-t border-white/20">
+              <View className="flex-row justify-between">
+                <View className="items-center">
+                  <Text className="text-white font-bold text-lg">
+                    {profile.healthCard.statistics.totalVaccinations}
+                  </Text>
+                  <Text className="text-blue-100 text-xs">Total Doses</Text>
+                </View>
+                <View className="items-center">
+                  <Text className="text-white font-bold text-lg">
+                    {profile.healthCard.statistics.complianceScore}%
+                  </Text>
+                  <Text className="text-blue-100 text-xs">Compliance</Text>
+                </View>
+                <View className="items-center">
+                  <Text className="text-white font-bold text-lg">
+                    {Math.floor((Date.now() - new Date(profile.healthCard.issuedDate).getTime()) / (1000 * 60 * 60 * 24))}
+                  </Text>
+                  <Text className="text-blue-100 text-xs">Days Old</Text>
+                </View>
+              </View>
+            </View>
+          </View>
         )}
 
         {/* Enhanced Timeline */}
