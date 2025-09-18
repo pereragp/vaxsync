@@ -23,7 +23,8 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
     { id: 'home', name: 'Home', icon: 'home', route: '/' },
     { id: 'vaccines', name: 'Vaccines', icon: 'shield', route: '/vaccines' },
     { id: 'schedule', name: 'Schedule', icon: 'calendar', route: '/schedule' },
-    { id: 'profile', name: 'Profile', icon: 'person', route: '/profile' }
+    { id: 'profile', name: 'Profile', icon: 'person', route: '/profile' },
+    { id: 'services', name: 'Health Services', icon: 'search', route: '/health-services' },
   ];
 
   const sideMenuItems = [
@@ -72,6 +73,8 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
         return 'schedule';
       case '/profile':
         return 'profile';
+      case 'health-services':
+        return 'services';
       default:
         return 'home';
     }
