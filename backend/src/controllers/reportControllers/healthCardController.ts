@@ -333,5 +333,131 @@ export class HealthCardController {
     }
   }
 
+  /**
+   * Delete a specific vaccination from health card
+   */
+  static async deleteVaccination(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { userId, vaccinationId } = req.params;
+
+      const healthCard = await DigitalHealthCard.findOne({ 
+        userId, 
+        status: 'active' 
+      });
+
+      if (!healthCard) {
+        res.status(404).json({
+          success: false,
+          message: 'Health card not found'
+        } as ApiResponse);
+        return;
+      }
+
+      // Find and remove the vaccination
+      const vaccinationIndex = healthCard.completedVaccinations.findIndex(
+        (vaccination: any) => vaccination._id.toString() === vaccinationId
+      );
+
+      if (vaccinationIndex === -1) {
+        res.status(404).json({
+          success: false,
+          message: 'Vaccination not found'
+        } as ApiResponse);
+        return;
+      }
+
+      // Remove the vaccination
+      healthCard.completedVaccinations.splice(vaccinationIndex, 1);
+      healthCard.markModified('completedVaccinations');
+      
+      await healthCard.save();
+
+      res.status(200).json({
+        success: true,
+        message: 'Vaccination deleted successfully',
+        data: {
+          healthCard,
+          deletedVaccinationId: vaccinationId
+        }
+      } as ApiResponse);
+
+    } catch (error: any) {
+      console.error('Delete vaccination error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete vaccination',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Delete multiple vaccinations from health card
+   */
+  static async deleteMultipleVaccinations(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { userId } = req.params;
+      const { vaccinationIds } = req.body;
+
+      if (!Array.isArray(vaccinationIds) || vaccinationIds.length === 0) {
+        res.status(400).json({
+          success: false,
+          message: 'vaccinationIds must be a non-empty array'
+        } as ApiResponse);
+        return;
+      }
+
+      const healthCard = await DigitalHealthCard.findOne({ 
+        userId, 
+        status: 'active' 
+      });
+
+      if (!healthCard) {
+        res.status(404).json({
+          success: false,
+          message: 'Health card not found'
+        } as ApiResponse);
+        return;
+      }
+
+      // Filter out the vaccinations to be deleted
+      const originalCount = healthCard.completedVaccinations.length;
+      healthCard.completedVaccinations = healthCard.completedVaccinations.filter(
+        (vaccination: any) => !vaccinationIds.includes(vaccination._id.toString())
+      );
+
+      const deletedCount = originalCount - healthCard.completedVaccinations.length;
+      
+      if (deletedCount === 0) {
+        res.status(404).json({
+          success: false,
+          message: 'No vaccinations found with the provided IDs'
+        } as ApiResponse);
+        return;
+      }
+
+      healthCard.markModified('completedVaccinations');
+      await healthCard.save();
+
+      res.status(200).json({
+        success: true,
+        message: `${deletedCount} vaccination(s) deleted successfully`,
+        data: {
+          healthCard,
+          deletedCount,
+          deletedVaccinationIds: vaccinationIds
+        }
+      } as ApiResponse);
+
+    } catch (error: any) {
+      console.error('Delete multiple vaccinations error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete vaccinations',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      } as ApiResponse);
+    }
+  }
+
 
 }
