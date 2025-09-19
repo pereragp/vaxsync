@@ -375,6 +375,48 @@ class HealthCardAPI {
       };
     });
   }
+
+  // Send vaccine completion notification with AI instructions
+  async sendVaccineInstructions(userId: string, vaccinationId?: string): Promise<{
+    vaccinationRecord: any;
+    instructions: string;
+  }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/instructions/${userId}/${vaccinationId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result: ApiResponse<{
+        vaccinationRecord: any;
+        instructions: string;
+      }> = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to send vaccine instructions');
+      }
+
+      return result.data!;
+    } catch (error) {
+      console.error('Error sending vaccine instructions:', error);
+      throw error;
+    }
+  }
+
+  // Get AI-generated instructions for a specific vaccination (alias method)
+  async getVaccineInstructions(userId: string, vaccinationId: string): Promise<{
+    vaccinationRecord: any;
+    instructions: string;
+  }> {
+    // Use the same method as sendVaccineInstructions
+    return await this.sendVaccineInstructions(userId, vaccinationId);
+  }
 }
 
 export default new HealthCardAPI();
