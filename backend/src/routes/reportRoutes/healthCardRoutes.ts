@@ -1,44 +1,4 @@
-/*import express from 'express';
-import { HealthCardController } from '../../controllers/reportControllers/healthCardController';
-import { authenticateToken, validateUser } from '../../middleware/auth';
 
-const router = express.Router();
-
-// Get user's digital health card
-router.get('/:userId', 
-  authenticateToken,
-  validateUser,
-  HealthCardController.getHealthCard
-);
-
-// Update health card with latest data
-router.put('/:userId',
-  authenticateToken,
-  validateUser,
-  HealthCardController.updateHealthCard
-);
-
-// Get health card by card ID (for verification/sharing)
-router.get('/card/:cardId',
-  HealthCardController.getHealthCardByCardId
-);
-
-// Get health card statistics
-router.get('/stats/:userId',
-  authenticateToken,
-  validateUser,
-  HealthCardController.getHealthCardStats
-);
-
-// Update user info on health card
-router.put('/user-info/:userId',
-  authenticateToken,
-  validateUser,
-  HealthCardController.updateUserInfo
-);
-
-
-export default router;  */
 
 import express from 'express';
 import { HealthCardController } from '../../controllers/reportControllers/healthCardController';
@@ -51,7 +11,7 @@ const router = express.Router();
 const mockAuth = (req: any, res: any, next: any) => {
   // Simulate authenticated user for testing
   req.user = { 
-    id: req.params.userId || '66b1234567890abcdef12345' 
+    id: req.params.userId || '68bdd7f25f7c2f6b001b5801' 
   };
   next();
 };
@@ -108,6 +68,14 @@ router.delete('/vaccinations/:userId',
   // validateUser,          // TEMPORARILY COMMENTED OUT
   mockAuth,                 // TEMPORARY: Remove when enabling auth
   HealthCardController.deleteMultipleVaccinations
+);
+
+// Get AI-generated vaccine instructions
+router.get('/instructions/card/:cardId/:vaccinationId',
+  // authenticateToken,     // TEMPORARILY COMMENTED OUT
+  // validateUser,          // TEMPORARILY COMMENTED OUT
+  mockAuth,                 // TEMPORARY: Remove when enabling auth
+  HealthCardController.getVaccineInstructions
 );
 
 export default router;
