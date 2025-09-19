@@ -3,6 +3,7 @@ import DigitalHealthCard from '../../models/reportModels/digitalHealthCard';
 import VaccinationRecord from '../../models/scheduleModels/vaccineScheduleModel';
 import User from '../../models/userModels/user';
 import { AuthRequest, ApiResponse } from '../../types';
+import geminiService from '../../services/geminiService';
 
 export class HealthCardController {
   /**
@@ -454,6 +455,87 @@ export class HealthCardController {
       res.status(500).json({
         success: false,
         message: 'Failed to delete vaccinations',
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      } as ApiResponse);
+    }
+  }
+
+  /**
+   * Get AI-generated vaccine instructions for a specific vaccination
+   */
+  static async getVaccineInstructions(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { cardId, vaccinationId } = req.params;
+
+      // Get health card directly using cardId
+      const healthCard = await DigitalHealthCard.findOne({ 
+        cardId, 
+        status: 'active' 
+      }).populate('userId', 'gender'); // Populate user to get gender
+
+      if (!healthCard) {
+        res.status(404).json({
+          success: false,
+          message: 'Health card not found'
+        } as ApiResponse);
+        return;
+      }
+
+      // Find specific vaccination record
+      const vaccinationRecord = healthCard.completedVaccinations.find(
+        (v: any) => v._id.toString() === vaccinationId
+      );
+
+      if (!vaccinationRecord) {
+        res.status(404).json({
+          success: false,
+          message: 'Vaccination record not found'
+        } as ApiResponse);
+        return;
+      }
+
+      // Count completed doses for this vaccine
+      const completedDosesForVaccine = healthCard.completedVaccinations.filter(
+        (v: any) => v.vaccineName === vaccinationRecord.vaccineName
+      ).length;
+
+      // Prepare data for Gemini AI
+      const userData = {
+        dateOfBirth: healthCard.userInfo.dateOfBirth,
+       // gender: healthCard.userId?.gender || 'Not specified'
+        gender:  'Not specified', // Use populated user's gender
+        vaccineName: vaccinationRecord.vaccineName,
+        totalDoses: vaccinationRecord.totalDoses,
+        vaccineDate: vaccinationRecord.dateScheduled,
+        completedDoseNo: completedDosesForVaccine,
+        fullName: healthCard.userInfo.fullName // Added fullName
+      };
+
+      // Generate AI instructions
+      const instructions = await geminiService.generateVaccineInstructions(userData);
+
+      res.status(200).json({
+        success: true,
+        message: 'Vaccine instructions generated successfully',
+        data: {
+          vaccinationRecord: {
+            vaccineName: vaccinationRecord.vaccineName,
+            doseNumber: vaccinationRecord.doseNumber,
+            totalDoses: vaccinationRecord.totalDoses,
+            dateScheduled: vaccinationRecord.dateScheduled,
+            administeredBy: vaccinationRecord.administeredBy,
+            facility: vaccinationRecord.facility,
+            batchNumber: vaccinationRecord.batchNumber
+          },
+          instructions
+        }
+      } as ApiResponse);
+
+    } catch (error: any) {
+      console.error('Get vaccine instructions error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to generate vaccine instructions',
         error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
       } as ApiResponse);
     }
