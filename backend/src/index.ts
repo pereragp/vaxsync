@@ -6,7 +6,7 @@ import { connectDB, disconnectDB } from './config/database';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
 // Routes
-import healthCardRoutes from './routes/reportRoutes/healthCardRoutes';
+import healthCardRoutes from './routes/healthCard/healthCardRoutes';
 import scheduleRoutes from './routes/scheduleRoutes/scheduleRoutes';
 
 // Load environment variables
