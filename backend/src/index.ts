@@ -13,7 +13,7 @@ import scheduleRoutes from './routes/scheduleRoutes/scheduleRoutes';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 
 // Basic middleware
 app.use(express.json());
@@ -53,11 +53,12 @@ app.use(errorHandler);
 const startServer = async () => {
   try {
     await connectDB();
-
-    app.listen(PORT, () => {
+     
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 VaxSync Backend running on port ${PORT}`);
       console.log(`🔗 Server URL: http://localhost:${PORT}`);
-      console.log(`💚 Health Check: http://localhost:${PORT}/health`);
+      console.log(`📱 For mobile access: http://192.168.1.32:${PORT}`);
+      console.log(`💚 Health Check: http://192.168.1.32:${PORT}/health`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);
