@@ -1,6 +1,6 @@
 // Health Card API service for connecting to backend
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
-
+//const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = 'http://192.168.1.32:5000';
 export interface HealthCardVaccination {
   vaccineName: string;
   manufacturer: string;
