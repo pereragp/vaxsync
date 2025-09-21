@@ -31,7 +31,7 @@ export class ScheduleController {
         healthCard = new DigitalHealthCard({
           userId,
           userInfo: {
-            fullName: user.name || 'Unknown User',
+            fullName: `${user.firstName} ${user.lastName}`,
             dateOfBirth: user.dateOfBirth,
             profilePicture: user.avatar || '',
             bloodType: '',
@@ -191,7 +191,7 @@ export class ScheduleController {
       } = req.body;
       
       // Temporary: Use test user ID for testing (replace with your actual test user ID)
-      const userId = req.user?.userId || '66b1234567890abcdef12345'; // Replace with your test user ID
+      const userId = req.user?.username || '66b1234567890abcdef12345'; // Replace with your test user ID
 
       // Validate required fields
       if (!dateScheduled) {
@@ -397,7 +397,7 @@ export class ScheduleController {
       const { scheduleId } = req.params;
       
       // Temporary: Use test user ID for testing
-      const userId = req.user?.userId || '66b1234567890abcdef12345';
+      const userId = req.user?.username || '66b1234567890abcdef12345';
 
       if (!mongoose.Types.ObjectId.isValid(scheduleId)) {
         res.status(400).json({
@@ -446,7 +446,7 @@ export class ScheduleController {
       const skip = (pageNum - 1) * limitNum;
       
       // Temporary: Use test user ID for testing (replace with your actual test user ID)
-      const userId = req.user?.userId || '66b1234567890abcdef12345'; // Replace with your test user ID
+      const userId = req.user?.username || '66b1234567890abcdef12345'; // Replace with your test user ID
 
       // Build filter object
       const filter: any = { userId };
@@ -502,7 +502,7 @@ export class ScheduleController {
       const { dateScheduled, status, notes, healthcareProvider } = req.body;
       
       // Temporary: Use test user ID for testing (replace with your actual test user ID)
-      const userId = req.user?.userId || '66b1234567890abcdef12345'; // Replace with your test user ID
+      const userId = req.user?.username || '66b1234567890abcdef12345'; // Replace with your test user ID
 
       if (!mongoose.Types.ObjectId.isValid(scheduleId)) {
         res.status(400).json({
@@ -569,7 +569,7 @@ export class ScheduleController {
       const { status, notes, dateCompleted } = req.body;
       
       // Temporary: Use test user ID for testing
-      const userId = req.user?.userId || '66b1234567890abcdef12345';
+      const userId = req.user?.username || '66b1234567890abcdef12345';
 
       if (!mongoose.Types.ObjectId.isValid(scheduleId)) {
         res.status(400).json({
@@ -664,7 +664,7 @@ export class ScheduleController {
       const { scheduleId } = req.params;
       
       // Temporary: Use test user ID for testing (replace with your actual test user ID)
-      const userId = req.user?.userId || '66b1234567890abcdef12345'; // Replace with your test user ID
+      const userId = req.user?.username || '66b1234567890abcdef12345'; // Replace with your test user ID
 
       if (!mongoose.Types.ObjectId.isValid(scheduleId)) {
         res.status(400).json({
@@ -708,7 +708,7 @@ export class ScheduleController {
    */
   static async syncAllCompletedDosesToHealthCard(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const userId = req.user?.userId || '66b1234567890abcdef12345';
+      const userId = req.user?.username || '66b1234567890abcdef12345';
       
       // Find all schedules with completed doses
       const schedules = await VaccinationRecord.find({ userId });
@@ -748,7 +748,7 @@ export class ScheduleController {
       const daysNum = parseInt(days as string);
       
       // Temporary: Use test user ID for testing (replace with your actual test user ID)
-      const userId = req.user?.userId || '66b1234567890abcdef12345'; // Replace with your test user ID
+      const userId = req.user?.username || '66b1234567890abcdef12345'; // Replace with your test user ID
 
       const currentDate = new Date();
       const futureDate = new Date();
