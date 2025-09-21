@@ -1,4 +1,4 @@
-import React, { useState, ReactNode } from 'react';
+import React, {useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'expo-router';
 import { View, Text, TouchableOpacity, ScrollView, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
