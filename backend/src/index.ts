@@ -7,7 +7,7 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import userRoutes from "./routes/userRoutes";
 
 // Routes
-import healthCardRoutes from './routes/reportRoutes/healthCardRoutes';
+import healthCardRoutes from './routes/healthCard/healthCardRoutes';
 import scheduleRoutes from './routes/scheduleRoutes/scheduleRoutes';
 
 // Load environment variables

@@ -56,6 +56,11 @@ const digitalHealthCardSchema = new Schema<IDigitalHealthCard>({
       required: true,
       trim: true
     },
+    Gender: {
+      type: String,
+      required: true,
+      trim: true
+    },
     dateOfBirth: {
       type: Date,
       required: true
