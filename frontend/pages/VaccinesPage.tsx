@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 import healthCardAPI, { HealthCard, HealthCardVaccination } from '../api/healthCardApi';
 
 // Enable LayoutAnimation for Android
@@ -278,12 +279,13 @@ export default function VaxCardScreen() {
   }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
     const config = vaccineConfig[vaccine.type];
 
     return (
       <View style={{ width: size, height: size }}>
-        <svg width={size} height={size} style={{ position: 'absolute' }}>
-          <circle
+        <Svg width={size} height={size} style={{ position: 'absolute' }}>
+          <Circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
@@ -291,19 +293,19 @@ export default function VaxCardScreen() {
             strokeWidth={strokeWidth}
             fill="transparent"
           />
-          <circle
+          <Circle
             cx={size / 2}
             cy={size / 2}
             r={radius}
             stroke={config.color}
             strokeWidth={strokeWidth}
             strokeDasharray={circumference}
-            strokeDashoffset={circumference - (percentage / 100) * circumference}
+            strokeDashoffset={strokeDashoffset}
             strokeLinecap="round"
             fill="transparent"
             transform={`rotate(-90 ${size / 2} ${size / 2})`}
           />
-        </svg>
+        </Svg>
         <View className="absolute inset-0 items-center justify-center">
           <Text className="text-xs font-bold" style={{ color: config.color }}>
             {Math.round(percentage)}%
