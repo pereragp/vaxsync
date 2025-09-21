@@ -19,17 +19,6 @@ const digitalHealthCardSchema = new Schema<IDigitalHealthCard>({
     index: true
   },
   
-  cardNumber: {
-    type: String,
-    required: true,
-    unique: true,
-    default: function() {
-      const year = new Date().getFullYear();
-      const random = Math.random().toString().substring(2, 10);
-      return `VXS-${year}-${random.substring(0, 4)}-${random.substring(4, 8)}`;
-    }
-  },
-  
   
   issuedDate: {
     type: Date,
@@ -69,21 +58,7 @@ const digitalHealthCardSchema = new Schema<IDigitalHealthCard>({
       type: String,
       default: ''
     },
-    bloodType: {
-      type: String,
-      enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', ''],
-      default: ''
-    },
-    emergencyContact: {
-      name: {
-        type: String,
-        trim: true
-      },
-      phone: {
-        type: String,
-        trim: true
-      }
-    }
+    
   },
 
   // All completed vaccinations
