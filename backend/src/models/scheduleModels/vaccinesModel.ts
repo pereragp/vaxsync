@@ -40,6 +40,15 @@ const vaccineSchema = new Schema<IVaccine>(
       },
       default: "routine",
     },
+    targetPopulation: {
+      type: String,
+      enum: {
+        values: ["all", "female", "male", "pregnant"],
+        message:
+          "Target population must be one of: all, female, male, pregnant",
+      },
+      default: "female",
+    },
     ageGroups: [
       {
         minAge: {
@@ -70,6 +79,14 @@ const vaccineSchema = new Schema<IVaccine>(
         },
       },
     ],
+    doseSchedule: [
+      {
+        pregnancyNumber: { type: Number, required: true },
+        doseNumber: { type: Number, required: true },
+        weeksAfterPOA: { type: Number }, // optional, only for first dose of that pregnancy
+        weeksAfterPreviousDose: { type: Number }, // optional, for 2nd dose
+      },
+    ],
     sideEffects: [
       {
         type: String,
@@ -77,16 +94,6 @@ const vaccineSchema = new Schema<IVaccine>(
         maxlength: [
           200,
           "Side effect description cannot exceed 200 characters",
-        ],
-      },
-    ],
-    contraindications: [
-      {
-        type: String,
-        trim: true,
-        maxlength: [
-          200,
-          "Contraindication description cannot exceed 200 characters",
         ],
       },
     ],

@@ -1,14 +1,14 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import dotenv from 'dotenv';
-import { connectDB, disconnectDB } from './config/database';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import dotenv from "dotenv";
+import { connectDB, disconnectDB } from "./config/database";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 // Routes
-import healthCardRoutes from './routes/reportRoutes/healthCardRoutes';
-import scheduleRoutes from './routes/scheduleRoutes/scheduleRoutes';
-
+import healthCardRoutes from "./routes/reportRoutes/healthCardRoutes";
+import scheduleRoutes from "./routes/scheduleRoutes/scheduleRoutes";
+import vaccineRoutes from "./routes/scheduleRoutes/vaccineRoutes";
 // Load environment variables
 dotenv.config();
 
@@ -22,32 +22,32 @@ app.use(cors());
 app.use(helmet());
 
 // Health check routes
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: 'VaxSync Backend API is running',
-    version: '1.0.0',
-    timestamp: new Date().toISOString()
+    message: "VaxSync Backend API is running",
+    version: "1.0.0",
+    timestamp: new Date().toISOString(),
   });
 });
 
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.json({
     success: true,
-    message: 'Server is healthy',
+    message: "Server is healthy",
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
   });
 });
 
 // API routes
-app.use('/api/health-card', healthCardRoutes);
-app.use('/api/v1/schedule', scheduleRoutes);
+app.use("/api/health-card", healthCardRoutes);
+app.use("/api/v1/schedule", scheduleRoutes);
+app.use("/api/vaccines", vaccineRoutes);
 
 // Error handling middleware (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
-
 
 // Start server
 const startServer = async () => {
@@ -60,11 +60,9 @@ const startServer = async () => {
       console.log(`💚 Health Check: http://localhost:${PORT}/health`);
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error("❌ Failed to start server:", error);
     process.exit(1);
   }
 };
-
-
 
 startServer();
