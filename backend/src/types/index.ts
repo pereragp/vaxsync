@@ -84,6 +84,26 @@ export interface IVaccinationRecord extends Document {
   updatedAt: Date;
 }
 
+export interface IHealthCard extends Document {
+  _id: Types.ObjectId;
+  fullName: string;
+  gender: string;
+  dateOfBirth: Date;
+  userId?: Types.ObjectId; // For main user
+  dependentId?: Types.ObjectId; // For dependent
+  cardType: "user" | "dependent";
+  dependents?: {
+    _id: Types.ObjectId;
+    dependentId: Types.ObjectId;
+    fullName: string;
+    dateOfBirth: Date;
+    gender: string;
+    dependentType: string;
+  }[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface IDigitalHealthCard extends Document {
   _id: Types.ObjectId;
   cardId: string;
