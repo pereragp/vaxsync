@@ -3,6 +3,9 @@ import { Request } from 'express';
 
 export interface IUser extends Document {
   _id: Types.ObjectId;
+  userId: string;
+  firstName: string;
+  lastName: string;
   username: string;
   firstName: string;
   lastName: string;
