@@ -72,7 +72,7 @@ export class HealthCardController {
       const healthCard = new DigitalHealthCard({
         userId,
         userInfo: {
-          fullName: user.name,
+          fullName: `${user.firstName} ${user.lastName}`,
           dateOfBirth: user.dateOfBirth,
           profilePicture: user.avatar || '',
           emergencyContact: {
