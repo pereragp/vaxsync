@@ -10,6 +10,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   dateOfBirth: Date;
+  gender: string;
   phone: string;
   avatar?: string;
   dependents: Types.ObjectId[];
@@ -18,6 +19,18 @@ export interface IUser extends Document {
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
+}
+
+export interface IDependent extends Document {
+  _id: Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: Date;
+  gender: string;
+  dependentType: string;
+  guardianId: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface IVaccine extends Document {
