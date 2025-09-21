@@ -1,6 +1,6 @@
 import express from 'express';
 import { ScheduleController } from '../../controllers/scheduleController/scheduleController';
-import { authenticateToken } from '../../middleware/auth';
+//import { authenticateToken } from '../../middleware/auth';
 import { body, param, query } from 'express-validator';
 import { validateRequest } from '../../middleware/validation';
 
