@@ -2,7 +2,7 @@ import { Response } from 'express';
 import VaccinationRecord from '../../models/scheduleModels/vaccineScheduleModel';
 import Vaccine from '../../models/scheduleModels/vaccinesModel';
 import User from '../../models/userModels/user';
-import DigitalHealthCard from '../../models/reportModels/digitalHealthCard';
+import DigitalHealthCard from '../../models/healthCard/healthcardModel';
 import { AuthRequest, ApiResponse, PaginationInfo } from '../../types';
 import mongoose from 'mongoose';
 

@@ -1,7 +1,7 @@
 
 
 import express from 'express';
-import { HealthCardController } from '../../controllers/reportControllers/healthCardController';
+import { HealthCardController } from '../../controllers/healthCard/healthCardController';
 // TEMPORARILY COMMENTED OUT FOR API TESTING - ENABLE WHEN AUTHENTICATION IS READY
 // import { authenticateToken, validateUser } from '../../middleware/auth';
 

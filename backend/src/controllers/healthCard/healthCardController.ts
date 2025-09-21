@@ -1,5 +1,5 @@
 import { Response } from 'express';
-import DigitalHealthCard from '../../models/reportModels/digitalHealthCard';
+import DigitalHealthCard from '../../models/healthCard/healthcardModel';
 import VaccinationRecord from '../../models/scheduleModels/vaccineScheduleModel';
 import User from '../../models/userModels/user';
 import { AuthRequest, ApiResponse } from '../../types';
