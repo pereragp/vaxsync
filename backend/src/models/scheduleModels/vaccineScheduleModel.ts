@@ -1,7 +1,74 @@
-import mongoose, { Schema } from "mongoose";
-import { IVaccinationRecord } from "../../types";
+import mongoose, { Schema, Document } from "mongoose";
+import { Types } from "mongoose"; // Import Types for ObjectId
 
-const vaccinationRecordSchema = new Schema<IVaccinationRecord>(
+export interface IDose {
+  doseNumber: number;
+  dateScheduled: Date;
+  dateCompleted?: Date;
+  batchNo?: string;
+  vaccinatedLocation?: string;
+  status: "scheduled" | "completed" | "missed" | "cancelled";
+  notes?: string;
+}
+
+export interface IVaccineSchedule extends Document {
+  recordId: string;
+  userId: mongoose.Types.ObjectId;
+  vaccineId?: mongoose.Types.ObjectId;
+  vaccineName: string;
+  totalDoses: number;
+  doses: IDose[];
+  overallStatus: "in_progress" | "completed" | "cancelled";
+  healthcareProvider?: {
+    name?: string;
+    facility?: string;
+    contact?: string;
+  };
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const doseSchema = new Schema<IDose>({
+  doseNumber: {
+    type: Number,
+    required: true,
+    min: [1, "Dose number must be at least 1"],
+  },
+  dateScheduled: {
+    type: Date,
+    required: true,
+  },
+  dateCompleted: {
+    type: Date,
+    required: false,
+  },
+  batchNo: {
+    type: String,
+    required: false,
+    trim: true,
+  },
+  vaccinatedLocation: {
+    type: String,
+    required: false,
+    trim: true,
+  },
+  status: {
+    type: String,
+    enum: {
+      values: ["scheduled", "completed", "missed", "cancelled"],
+      message: "Status must be one of: scheduled, completed, missed, cancelled",
+    },
+    default: "scheduled",
+  },
+  notes: {
+    type: String,
+    maxlength: [500, "Dose notes cannot exceed 500 characters"],
+    trim: true,
+  },
+});
+
+const vaccineScheduleSchema = new Schema<IVaccineSchedule>(
   {
     recordId: {
       type: String,
@@ -23,7 +90,7 @@ const vaccinationRecordSchema = new Schema<IVaccinationRecord>(
     vaccineId: {
       type: Schema.Types.ObjectId,
       ref: "Vaccine",
-      required: false, // Made optional for manual entries
+      required: false,
     },
     vaccineName: {
       type: String,
@@ -34,43 +101,9 @@ const vaccinationRecordSchema = new Schema<IVaccinationRecord>(
       type: Number,
       required: [true, "Total doses is required"],
       min: [1, "Total doses must be at least 1"],
+      max: [10, "Total doses cannot exceed 10"],
     },
-    interval: {
-      type: Number,
-      required: [true, "Interval is required"],
-      min: [0, "Interval must be non-negative"],
-    },
-    doses: [
-      {
-        doseNumber: {
-          type: Number,
-          required: true,
-          min: [1, "Dose number must be at least 1"],
-        },
-        dateScheduled: {
-          type: Date,
-          required: [true, "Date scheduled is required"],
-        },
-        dateCompleted: {
-          type: Date,
-          required: false,
-        },
-        status: {
-          type: String,
-          enum: {
-            values: ["scheduled", "completed", "missed", "cancelled"],
-            message:
-              "Status must be one of: scheduled, completed, missed, cancelled",
-          },
-          default: "scheduled",
-        },
-        notes: {
-          type: String,
-          maxlength: [500, "Dose notes cannot exceed 500 characters"],
-          trim: true,
-        },
-      },
-    ],
+    doses: [doseSchema],
     overallStatus: {
       type: String,
       enum: {
@@ -81,21 +114,9 @@ const vaccinationRecordSchema = new Schema<IVaccinationRecord>(
       default: "in_progress",
     },
     healthcareProvider: {
-      name: {
-        type: String,
-        required: false, // Made optional
-        trim: true,
-      },
-      facility: {
-        type: String,
-        required: false, // Made optional
-        trim: true,
-      },
-      contact: {
-        type: String,
-        required: false, // Made optional
-        trim: true,
-      },
+      name: { type: String, trim: true },
+      facility: { type: String, trim: true },
+      contact: { type: String, trim: true },
     },
     notes: {
       type: String,
@@ -108,14 +129,22 @@ const vaccinationRecordSchema = new Schema<IVaccinationRecord>(
   }
 );
 
-// No pre-save hooks needed for simplified model
+// Indexes for performance
+vaccineScheduleSchema.index({ userId: 1 });
+vaccineScheduleSchema.index({ "doses.status": 1 });
+vaccineScheduleSchema.index({ "doses.dateScheduled": 1 });
+vaccineScheduleSchema.index({ vaccineName: 1 });
+vaccineScheduleSchema.index({ overallStatus: 1 });
 
-// Indexes for better performance
-vaccinationRecordSchema.index({ userId: 1, dateScheduled: -1 });
-vaccinationRecordSchema.index({ status: 1 });
-vaccinationRecordSchema.index({ vaccineName: 1 });
+// Middleware to validate doses array
+vaccineScheduleSchema.pre("save", function (next) {
+  if (this.doses.length > this.totalDoses) {
+    return next(new Error("Number of doses cannot exceed total doses"));
+  }
+  next();
+});
 
-export default mongoose.model<IVaccinationRecord>(
+export default mongoose.model<IVaccineSchedule>(
   "VaccineSchedule",
-  vaccinationRecordSchema
+  vaccineScheduleSchema
 );

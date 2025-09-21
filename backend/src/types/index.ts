@@ -45,27 +45,30 @@ export interface IVaccine extends Document {
   createdAt: Date;
 }
 
-export interface IVaccinationRecord extends Document {
-  _id: Types.ObjectId;
+export interface IDose {
+  doseNumber: number;
+  dateScheduled: Date;
+  dateCompleted?: Date;
+  batchNo?: string;
+  vaccinatedLocation?: string;
+  status: "scheduled" | "completed" | "missed" | "cancelled";
+  notes?: string;
+}
+export interface IHealthcareProvider {
+  name?: string;
+  facility?: string;
+  contact?: string;
+}
+
+export interface IVaccineSchedule extends Document {
   recordId: string;
-  userId: Types.ObjectId;
-  vaccineId?: Types.ObjectId; // Made optional for manual entries
+  userId: string;
+  vaccineId?: string;
   vaccineName: string;
   totalDoses: number;
-  interval: number;
-  doses: {
-    doseNumber: number;
-    dateScheduled: Date;
-    dateCompleted?: Date;
-    status: "scheduled" | "completed" | "missed" | "cancelled";
-    notes?: string;
-  }[];
+  doses: IDose[];
   overallStatus: "in_progress" | "completed" | "cancelled";
-  healthcareProvider?: {
-    name?: string;
-    facility?: string;
-    contact?: string;
-  };
+  healthcareProvider?: IHealthcareProvider;
   notes?: string;
   createdAt: Date;
   updatedAt: Date;
