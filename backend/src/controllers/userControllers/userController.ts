@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import User from "../models/userModels/user";
+import User from "../../models/userModels/user";
 import bcrypt from "bcryptjs";
 
 // User Registration
@@ -12,6 +12,7 @@ const registerUser = async (req: Request, res: Response) => {
       email,
       password,
       dateOfBirth,
+      gender,
       phone,
       avatar,
     } = req.body;
@@ -22,6 +23,7 @@ const registerUser = async (req: Request, res: Response) => {
       !firstName ||
       !lastName ||
       !email ||
+      !gender ||
       !password ||
       !dateOfBirth ||
       !phone
@@ -48,6 +50,7 @@ const registerUser = async (req: Request, res: Response) => {
       email,
       password: hashedPassword,
       dateOfBirth,
+      gender,
       phone,
       avatar,
     });
@@ -63,6 +66,7 @@ const registerUser = async (req: Request, res: Response) => {
       lastName: savedUser.lastName,
       email: savedUser.email,
       dateOfBirth: savedUser.dateOfBirth,
+      gender: savedUser.gender,
       phone: savedUser.phone,
     });
   } catch (error) {
@@ -85,6 +89,7 @@ const getUserById = async (req: Request, res: Response) => {
     lastName: user.lastName,
     email: user.email,
     dateOfBirth: user.dateOfBirth,
+    gender: user.gender,
     phone: user.phone,
   });
 };
