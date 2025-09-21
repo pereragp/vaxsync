@@ -3,20 +3,27 @@ import bcrypt from 'bcryptjs';
 import { IUser } from '../../types';
 
 const userSchema = new Schema<IUser>({
-  userId: {
+  username: {
     type: String,
-    required: true,
+    required: [true, 'Username is required'],
     unique: true,
-    default: function() {
-      return 'USR' + Date.now() + Math.random().toString(36).substring(2, 7).toUpperCase();
-    }
+    trim: true,
+    minlength: [3, 'Username must be at least 3 characters long'],
+    maxlength: [10, 'Username cannot exceed 30 characters']
   },
-  name: {
+
+  firstName: {
     type: String,
-    required: [true, 'Name is required'],
+    required: [true, 'First name is required'],
     trim: true,
     minlength: [2, 'Name must be at least 2 characters long'],
-    maxlength: [50, 'Name cannot exceed 50 characters']
+  },
+
+  lastName: {
+    type: String,
+    required: [true, 'Last name is required'],
+    trim: true,
+    minlength: [2, 'Name must be at least 2 characters long'],
   },
   email: {
     type: String,
@@ -94,35 +101,35 @@ const userSchema = new Schema<IUser>({
   }
 });
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
+// // Hash password before saving
+// userSchema.pre('save', async function(next) {
+//   if (!this.isModified('password')) return next();
   
-  try {
-    const salt = await bcrypt.genSalt(12);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error: any) {
-    next(error);
-  }
-});
+//   try {
+//     const salt = await bcrypt.genSalt(12);
+//     this.password = await bcrypt.hash(this.password, salt);
+//     next();
+//   } catch (error: any) {
+//     next(error);
+//   }
+// });
 
-// Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
-  try {
-    return await bcrypt.compare(candidatePassword, this.password);
-  } catch (error) {
-    throw new Error('Password comparison failed');
-  }
-};
+// // Compare password method
+// userSchema.methods.comparePassword = async function(candidatePassword: string): Promise<boolean> {
+//   try {
+//     return await bcrypt.compare(candidatePassword, this.password);
+//   } catch (error) {
+//     throw new Error('Password comparison failed');
+//   }
+// };
 
-// Update timestamp before saving
-userSchema.pre('save', function(next) {
-  if (!this.isNew) {
-    this.updatedAt = new Date();
-  }
-  next();
-});
+// // Update timestamp before saving
+// userSchema.pre('save', function(next) {
+//   if (!this.isNew) {
+//     this.updatedAt = new Date();
+//   }
+//   next();
+// });
 
 // Indexes for better performance
 userSchema.index({ phone: 1 });
