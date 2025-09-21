@@ -1,5 +1,5 @@
-import { Document, Types } from 'mongoose';
-import { Request } from 'express';
+import { Document, Types } from "mongoose";
+import { Request } from "express";
 
 export interface IUser extends Document {
   _id: Types.ObjectId;
@@ -26,15 +26,21 @@ export interface IVaccine extends Document {
   name: string;
   description: string;
   manufacturer: string;
-  type: 'routine' | 'travel' | 'emergency' | 'seasonal';
+  type: "routine" | "travel" | "emergency" | "seasonal";
+  targetPopulation: "all" | "female" | "male" | "pregnant";
   ageGroups: {
     minAge: number;
     maxAge: number;
     doses: number;
     interval: number;
   }[];
+  doseSchedule: {
+    pregnancyNumber: number;
+    doseNumber: number;
+    weeksAfterPOA?: number; // optional, only for first dose of that pregnancy
+    weeksAfterPreviousDose?: number; // optional, for 2nd dose
+  }[];
   sideEffects: string[];
-  contraindications: string[];
   isActive: boolean;
   createdAt: Date;
 }
@@ -51,10 +57,10 @@ export interface IVaccinationRecord extends Document {
     doseNumber: number;
     dateScheduled: Date;
     dateCompleted?: Date;
-    status: 'scheduled' | 'completed' | 'missed' | 'cancelled';
+    status: "scheduled" | "completed" | "missed" | "cancelled";
     notes?: string;
   }[];
-  overallStatus: 'in_progress' | 'completed' | 'cancelled';
+  overallStatus: "in_progress" | "completed" | "cancelled";
   healthcareProvider?: {
     name?: string;
     facility?: string;
@@ -73,8 +79,8 @@ export interface IDigitalHealthCard extends Document {
   qrCode: string;
   issuedDate: Date;
   lastUpdated: Date;
-  status: 'active' | 'inactive';
-  
+  status: "active" | "inactive";
+
   // User basic info for the card
   userInfo: {
     fullName: string;
@@ -117,7 +123,11 @@ export interface IReport extends Document {
   _id: Types.ObjectId;
   reportId: string;
   userId: Types.ObjectId;
-  reportType: 'vaccination_history' | 'travel_certificate' | 'medical_report' | 'compliance_report';
+  reportType:
+    | "vaccination_history"
+    | "travel_certificate"
+    | "medical_report"
+    | "compliance_report";
   title: string;
   generatedAt: Date;
   dateRange?: {
@@ -125,13 +135,13 @@ export interface IReport extends Document {
     to: Date;
   };
   includeRecords: Types.ObjectId[];
-  format: 'pdf' | 'json' | 'csv';
+  format: "pdf" | "json" | "csv";
   filePath?: string;
   downloadCount: number;
   sharedWith: {
     email: string;
     sharedAt: Date;
-    accessLevel: 'read' | 'download';
+    accessLevel: "read" | "download";
   }[];
   isActive: boolean;
   expiresAt: Date;

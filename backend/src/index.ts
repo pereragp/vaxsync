@@ -9,7 +9,7 @@ import userRoutes from "./routes/userRoutes";
 // Routes
 import healthCardRoutes from './routes/healthCard/healthCardRoutes';
 import scheduleRoutes from './routes/scheduleRoutes/scheduleRoutes';
-
+import vaccineRoutes from "./routes/scheduleRoutes/vaccineRoutes";
 // Load environment variables
 dotenv.config();
 
@@ -23,21 +23,21 @@ app.use(cors());
 app.use(helmet());
 
 // Health check routes
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: 'VaxSync Backend API is running',
-    version: '1.0.0',
-    timestamp: new Date().toISOString()
+    message: "VaxSync Backend API is running",
+    version: "1.0.0",
+    timestamp: new Date().toISOString(),
   });
 });
 
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.json({
     success: true,
-    message: 'Server is healthy',
+    message: "Server is healthy",
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
   });
 });
 
@@ -45,6 +45,7 @@ app.get('/health', (req, res) => {
 app.use('/api/health-card', healthCardRoutes);
 app.use('/api/v1/schedule', scheduleRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/vaccines", vaccineRoutes);
 // Error handling middleware (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
