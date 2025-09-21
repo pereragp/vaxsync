@@ -1,7 +1,13 @@
-
-
 import express from 'express';
-import { HealthCardController } from '../../controllers/healthCard/healthCardController';
+import { 
+  createUserHealthCard,
+  createDependentHealthCard,
+  createHealthCardsForUserAndDependents,
+  getHealthCardByUserId,
+  getHealthCardByDependentId,
+  getAllHealthCardsByUserId
+} from '../../controllers/healthCard/healthCardController';
+
 // TEMPORARILY COMMENTED OUT FOR API TESTING - ENABLE WHEN AUTHENTICATION IS READY
 // import { authenticateToken, validateUser } from '../../middleware/auth';
 
@@ -16,66 +22,42 @@ const mockAuth = (req: any, res: any, next: any) => {
   next();
 };
 
-// Get user's digital health card
-router.get('/:userId', 
-  // authenticateToken,     // TEMPORARILY COMMENTED OUT
-  // validateUser,          // TEMPORARILY COMMENTED OUT
-  mockAuth,                 // TEMPORARY: Remove when enabling auth
-  HealthCardController.getHealthCard
+// === HEALTH CARD ENDPOINTS ===
+
+// Create health card for a main user
+router.post('/create/user/:userId',
+  mockAuth,
+  createUserHealthCard
 );
 
-// Update health card with latest data
-router.put('/:userId',
-  // authenticateToken,     // TEMPORARILY COMMENTED OUT
-  // validateUser,          // TEMPORARILY COMMENTED OUT
-  mockAuth,                 // TEMPORARY: Remove when enabling auth
-  HealthCardController.updateHealthCard
+// Create health card for a dependent
+router.post('/create/dependent/:dependentId',
+  mockAuth,
+  createDependentHealthCard
 );
 
-// Get health card by card ID (for verification/sharing)
-// This endpoint doesn't need auth - it's for public verification
-router.get('/card/:cardId',
-  HealthCardController.getHealthCardByCardId
+// Create health cards for user and all their dependents
+router.post('/create/all/:userId',
+  mockAuth,
+  createHealthCardsForUserAndDependents
 );
 
-// Get health card statistics
-router.get('/stats/:userId',
-  // authenticateToken,     // TEMPORARILY COMMENTED OUT
-  // validateUser,          // TEMPORARILY COMMENTED OUT
-  mockAuth,                 // TEMPORARY: Remove when enabling auth
-  HealthCardController.getHealthCardStats
+// Get health card by user ID
+router.get('/user/:userId',
+  mockAuth,
+  getHealthCardByUserId
 );
 
-// Update user info on health card
-router.put('/user-info/:userId',
-  // authenticateToken,     // TEMPORARILY COMMENTED OUT
-  // validateUser,          // TEMPORARILY COMMENTED OUT
-  mockAuth,                 // TEMPORARY: Remove when enabling auth
-  HealthCardController.updateUserInfo
+// Get health card by dependent ID
+router.get('/dependent/:dependentId',
+  mockAuth,
+  getHealthCardByDependentId
 );
 
-// Delete a specific vaccination from health card
-router.delete('/vaccination/:userId/:vaccinationId',
-  // authenticateToken,     // TEMPORARILY COMMENTED OUT
-  // validateUser,          // TEMPORARILY COMMENTED OUT
-  mockAuth,                 // TEMPORARY: Remove when enabling auth
-  HealthCardController.deleteVaccination
-);
-
-// Delete multiple vaccinations from health card
-router.delete('/vaccinations/:userId',
-  // authenticateToken,     // TEMPORARILY COMMENTED OUT
-  // validateUser,          // TEMPORARILY COMMENTED OUT
-  mockAuth,                 // TEMPORARY: Remove when enabling auth
-  HealthCardController.deleteMultipleVaccinations
-);
-
-// Get AI-generated vaccine instructions
-router.get('/instructions/card/:cardId/:vaccinationId',
-  // authenticateToken,     // TEMPORARILY COMMENTED OUT
-  // validateUser,          // TEMPORARILY COMMENTED OUT
-  mockAuth,                 // TEMPORARY: Remove when enabling auth
-  HealthCardController.getVaccineInstructions
+// Get all health cards for a user and their dependents
+router.get('/all/:userId',
+  mockAuth,
+  getAllHealthCardsByUserId
 );
 
 export default router;

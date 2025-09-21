@@ -1,244 +1,92 @@
-import mongoose, { Schema } from 'mongoose';
-import { IDigitalHealthCard } from '../../types';
+import mongoose, { Schema } from "mongoose";
+import { IHealthCard } from "../../types";
 
-const digitalHealthCardSchema = new Schema<IDigitalHealthCard>({
-  cardId: {
-    type: String,
-    required: true,
-    unique: true,
-    default: function() {
-      return 'DHC' + Date.now() + Math.random().toString(36).substring(2, 6).toUpperCase();
-    }
-  },
-  
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true,
-    unique: true, // One card per user
-    index: true
-  },
-  
-  cardNumber: {
-    type: String,
-    required: true,
-    unique: true,
-    default: function() {
-      const year = new Date().getFullYear();
-      const random = Math.random().toString().substring(2, 10);
-      return `VXS-${year}-${random.substring(0, 4)}-${random.substring(4, 8)}`;
-    }
-  },
-  
-  
-  issuedDate: {
-    type: Date,
-    default: Date.now,
-    required: true
-  },
-  
-  lastUpdated: {
-    type: Date,
-    default: Date.now,
-    required: true
-  },
-  
-  status: {
-    type: String,
-    enum: ['active', 'inactive'],
-    default: 'active'
-  },
-
-  // User basic info for the card display
-  userInfo: {
+const healthCardSchema = new Schema<IHealthCard>(
+  {
     fullName: {
       type: String,
-      required: true,
-      trim: true
+      required: [true, "Full name is required"],
+      trim: true,
     },
-    Gender: {
+    gender: {
       type: String,
-      required: true,
-      trim: true
+      required: [true, "Gender is required"],
+      enum: ["Male", "Female", "Other"],
     },
     dateOfBirth: {
       type: Date,
-      required: true
+      required: [true, "Date of birth is required"],
     },
-    profilePicture: {
-      type: String,
-      default: ''
-    },
-    bloodType: {
-      type: String,
-      enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', ''],
-      default: ''
-    },
-    emergencyContact: {
-      name: {
-        type: String,
-        trim: true
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: function(this: IHealthCard) {
+        return this.cardType === "user";
       },
-      phone: {
+    },
+    dependentId: {
+      type: Schema.Types.ObjectId,
+      ref: "Dependent",
+      required: function(this: IHealthCard) {
+        return this.cardType === "dependent";
+      },
+    },
+    cardType: {
+      type: String,
+      required: true,
+      enum: ["user", "dependent"],
+    },
+    dependents: [{
+      _id: {
+        type: Schema.Types.ObjectId,
+        ref: "Dependent",
+        required: true,
+      },
+      dependentId: {
+        type: Schema.Types.ObjectId,
+        ref: "Dependent",
+        required: true,
+      },
+      fullName: {
         type: String,
-        trim: true
-      }
-    }
+        required: true,
+        trim: true,
+      },
+      dateOfBirth: {
+        type: Date,
+        required: true,
+      },
+      gender: {
+        type: String,
+        required: true,
+      },
+      dependentType: {
+        type: String,
+        required: true,
+      },
+    }],
   },
+  { timestamps: true }
+);
 
-  // All completed vaccinations
-  completedVaccinations: [{
-    vaccineName: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    manufacturer: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    batchNumber: {
-      type: String,
-      required: true,
-      uppercase: true,
-      trim: true
-    },
-    doseNumber: {
-      type: Number,
-      required: true,
-      min: 1
-    },
-    totalDoses: {
-      type: Number,
-      required: true,
-      min: 1
-    },
-    dateScheduled: {
-      type: Date,
-      required: true
-    },
-    administeredBy: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    facility: {
-      type: String,
-      required: true,
-      trim: true
-    },
-    certificateNumber: {
-      type: String,
-      required: true,
-      unique: true,
-      uppercase: true
-    },
-    nextDueDate: {
-      type: Date
-    }
-  }],
-
-  // Card statistics
-  statistics: {
-    totalVaccinations: {
-      type: Number,
-      default: 0
-    },
-    lastVaccinationDate: {
-      type: Date
-    },
-    upcomingVaccinations: {
-      type: Number,
-      default: 0
-    },
-    complianceScore: {
-      type: Number,
-      default: 0,
-      min: 0,
-      max: 100
-    }
-  },
-
-  createdAt: {
-    type: Date,
-    default: Date.now
-  },
-  
-  updatedAt: {
-    type: Date,
-    default: Date.now
+// Ensure either userId or dependentId is provided, but not both
+healthCardSchema.pre('save', function(this: IHealthCard, next) {
+  if (this.cardType === "user" && !this.userId) {
+    return next(new Error("User ID is required for user health cards"));
   }
-}, {
-  timestamps: true
+  if (this.cardType === "dependent" && !this.dependentId) {
+    return next(new Error("Dependent ID is required for dependent health cards"));
+  }
+  if (this.userId && this.dependentId) {
+    return next(new Error("Health card cannot have both userId and dependentId"));
+  }
+  next();
 });
 
-// Update statistics before saving
-digitalHealthCardSchema.pre('save', async function(next) {
-  try {
-    if (this.isNew || this.isModified('completedVaccinations') || this.isModified('userInfo')) {
-      // Update statistics
-      this.statistics.totalVaccinations = this.completedVaccinations.length;
-      
-      if (this.completedVaccinations.length > 0) {
-        // Find last vaccination date
-        const lastVaccination = this.completedVaccinations
-          .sort((a, b) => new Date(b.dateScheduled).getTime() - new Date(a.dateScheduled).getTime())[0];
-        this.statistics.lastVaccinationDate = lastVaccination.dateScheduled;
-        
-        // Calculate compliance score (simple: 20 points per completed vaccination, max 100)
-        this.statistics.complianceScore = Math.min(this.completedVaccinations.length * 20, 100);
-      }
-      
-      this.lastUpdated = new Date();
-    }
-    
-    next();
-  } catch (error: any) {
-    next(error);
-  }
-});
+// Create compound index to ensure uniqueness
+healthCardSchema.index({ userId: 1 }, { unique: true, sparse: true });
+healthCardSchema.index({ dependentId: 1 }, { unique: true, sparse: true });
 
-// Method to add a completed vaccination
-digitalHealthCardSchema.methods.addCompletedVaccination = function(vaccinationData: any) {
-  // Check if vaccination already exists
-  const existingIndex = this.completedVaccinations.findIndex(
-    (v: any) => v.certificateNumber === vaccinationData.certificateNumber
-  );
+const HealthCard = mongoose.model<IHealthCard>("HealthCard", healthCardSchema);
 
-  const vaccination = {
-    vaccineName: vaccinationData.vaccineName,
-    manufacturer: vaccinationData.manufacturer || 'Unknown',
-    batchNumber: vaccinationData.batchNumber,
-    doseNumber: vaccinationData.doseNumber,
-    totalDoses: vaccinationData.totalDoses,
-    dateScheduled: vaccinationData.dateScheduled,
-    administeredBy: vaccinationData.healthcareProvider?.name || vaccinationData.administeredBy,
-    facility: vaccinationData.healthcareProvider?.facility || vaccinationData.facility,
-    certificateNumber: vaccinationData.certificate?.certificateNumber || vaccinationData.certificateNumber,
-    nextDueDate: vaccinationData.nextDueDate
-  };
-
-  if (existingIndex >= 0) {
-    // Update existing vaccination
-    this.completedVaccinations[existingIndex] = vaccination;
-  } else {
-    // Add new vaccination
-    this.completedVaccinations.push(vaccination);
-  }
-
-  this.markModified('completedVaccinations');
-};
-
-// Method to remove a vaccination
-digitalHealthCardSchema.methods.removeVaccination = function(certificateNumber: string) {
-  this.completedVaccinations = this.completedVaccinations.filter(
-    (v: any) => v.certificateNumber !== certificateNumber
-  );
-  this.markModified('completedVaccinations');
-};
-
-// Index for better performance
-digitalHealthCardSchema.index({ status: 1 });
-
-export default mongoose.model<IDigitalHealthCard>('DigitalHealthCard', digitalHealthCardSchema);
+export default HealthCard;
