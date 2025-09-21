@@ -7,7 +7,7 @@ import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import userRoutes from "./routes/userRoutes";
 
 // Routes
-// // import healthCardRoutes from './routes/reportRoutes/healthCardRoutes';
+import healthCardRoutes from './routes/reportRoutes/healthCardRoutes';
 import scheduleRoutes from './routes/scheduleRoutes/scheduleRoutes';
 
 // Load environment variables
@@ -44,7 +44,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/health-card', healthCardRoutes);
 app.use('/api/v1/schedule', scheduleRoutes);
-
+app.use("/api/user", userRoutes);
 // Error handling middleware (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
