@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import { IVaccinationRecord } from "../../types";
+import { syncVaccinesToHealthCard } from "../../controllers/healthCard/healthCardController";
 
 const vaccinationRecordSchema = new Schema<IVaccinationRecord>(
   {
@@ -113,6 +114,30 @@ vaccinationRecordSchema.index({ recordId: 1 });
 vaccinationRecordSchema.index({ overallStatus: 1 });
 vaccinationRecordSchema.index({ vaccineName: 1 });
 vaccinationRecordSchema.index({ "doses.status": 1 });
+
+// Middleware to automatically sync completed vaccines to health cards
+vaccinationRecordSchema.post('findOneAndUpdate', async function(doc) {
+  if (doc) {
+    // Check if any doses were marked as completed
+    const hasCompletedDoses = doc.doses.some((dose: any) => dose.status === 'completed');
+    if (hasCompletedDoses) {
+      console.log(`Auto-syncing completed vaccines for schedule ${doc._id}`);
+      await syncVaccinesToHealthCard(doc._id.toString());
+    }
+  }
+});
+
+// Also trigger on direct save operations
+vaccinationRecordSchema.post('save', async function(doc) {
+  if (doc) {
+    // Check if any doses were marked as completed
+    const hasCompletedDoses = doc.doses.some((dose: any) => dose.status === 'completed');
+    if (hasCompletedDoses) {
+      console.log(`Auto-syncing completed vaccines for schedule ${doc._id}`);
+      await syncVaccinesToHealthCard(doc._id.toString());
+    }
+  }
+});
 
 export default mongoose.model<IVaccinationRecord>(
   "VaccineSchedule",

@@ -6,6 +6,7 @@ import Dependent from '../../models/userModels/dependent';
 import DigitalHealthCard from '../../models/healthCard/healthcardModel';
 import { AuthRequest, ApiResponse, PaginationInfo, IVaccinationRecord } from '../../types';
 import mongoose, { Types } from 'mongoose';
+import { syncVaccinesToHealthCard } from '../healthCard/healthCardController';
 
 export class ScheduleController {
   // Create new vaccine schedule for parent users (for themselves or their dependents)
@@ -219,6 +220,12 @@ export class ScheduleController {
       ).populate('vaccineId', 'name manufacturer type')
        .populate('dependentIds', 'firstName lastName dateOfBirth gender dependentType');
 
+      // Trigger automatic sync if overall status changed to completed
+      if (updateData.overallStatus === 'completed') {
+        console.log(`Schedule ${scheduleId} marked as completed, triggering health card sync`);
+        await syncVaccinesToHealthCard(scheduleId);
+      }
+
       res.status(200).json({
         success: true,
         message: "Vaccine schedule updated successfully",
@@ -307,6 +314,12 @@ export class ScheduleController {
       }
 
       await schedule.save();
+
+      // Trigger automatic sync to health card if dose was completed
+      if (status === 'completed') {
+        console.log(`Dose ${doseNumber} completed, triggering health card sync for schedule ${scheduleId}`);
+        await syncVaccinesToHealthCard(scheduleId);
+      }
 
       res.status(200).json({
         success: true,

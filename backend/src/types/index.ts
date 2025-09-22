@@ -99,6 +99,17 @@ export interface IHealthCard extends Document {
     gender: string;
     dependentType: string;
   }[];
+  completedVaccinations?: {
+    vaccineName: string;
+    manufacturer?: string;
+    doseNumber: number;
+    totalDoses: number;
+    dateCompleted: Date;
+    administeredBy?: string;
+    facility?: string;
+    certificateNumber?: string;
+    notes?: string;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
