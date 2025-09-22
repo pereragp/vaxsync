@@ -65,6 +65,48 @@ const healthCardSchema = new Schema<IHealthCard>(
         required: true,
       },
     }],
+    completedVaccinations: [{
+      vaccineName: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      manufacturer: {
+        type: String,
+        trim: true,
+      },
+      doseNumber: {
+        type: Number,
+        required: true,
+        min: 1,
+      },
+      totalDoses: {
+        type: Number,
+        required: true,
+        min: 1,
+      },
+      dateCompleted: {
+        type: Date,
+        required: true,
+      },
+      administeredBy: {
+        type: String,
+        trim: true,
+      },
+      facility: {
+        type: String,
+        trim: true,
+      },
+      certificateNumber: {
+        type: String,
+        trim: true,
+      },
+      notes: {
+        type: String,
+        trim: true,
+        maxlength: [500, "Notes cannot exceed 500 characters"],
+      },
+    }],
   },
   { timestamps: true }
 );
