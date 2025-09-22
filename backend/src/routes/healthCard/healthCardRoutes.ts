@@ -5,7 +5,9 @@ import {
   createHealthCardsForUserAndDependents,
   getHealthCardByUserId,
   getHealthCardByDependentId,
-  getAllHealthCardsByUserId
+  getAllHealthCardsByUserId,
+  syncCompletedVaccinesToHealthCard,
+  getHealthCardWithVaccinations
 } from '../../controllers/healthCard/healthCardController';
 
 // TEMPORARILY COMMENTED OUT FOR API TESTING - ENABLE WHEN AUTHENTICATION IS READY
@@ -58,6 +60,18 @@ router.get('/dependent/:dependentId',
 router.get('/all/:userId',
   mockAuth,
   getAllHealthCardsByUserId
+);
+
+// Sync completed vaccines from schedule to health cards
+router.post('/sync-vaccines/:userId',
+  mockAuth,
+  syncCompletedVaccinesToHealthCard
+);
+
+// Get health card with completed vaccinations
+router.get('/with-vaccinations/:cardId',
+  mockAuth,
+  getHealthCardWithVaccinations
 );
 
 export default router;

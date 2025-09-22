@@ -62,6 +62,7 @@ export interface IVaccinationRecord extends Document {
   _id: Types.ObjectId;
   recordId: string;
   userId: Types.ObjectId;
+  dependentIds?: Types.ObjectId[]; // Array of dependent IDs
   vaccineId?: Types.ObjectId; // Made optional for manual entries
   vaccineName: string;
   totalDoses: number;
@@ -76,8 +77,6 @@ export interface IVaccinationRecord extends Document {
   overallStatus: "in_progress" | "completed" | "cancelled";
   healthcareProvider?: {
     name?: string;
-    facility?: string;
-    contact?: string;
   };
   notes?: string;
   createdAt: Date;
@@ -99,6 +98,17 @@ export interface IHealthCard extends Document {
     dateOfBirth: Date;
     gender: string;
     dependentType: string;
+  }[];
+  completedVaccinations?: {
+    vaccineName: string;
+    manufacturer?: string;
+    doseNumber: number;
+    totalDoses: number;
+    dateCompleted: Date;
+    administeredBy?: string;
+    facility?: string;
+    certificateNumber?: string;
+    notes?: string;
   }[];
   createdAt: Date;
   updatedAt: Date;
