@@ -1,5 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import { IVaccinationRecord } from "../../types";
+import { syncVaccinesToHealthCard } from "../../controllers/healthCard/healthCardController";
 
 const vaccinationRecordSchema = new Schema<IVaccinationRecord>(
   {
@@ -20,10 +21,16 @@ const vaccinationRecordSchema = new Schema<IVaccinationRecord>(
       ref: "User",
       required: [true, "User ID is required"],
     },
+    dependentIds: {
+      type: [Schema.Types.ObjectId],
+      ref: "Dependent",
+      required: false, // Optional - only if user has dependents
+      default: [],
+    }, // Array of dependent IDs for parent users
     vaccineId: {
       type: Schema.Types.ObjectId,
-      ref: "Vaccine",
-      required: false, // Made optional for manual entries
+      ref: "Vaccines",
+      required: false, // Optional for manual entries
     },
     vaccineName: {
       type: String,
@@ -83,18 +90,8 @@ const vaccinationRecordSchema = new Schema<IVaccinationRecord>(
     healthcareProvider: {
       name: {
         type: String,
-        required: false, // Made optional
         trim: true,
-      },
-      facility: {
-        type: String,
-        required: false, // Made optional
-        trim: true,
-      },
-      contact: {
-        type: String,
-        required: false, // Made optional
-        trim: true,
+        maxlength: [100, "Provider name cannot exceed 100 characters"],
       },
     },
     notes: {
@@ -108,12 +105,39 @@ const vaccinationRecordSchema = new Schema<IVaccinationRecord>(
   }
 );
 
-// No pre-save hooks needed for simplified model
 
 // Indexes for better performance
 vaccinationRecordSchema.index({ userId: 1, dateScheduled: -1 });
-vaccinationRecordSchema.index({ status: 1 });
+vaccinationRecordSchema.index({ dependentIds: 1 });
+vaccinationRecordSchema.index({ vaccineId: 1 });
+vaccinationRecordSchema.index({ recordId: 1 });
+vaccinationRecordSchema.index({ overallStatus: 1 });
 vaccinationRecordSchema.index({ vaccineName: 1 });
+vaccinationRecordSchema.index({ "doses.status": 1 });
+
+// Middleware to automatically sync completed vaccines to health cards
+vaccinationRecordSchema.post('findOneAndUpdate', async function(doc) {
+  if (doc) {
+    // Check if any doses were marked as completed
+    const hasCompletedDoses = doc.doses.some((dose: any) => dose.status === 'completed');
+    if (hasCompletedDoses) {
+      console.log(`Auto-syncing completed vaccines for schedule ${doc._id}`);
+      await syncVaccinesToHealthCard(doc._id.toString());
+    }
+  }
+});
+
+// Also trigger on direct save operations
+vaccinationRecordSchema.post('save', async function(doc) {
+  if (doc) {
+    // Check if any doses were marked as completed
+    const hasCompletedDoses = doc.doses.some((dose: any) => dose.status === 'completed');
+    if (hasCompletedDoses) {
+      console.log(`Auto-syncing completed vaccines for schedule ${doc._id}`);
+      await syncVaccinesToHealthCard(doc._id.toString());
+    }
+  }
+});
 
 export default mongoose.model<IVaccinationRecord>(
   "VaccineSchedule",
