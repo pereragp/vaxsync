@@ -7,22 +7,22 @@ exports.ScheduleController = void 0;
 const vaccineScheduleModel_1 = __importDefault(require("../../models/scheduleModels/vaccineScheduleModel"));
 const vaccinesModel_1 = __importDefault(require("../../models/scheduleModels/vaccinesModel"));
 const user_1 = __importDefault(require("../../models/userModels/user"));
-const digitalHealthCard_1 = __importDefault(require("../../models/reportModels/digitalHealthCard"));
+const healthcardModel_1 = __importDefault(require("../../models/healthCard/healthcardModel"));
 const mongoose_1 = __importDefault(require("mongoose"));
 class ScheduleController {
     static async syncCompletedDoseToHealthCard(userId, schedule, completedDose) {
         try {
-            let healthCard = await digitalHealthCard_1.default.findOne({ userId });
+            let healthCard = await healthcardModel_1.default.findOne({ userId });
             if (!healthCard) {
                 const user = await user_1.default.findById(userId);
                 if (!user) {
                     console.error('User not found for health card creation');
                     return;
                 }
-                healthCard = new digitalHealthCard_1.default({
+                healthCard = new healthcardModel_1.default({
                     userId,
                     userInfo: {
-                        fullName: user.name || 'Unknown User',
+                        fullName: `${user.firstName} ${user.lastName}`,
                         dateOfBirth: user.dateOfBirth,
                         profilePicture: user.avatar || '',
                         bloodType: '',
@@ -139,7 +139,7 @@ class ScheduleController {
     static async createSchedule(req, res) {
         try {
             const { vaccineId, vaccineName, manufacturer, totalDoses, interval, dateScheduled, notes, healthcareProvider } = req.body;
-            const userId = req.user?.userId || '66b1234567890abcdef12345';
+            const userId = req.user?.username || '66b1234567890abcdef12345';
             if (!dateScheduled) {
                 res.status(400).json({
                     success: false,
@@ -301,7 +301,7 @@ class ScheduleController {
     static async getScheduleById(req, res) {
         try {
             const { scheduleId } = req.params;
-            const userId = req.user?.userId || '66b1234567890abcdef12345';
+            const userId = req.user?.username || '66b1234567890abcdef12345';
             if (!mongoose_1.default.Types.ObjectId.isValid(scheduleId)) {
                 res.status(400).json({
                     success: false,
@@ -341,7 +341,7 @@ class ScheduleController {
             const pageNum = parseInt(page);
             const limitNum = parseInt(limit);
             const skip = (pageNum - 1) * limitNum;
-            const userId = req.user?.userId || '66b1234567890abcdef12345';
+            const userId = req.user?.username || '66b1234567890abcdef12345';
             const filter = { userId };
             if (status) {
                 filter.status = status;
@@ -382,7 +382,7 @@ class ScheduleController {
         try {
             const { scheduleId } = req.params;
             const { dateScheduled, status, notes, healthcareProvider } = req.body;
-            const userId = req.user?.userId || '66b1234567890abcdef12345';
+            const userId = req.user?.username || '66b1234567890abcdef12345';
             if (!mongoose_1.default.Types.ObjectId.isValid(scheduleId)) {
                 res.status(400).json({
                     success: false,
@@ -432,7 +432,7 @@ class ScheduleController {
         try {
             const { scheduleId, doseNumber } = req.params;
             const { status, notes, dateCompleted } = req.body;
-            const userId = req.user?.userId || '66b1234567890abcdef12345';
+            const userId = req.user?.username || '66b1234567890abcdef12345';
             if (!mongoose_1.default.Types.ObjectId.isValid(scheduleId)) {
                 res.status(400).json({
                     success: false,
@@ -508,7 +508,7 @@ class ScheduleController {
     static async deleteSchedule(req, res) {
         try {
             const { scheduleId } = req.params;
-            const userId = req.user?.userId || '66b1234567890abcdef12345';
+            const userId = req.user?.username || '66b1234567890abcdef12345';
             if (!mongoose_1.default.Types.ObjectId.isValid(scheduleId)) {
                 res.status(400).json({
                     success: false,
@@ -544,7 +544,7 @@ class ScheduleController {
     }
     static async syncAllCompletedDosesToHealthCard(req, res) {
         try {
-            const userId = req.user?.userId || '66b1234567890abcdef12345';
+            const userId = req.user?.username || '66b1234567890abcdef12345';
             const schedules = await vaccineScheduleModel_1.default.find({ userId });
             let syncedCount = 0;
             for (const schedule of schedules) {
@@ -573,7 +573,7 @@ class ScheduleController {
         try {
             const { days = 30 } = req.query;
             const daysNum = parseInt(days);
-            const userId = req.user?.userId || '66b1234567890abcdef12345';
+            const userId = req.user?.username || '66b1234567890abcdef12345';
             const currentDate = new Date();
             const futureDate = new Date();
             futureDate.setDate(currentDate.getDate() + daysNum);
