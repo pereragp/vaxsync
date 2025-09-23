@@ -19,7 +19,8 @@ export class ScheduleController {
         interval, 
         dependentId, 
         healthcareProvider, 
-        notes 
+        notes,
+        scheduleDate 
       } = req.body;
 
       // const userId = req.user?._id;
@@ -64,6 +65,9 @@ export class ScheduleController {
         dependentIds = [new Types.ObjectId(dependentId)];
       }
 
+      // Calculate start date - use provided scheduleDate or current date
+      const startDate = scheduleDate ? new Date(scheduleDate) : new Date();
+      
       // Create the vaccination record
       const vaccinationRecord = new VaccinationRecord({
         userId,
@@ -76,7 +80,7 @@ export class ScheduleController {
         notes,
         doses: Array.from({ length: totalDoses }, (_, index) => ({
           doseNumber: index + 1,
-          dateScheduled: new Date(Date.now() + (index * interval * 24 * 60 * 60 * 1000)),
+          dateScheduled: new Date(startDate.getTime() + (index * interval * 24 * 60 * 60 * 1000)),
           status: "scheduled"
         }))
       });
@@ -175,7 +179,7 @@ export class ScheduleController {
   static async updateVaccineSchedule(req: Request, res: Response): Promise<void> {
     try {
       const { scheduleId } = req.params;
-      const updateData = req.body;
+      const { vaccineName, healthcareProvider, notes, scheduleDate, interval } = req.body;
 
       // const userId = req.user?._id;
       // if (!userId) {
@@ -212,10 +216,33 @@ export class ScheduleController {
         return;
       }
 
+      // Prepare update data
+      const updateData: any = {
+        updatedAt: new Date()
+      };
+
+      // Update basic fields
+      if (vaccineName) updateData.vaccineName = vaccineName;
+      if (healthcareProvider) updateData.healthcareProvider = healthcareProvider;
+      if (notes !== undefined) updateData.notes = notes;
+      if (interval !== undefined) updateData.interval = interval;
+
+      // If schedule date or interval is updated, recalculate all dose dates
+      if (scheduleDate || interval !== undefined) {
+        const startDate = scheduleDate ? new Date(scheduleDate) : new Date(existingSchedule.doses[0].dateScheduled);
+        const intervalDays = interval !== undefined ? interval : existingSchedule.interval;
+        
+        // Recalculate all dose dates
+        updateData.doses = existingSchedule.doses.map((dose: any, index: number) => ({
+          ...dose.toObject(),
+          dateScheduled: new Date(startDate.getTime() + (index * intervalDays * 24 * 60 * 60 * 1000))
+        }));
+      }
+
       // Update the schedule
       const updatedSchedule = await VaccinationRecord.findByIdAndUpdate(
         scheduleId,
-        { ...updateData, updatedAt: new Date() },
+        updateData,
         { new: true, runValidators: true }
       ).populate('vaccineId', 'name manufacturer type')
        .populate('dependentIds', 'firstName lastName dateOfBirth gender dependentType');

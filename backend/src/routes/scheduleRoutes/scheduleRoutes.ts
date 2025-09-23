@@ -36,7 +36,15 @@ const createScheduleValidation = [
     .optional()
     .isLength({ max: 1000 })
     .withMessage('Notes cannot exceed 1000 characters')
-    .trim()
+    .trim(),
+  body('scheduleDate')
+    .optional()
+    .isISO8601()
+    .withMessage('Schedule date must be a valid ISO 8601 date'),
+  body('interval')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Interval must be a non-negative integer')
 ];
 
 // Validation rules for updating dose status

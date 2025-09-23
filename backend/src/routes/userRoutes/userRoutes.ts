@@ -4,7 +4,7 @@ import {
   getUserById,
   loginUser,
 } from "../../controllers/userControllers/userController";
-import { addDependent } from "../../controllers/userControllers/dependentController";
+import { addDependent, getDependentsByGuardian } from "../../controllers/userControllers/dependentController";
 
 const router = express.Router();
 
@@ -15,5 +15,6 @@ router.post("/new-dependent", addDependent);
 
 //User profile routes
 router.get("/:id", getUserById);
+router.get("/dependents/:guardianId", getDependentsByGuardian);
 
 export default router;
