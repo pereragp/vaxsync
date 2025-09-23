@@ -44,7 +44,7 @@ app.get("/health", (req, res) => {
 // API routes
 app.use("/api/health-card", healthCardRoutes);
 app.use("/api/v1/schedule", scheduleRoutes);
-app.use("/api/user", userRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/vaccines", vaccineRoutes);
 // Error handling middleware (must be last)
 app.use(notFoundHandler);
