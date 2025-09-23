@@ -219,3 +219,16 @@ export interface PaginationInfo {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
 }
+
+
+export interface IDoctor extends Document {
+  name: string;
+  specialty: string;
+  location: string;
+  distance?: string;
+  rating: number;
+  availability: string;
+  imageUrl: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
