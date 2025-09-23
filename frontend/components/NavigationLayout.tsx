@@ -21,7 +21,7 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
 
   const tabs = [
     { id: 'home', name: 'Home', icon: 'home', route: '/' },
-    { id: 'vaccines', name: 'Vaccines', icon: 'shield', route: '/vaccines' },
+    { id: 'vaccines', name: 'Records', icon: 'shield', route: '/vaccines' },
     { id: 'schedule', name: 'Schedule', icon: 'calendar', route: '/schedule' },
     { id: 'profile', name: 'Profile', icon: 'person', route: '/profile' },
     { id: 'services', name: 'Health Services', icon: 'search', route: '/health-services' },
