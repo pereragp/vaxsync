@@ -18,5 +18,7 @@ router.post('/create/all/:userId', mockAuth, healthCardController_1.createHealth
 router.get('/user/:userId', mockAuth, healthCardController_1.getHealthCardByUserId);
 router.get('/dependent/:dependentId', mockAuth, healthCardController_1.getHealthCardByDependentId);
 router.get('/all/:userId', mockAuth, healthCardController_1.getAllHealthCardsByUserId);
+router.post('/sync-vaccines/:userId', mockAuth, healthCardController_1.syncCompletedVaccinesToHealthCard);
+router.get('/with-vaccinations/:cardId', mockAuth, healthCardController_1.getHealthCardWithVaccinations);
 exports.default = router;
 //# sourceMappingURL=healthCardRoutes.js.map
