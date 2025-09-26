@@ -39,7 +39,7 @@ app.get("/health", (req, res) => {
 });
 app.use("/api/health-card", healthCardRoutes_1.default);
 app.use("/api/v1/schedule", scheduleRoutes_1.default);
-app.use("/api/user", userRoutes_1.default);
+app.use("/api/users", userRoutes_1.default);
 app.use("/api/vaccines", vaccineRoutes_1.default);
 app.use("/api/doctors", doctorRoutes_1.default);
 app.use(errorHandler_1.notFoundHandler);
