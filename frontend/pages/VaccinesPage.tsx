@@ -552,7 +552,7 @@ export default function VaxCardScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
       
       {/* Header with Stats */}
-      <View className="pt-4 pb-6 px-4">
+      <View className="pt-1 pb-6 px-4">
         <View className="flex-row items-center justify-between mb-2">
           <Text className="text-2xl font-bold text-gray-800">My Vaccine Records</Text>
         </View>

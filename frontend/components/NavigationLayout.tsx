@@ -1,6 +1,7 @@
 import React, {useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'expo-router';
 import { View, Text, TouchableOpacity, ScrollView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 interface NavigationLayoutProps {
@@ -81,7 +82,8 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.white }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }} edges={['top']}>
+      <View style={{ flex: 1, backgroundColor: colors.white }}>
       {/* Header */}
       <View 
         style={{
@@ -113,7 +115,7 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
           fontSize: 18, 
           color: colors.primary 
         }}>
-          HealthTracker
+          VaxSync
         </Text>
         
         <View style={{ width: 40 }} />
@@ -381,6 +383,7 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
           </View>
         </Pressable>
       )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }
