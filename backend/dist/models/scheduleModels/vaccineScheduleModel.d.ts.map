@@ -1,1 +1,1 @@
-{"version":3,"file":"vaccineScheduleModel.d.ts","sourceRoot":"","sources":["../../../src/models/scheduleModels/vaccineScheduleModel.ts"],"names":[],"mappings":"AAAA,OAAO,QAAoB,MAAM,UAAU,CAAC;AAC5C,OAAO,EAAE,kBAAkB,EAAE,MAAM,aAAa,CAAC;;;;;;AAyGjD,wBAA8F"}
+{"version":3,"file":"vaccineScheduleModel.d.ts","sourceRoot":"","sources":["../../../src/models/scheduleModels/vaccineScheduleModel.ts"],"names":[],"mappings":"AAAA,OAAO,QAAoB,MAAM,UAAU,CAAC;AAC5C,OAAO,EAAE,kBAAkB,EAAE,MAAM,aAAa,CAAC;;;;;;AA4IjD,wBAGE"}

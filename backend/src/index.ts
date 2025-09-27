@@ -10,6 +10,7 @@ import userRoutes from "./routes/userRoutes/userRoutes";
 import healthCardRoutes from './routes/healthCard/healthCardRoutes';
 import scheduleRoutes from './routes/scheduleRoutes/scheduleRoutes';
 import vaccineRoutes from "./routes/scheduleRoutes/vaccineRoutes";
+import doctorRoutes from './routes/doctorVaccRoutes/doctorRoutes';
 // Load environment variables
 dotenv.config();
 
@@ -46,6 +47,7 @@ app.use("/api/health-card", healthCardRoutes);
 app.use("/api/v1/schedule", scheduleRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/vaccines", vaccineRoutes);
+app.use("/api/doctors", doctorRoutes);
 // Error handling middleware (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
