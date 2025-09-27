@@ -1,0 +1,1 @@
+{"version":3,"file":"dependentController.d.ts","sourceRoot":"","sources":["../../../src/controllers/userControllers/dependentController.ts"],"names":[],"mappings":"AAEA,OAAO,EAAE,OAAO,EAAE,QAAQ,EAAE,MAAM,SAAS,CAAC;AAG5C,QAAA,MAAM,YAAY,QAAe,OAAO,OAAO,QAAQ,gDAuDtD,CAAC;AAGF,QAAA,MAAM,uBAAuB,QAAe,OAAO,OAAO,QAAQ,gDAyBjE,CAAC;AAEF,OAAO,EAAE,YAAY,EAAE,uBAAuB,EAAE,CAAC"}
