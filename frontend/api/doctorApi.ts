@@ -1,5 +1,5 @@
-//const BASE_URL = 'http://172.29.6.227:5000/api/doctors'; 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.32:5000';
+const BASE_URL = 'http://192.168.1.32:5000/api/doctors'; 
+//const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.32:5000';
 
 // Types
 export interface Doctor {
