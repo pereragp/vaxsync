@@ -64,12 +64,17 @@ const getUserById = async (req, res) => {
     }
     return res.json({
         _id: user._id,
+        username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
         dateOfBirth: user.dateOfBirth,
         gender: user.gender,
         phone: user.phone,
+        avatar: user.avatar,
+        dependents: user.dependents,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
     });
 };
 exports.getUserById = getUserById;

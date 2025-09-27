@@ -11,5 +11,6 @@ router.post("/register", userController_1.registerUser);
 router.post("/login", userController_1.loginUser);
 router.post("/new-dependent", dependentController_1.addDependent);
 router.get("/:id", userController_1.getUserById);
+router.get("/dependents/:guardianId", dependentController_1.getDependentsByGuardian);
 exports.default = router;
 //# sourceMappingURL=userRoutes.js.map
