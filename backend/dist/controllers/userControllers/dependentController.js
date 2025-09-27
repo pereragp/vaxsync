@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addDependent = void 0;
+exports.getDependentsByGuardian = exports.addDependent = void 0;
 const dependent_1 = __importDefault(require("../../models/userModels/dependent"));
 const user_1 = __importDefault(require("../../models/userModels/user"));
 const addDependent = async (req, res) => {
@@ -40,4 +40,26 @@ const addDependent = async (req, res) => {
     }
 };
 exports.addDependent = addDependent;
+const getDependentsByGuardian = async (req, res) => {
+    try {
+        const { guardianId } = req.params;
+        if (!guardianId) {
+            return res.status(400).json({ message: "Guardian ID is required" });
+        }
+        const guardian = await user_1.default.findById(guardianId);
+        if (!guardian) {
+            return res.status(404).json({ message: "Guardian not found" });
+        }
+        const dependents = await dependent_1.default.find({ guardianId }).sort({ createdAt: -1 });
+        return res.status(200).json({
+            message: "Dependents retrieved successfully",
+            dependents: dependents
+        });
+    }
+    catch (error) {
+        console.error("Error getting dependents:", error);
+        return res.status(500).json({ message: "Server error", error });
+    }
+};
+exports.getDependentsByGuardian = getDependentsByGuardian;
 //# sourceMappingURL=dependentController.js.map
