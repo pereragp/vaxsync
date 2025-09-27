@@ -1,7 +1,9 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Button } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function HomePage() {
+  const router = useRouter();
   return (
     <View style={{ padding: 24 }}>
       <Text style={{ 
@@ -12,7 +14,9 @@ export default function HomePage() {
       }}>
         Welcome Home
       </Text>
-      <Text style={{ color: '#6B7280' }}>Your home page content goes here...</Text>
+      <Button title='Go to Login'
+      onPress={()=>router.push('/login')}
+      />
     </View>
   );
 }

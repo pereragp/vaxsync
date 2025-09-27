@@ -1,4 +1,5 @@
-const BASE_URL = 'http://192.168.1.32:5000/api/doctors'; 
+// const BASE_URL = 'http://192.168.1.32:5000/api/doctors'; 
+const BASE_URL = 'http://192.168.1.6:5000/api/users'; // Mishen URL
 
 // Types
 export interface Doctor {
