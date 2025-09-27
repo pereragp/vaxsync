@@ -13,27 +13,74 @@ import {
   Dimensions,
   StatusBar,
   Animated,
+  Linking,
+  Platform,
+  ScrollView,
 } from 'react-native';
-import doctorApi, { Doctor } from '../api/doctorApi';
+import doctorApi, { Doctor, ApiError } from '../api/doctorApi';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 export default function DoctorFinder() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [filteredDoctors, setFilteredDoctors] = useState<Doctor[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [selectedLocation, setSelectedLocation] = useState('All');
+  const [selectedSpecialty, setSelectedSpecialty] = useState('All');
+  const [showFilters, setShowFilters] = useState(false);
 
-  // Fetch all doctors or search query
-  const fetchDoctors = async (query: string) => {
+  // Get unique locations and specialties from doctors
+  const getUniqueValues = (key: keyof Doctor): string[] => {
+    const values = doctors.flatMap(doctor => 
+      key === 'hospitals' ? doctor.hospitals : [doctor[key] as string]
+    );
+    return ['All', ...Array.from(new Set(values.filter(Boolean)))];
+  };
+
+  // Filter doctors based on search, location, and specialty
+  const filterDoctors = () => {
+    let filtered = doctors;
+
+    // Search filter
+    if (search.trim()) {
+      filtered = filtered.filter(doctor =>
+        doctor.name.toLowerCase().includes(search.toLowerCase()) ||
+        doctor.specialty.toLowerCase().includes(search.toLowerCase())
+      );
+    }
+
+    // Location filter
+    if (selectedLocation !== 'All') {
+      filtered = filtered.filter(doctor =>
+        doctor.hospitals.some(hospital => 
+          hospital.toLowerCase().includes(selectedLocation.toLowerCase())
+        )
+      );
+    }
+
+    // Specialty filter
+    if (selectedSpecialty !== 'All') {
+      filtered = filtered.filter(doctor =>
+        doctor.specialty.toLowerCase().includes(selectedSpecialty.toLowerCase())
+      );
+    }
+
+    setFilteredDoctors(filtered);
+  };
+
+  // Fetch all doctors
+  const fetchDoctors = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await doctorApi.getAllDoctors(query);
+      const data = await doctorApi.getAllDoctors('');
       setDoctors(data);
-      
+      setFilteredDoctors(data);
+
       // Animate in results
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -41,7 +88,11 @@ export default function DoctorFinder() {
         useNativeDriver: true,
       }).start();
     } catch (err: any) {
-      setError(err.message);
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred.');
+      }
     } finally {
       setLoading(false);
     }
@@ -54,44 +105,139 @@ export default function DoctorFinder() {
       const data = await doctorApi.getDoctorById(id);
       setSelectedDoctor(data);
     } catch (err: any) {
-      setError(err.message);
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('An unexpected error occurred.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDoctors('');
+    fetchDoctors();
   }, []);
 
-  // Render search header
-  const renderHeader = () => (
-    <View style={styles.headerContainer}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Find Your Doctor</Text>
-        <Text style={styles.subtitle}>Discover healthcare professionals near you</Text>
-        
-        <View style={styles.searchContainer}>
-          <View style={styles.searchInputWrapper}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search by name or specialty"
-              placeholderTextColor="#9CA3AF"
-              value={search}
-              onChangeText={setSearch}
-              onSubmitEditing={() => fetchDoctors(search)}
-              returnKeyType="search"
+  useEffect(() => {
+    filterDoctors();
+  }, [search, selectedLocation, selectedSpecialty, doctors]);
+
+  // Render filter chip
+  const renderFilterChip = (
+    label: string,
+    value: string,
+    selected: boolean,
+    onPress: () => void
+  ) => (
+    <TouchableOpacity
+      style={[
+        styles.filterChip,
+        selected && styles.filterChipSelected
+      ]}
+      onPress={onPress}
+    >
+      <Text style={[
+        styles.filterChipText,
+        selected && styles.filterChipTextSelected
+      ]}>
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+
+  // Render search and filters
+  const renderSearchHeader = () => (
+    <View style={styles.searchSection}>
+      {/* Search Input */}
+      <View style={styles.searchInputWrapper}>
+        <Text style={styles.searchIcon}>🔍</Text>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by name or specialty"
+          placeholderTextColor="#9CA3AF"
+          value={search}
+          onChangeText={setSearch}
+          returnKeyType="search"
+        />
+      </View>
+
+      {/* Filter Toggle */}
+      <TouchableOpacity
+        style={styles.filterToggle}
+        onPress={() => setShowFilters(!showFilters)}
+      >
+        <Text style={styles.filterIcon}>⚙️</Text>
+      </TouchableOpacity>
+
+      {/* Filters */}
+      {showFilters && (
+        <View style={styles.filtersContainer}>
+          {/* Location Filter */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterTitle}>Location</Text>
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={getUniqueValues('hospitals')}
+              keyExtractor={(item) => item}
+              renderItem={({ item: location }) => (
+                renderFilterChip(
+                  location,
+                  location,
+                  selectedLocation === location,
+                  () => setSelectedLocation(location)
+                )
+              )}
+              contentContainerStyle={styles.filterListContainer}
+            />
+          </View>
+
+          {/* Specialty Filter */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterTitle}>Specialty</Text>
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={getUniqueValues('specialty')}
+              keyExtractor={(item) => item}
+              renderItem={({ item: specialty }) => (
+                renderFilterChip(
+                  specialty,
+                  specialty,
+                  selectedSpecialty === specialty,
+                  () => setSelectedSpecialty(specialty)
+                )
+              )}
+              contentContainerStyle={styles.filterListContainer}
             />
           </View>
         </View>
+      )}
+
+      {/* Results Count */}
+      <View style={styles.resultsHeader}>
+        <Text style={styles.resultsCount}>
+          {filteredDoctors.length} doctor{filteredDoctors.length !== 1 ? 's' : ''} found
+        </Text>
+        {(selectedLocation !== 'All' || selectedSpecialty !== 'All') && (
+          <TouchableOpacity
+            onPress={() => {
+              setSelectedLocation('All');
+              setSelectedSpecialty('All');
+            }}
+            style={styles.clearFilters}
+          >
+            <Text style={styles.clearFiltersText}>Clear filters</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
 
-  // Render each doctor card with enhanced design
-  const renderDoctorItem = ({ item, index }: { item: Doctor; index: number }) => (
-    <Animated.View 
+  // Render each doctor card
+  const renderDoctorItem = ({ item }: { item: Doctor }) => (
+    <Animated.View
       style={[
         styles.cardContainer,
         {
@@ -112,11 +258,19 @@ export default function DoctorFinder() {
       >
         <View style={styles.cardContent}>
           <View style={styles.cardLeft}>
-            <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
-            </View>
+            {item.imageUrls && item.imageUrls.length > 0 ? (
+              <Image
+                source={{ uri: item.imageUrls[0] }}
+                style={styles.avatarImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.avatarContainer}>
+                <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+              </View>
+            )}
           </View>
-          
+
           <View style={styles.cardRight}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
@@ -125,17 +279,17 @@ export default function DoctorFinder() {
                 <Text style={styles.ratingValue}>{item.rating.toFixed(1)}</Text>
               </View>
             </View>
-            
+
             <Text style={styles.cardSpecialty} numberOfLines={1}>{item.specialty}</Text>
-            
+
             <View style={styles.cardInfo}>
               <View style={styles.infoItem}>
-                <Text style={styles.infoIcon}>📍</Text>
+                <Text style={styles.infoIcon}>🏥</Text>
                 <Text style={styles.infoText} numberOfLines={1}>
-                  {item.location} {item.distance ? `• ${item.distance}` : ''}
+                  {item.hospitals.slice(0, 2).join(', ')}
+                  {item.hospitals.length > 2 && ` +${item.hospitals.length - 2} more`}
                 </Text>
               </View>
-              
               <View style={styles.infoItem}>
                 <Text style={styles.infoIcon}>🕒</Text>
                 <Text style={styles.availabilityText} numberOfLines={1}>{item.availability}</Text>
@@ -143,72 +297,57 @@ export default function DoctorFinder() {
             </View>
           </View>
         </View>
-        
-        <View style={styles.cardFooter}>
-          <TouchableOpacity style={styles.viewProfileButton}>
-            <Text style={styles.viewProfileText}>View Profile</Text>
-            <Text style={styles.arrowIcon}>→</Text>
-          </TouchableOpacity>
-        </View>
       </TouchableOpacity>
     </Animated.View>
   );
 
-  // Enhanced modal content using FlatList data structure
-  const modalData = selectedDoctor ? [
-    { type: 'image', data: selectedDoctor.imageUrl },
-    { type: 'header', data: { name: selectedDoctor.name, specialty: selectedDoctor.specialty } },
-    { type: 'info', data: selectedDoctor }
-  ] : [];
+  const renderModalContent = () => {
+    if (!selectedDoctor) return null;
 
-  const renderModalItem = ({ item }: any) => {
-    switch (item.type) {
-      case 'image':
-        return (
-          <View style={styles.modalImageContainer}>
-            <Image
-              source={{ uri: item.data }}
-              style={styles.doctorImage}
-              resizeMode="cover"
-            />
-          </View>
-        );
-      
-      case 'header':
-        return (
+    const { name, specialty, imageUrls, hospitals, rating, availability, doc990Link, phoneNumber } = selectedDoctor;
+
+    const handleBookAppointment = () => {
+      if (doc990Link) {
+        Linking.openURL(doc990Link).catch(err => {
+          console.error("Failed to open URL:", err);
+          alert('Could not open the booking link.');
+        });
+      } else {
+        alert('Booking link not available.');
+      }
+    };
+    
+    return (
+      <ScrollView style={styles.modalScrollView} showsVerticalScrollIndicator={false}>
+        <View style={styles.modalContent}>
+          {imageUrls && imageUrls.length > 0 && (
+            <View style={styles.modalImageContainer}>
+              <Image
+                source={{ uri: imageUrls[0] }}
+                style={styles.doctorImage}
+                resizeMode="cover"
+              />
+            </View>
+          )}
+
           <View style={styles.modalHeaderSection}>
-            <Text style={styles.modalName}>{item.data.name}</Text>
+            <Text style={styles.modalName}>{name}</Text>
             <View style={styles.specialtyBadge}>
-              <Text style={styles.modalSpecialty}>{item.data.specialty}</Text>
+              <Text style={styles.modalSpecialty}>{specialty}</Text>
             </View>
           </View>
-        );
-      
-      case 'info':
-        return (
+
           <View style={styles.modalInfoSection}>
             <View style={styles.infoCard}>
               <View style={styles.infoRow}>
                 <View style={styles.infoIconContainer}>
-                  <Text style={styles.modalInfoIcon}>📍</Text>
+                  <Text style={styles.modalInfoIcon}>🏥</Text>
                 </View>
                 <View style={styles.infoContent}>
-                  <Text style={styles.infoLabel}>Location</Text>
-                  <Text style={styles.modalInfoText}>{item.data.location}</Text>
+                  <Text style={styles.infoLabel}>Hospitals</Text>
+                  <Text style={styles.modalInfoText}>{hospitals.join(', ')}</Text>
                 </View>
               </View>
-              
-              {item.data.distance && (
-                <View style={styles.infoRow}>
-                  <View style={styles.infoIconContainer}>
-                    <Text style={styles.modalInfoIcon}>🛣</Text>
-                  </View>
-                  <View style={styles.infoContent}>
-                    <Text style={styles.infoLabel}>Distance</Text>
-                    <Text style={styles.modalInfoText}>{item.data.distance}</Text>
-                  </View>
-                </View>
-              )}
               
               <View style={styles.infoRow}>
                 <View style={styles.infoIconContainer}>
@@ -216,40 +355,57 @@ export default function DoctorFinder() {
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Rating</Text>
-                  <Text style={styles.modalInfoText}>{item.data.rating.toFixed(1)} out of 5</Text>
+                  <Text style={styles.modalInfoText}>{rating.toFixed(1)} out of 5</Text>
                 </View>
               </View>
               
+              <View style={styles.infoRow}>
+                <View style={styles.infoIconContainer}>
+                  <Text style={styles.modalInfoIcon}>📞</Text>
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Phone Number</Text>
+                  <Text style={styles.modalInfoText}>{phoneNumber}</Text>
+                </View>
+              </View>
+
               <View style={styles.infoRow}>
                 <View style={styles.infoIconContainer}>
                   <Text style={styles.modalInfoIcon}>🕒</Text>
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Availability</Text>
-                  <Text style={styles.modalInfoText}>{item.data.availability}</Text>
+                  <Text style={styles.modalInfoText}>{availability}</Text>
                 </View>
               </View>
             </View>
-            
-            <TouchableOpacity style={styles.bookButton}>
+
+            <TouchableOpacity style={styles.bookButton} onPress={handleBookAppointment}>
               <Text style={styles.bookButtonText}>Book Appointment</Text>
             </TouchableOpacity>
           </View>
-        );
-      
-      default:
-        return null;
-    }
+        </View>
+      </ScrollView>
+    );
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      
+
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Find Your Doctor</Text>
+        <Text style={styles.subtitle}>Discover healthcare professionals near you</Text>
+      </View>
+
+      {/* Search and Filters */}
+      {renderSearchHeader()}
+
+      {/* Doctor List */}
       <FlatList
-        data={doctors}
+        data={filteredDoctors}
         keyExtractor={(item) => item._id}
-        ListHeaderComponent={renderHeader}
         renderItem={renderDoctorItem}
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
@@ -258,24 +414,24 @@ export default function DoctorFinder() {
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>👨‍⚕️</Text>
               <Text style={styles.emptyTitle}>No doctors found</Text>
-              <Text style={styles.emptyText}>Try adjusting your search criteria</Text>
+              <Text style={styles.emptyText}>Try adjusting your search or filters</Text>
             </View>
           )
         )}
         refreshing={loading}
-        onRefresh={() => fetchDoctors(search)}
+        onRefresh={fetchDoctors}
       />
 
-      {/* Enhanced Modal with FlatList */}
-      <Modal 
-        visible={!!selectedDoctor} 
+      {/* Modal */}
+      <Modal
+        visible={!!selectedDoctor}
         animationType="slide"
-        presentationStyle="pageSheet"
+        presentationStyle={Platform.OS === 'ios' ? 'pageSheet' : 'formSheet'}
       >
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity 
-              onPress={() => setSelectedDoctor(null)} 
+            <TouchableOpacity
+              onPress={() => setSelectedDoctor(null)}
               style={styles.closeButton}
             >
               <Text style={styles.closeButtonText}>✕</Text>
@@ -284,15 +440,7 @@ export default function DoctorFinder() {
             <View style={{ width: 32 }} />
           </View>
 
-          {selectedDoctor && (
-            <FlatList
-              data={modalData}
-              keyExtractor={(item, index) => `modal-${index}`}
-              renderItem={renderModalItem}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.modalContent}
-            />
-          )}
+          {renderModalContent()}
         </SafeAreaView>
       </Modal>
 
@@ -310,9 +458,12 @@ export default function DoctorFinder() {
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.retryButton}
-            onPress={() => fetchDoctors(search)}
+            onPress={() => {
+              setError(null);
+              fetchDoctors();
+            }}
           >
             <Text style={styles.retryText}>Retry</Text>
           </TouchableOpacity>
@@ -327,15 +478,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  
+
   // Header Styles
-  headerContainer: {
-    backgroundColor: '#FFFFFF',
-    marginBottom: 8,
-  },
   header: {
+    backgroundColor: '#FFFFFF',
     padding: 20,
-    paddingBottom: 24,
+    paddingBottom: 16,
   },
   title: {
     fontSize: 28,
@@ -346,10 +494,15 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 16,
     color: '#64748B',
-    marginBottom: 20,
   },
-  searchContainer: {
-    marginTop: 8,
+
+  // Search Section
+  searchSection: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
   searchInputWrapper: {
     flexDirection: 'row',
@@ -357,9 +510,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
     borderRadius: 16,
     paddingHorizontal: 16,
-    height: 52,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    height: 48,
+    marginBottom: 12,
   },
   searchIcon: {
     fontSize: 18,
@@ -370,26 +522,103 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1E293B',
   },
-  
+  filterToggle: {
+    position: 'absolute',
+    right: 20,
+    top: 6,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterIcon: {
+    fontSize: 20,
+  },
+
+  // Filters
+  filtersContainer: {
+    marginTop: 8,
+  },
+  filterSection: {
+    marginBottom: 16,
+  },
+  filterTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 8,
+  },
+  filterScrollView: {
+    flexGrow: 0,
+  },
+  filterListContainer: {
+    paddingRight: 16,
+  },
+  filterChip: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  filterChipSelected: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  filterChipText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  filterChipTextSelected: {
+    color: '#FFFFFF',
+  },
+
+  // Results Header
+  resultsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  resultsCount: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  clearFilters: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  clearFiltersText: {
+    fontSize: 14,
+    color: '#4F46E5',
+    fontWeight: '500',
+  },
+
   // List Styles
   listContainer: {
-    paddingBottom: 20,
+    padding: 16,
+    paddingTop: 8,
   },
-  
+
   // Card Styles
   cardContainer: {
-    marginHorizontal: 16,
-    marginVertical: 6,
+    marginBottom: 12,
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 16,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardContent: {
     flexDirection: 'row',
@@ -405,6 +634,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#4F46E5',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   avatarText: {
     color: '#FFFFFF',
@@ -451,7 +685,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   cardInfo: {
-    gap: 8,
+    gap: 6,
   },
   infoItem: {
     flexDirection: 'row',
@@ -473,32 +707,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1,
   },
-  cardFooter: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  viewProfileButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-  },
-  viewProfileText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4F46E5',
-    marginRight: 8,
-  },
-  arrowIcon: {
-    fontSize: 16,
-    color: '#4F46E5',
-  },
-  
+
   // Modal Styles
   modalContainer: {
     flex: 1,
@@ -530,6 +739,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#1E293B',
+  },
+  modalScrollView: {
+    flex: 1,
   },
   modalContent: {
     paddingBottom: 20,
@@ -617,7 +829,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  
+
   // Empty State
   emptyContainer: {
     alignItems: 'center',
@@ -640,7 +852,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     textAlign: 'center',
   },
-  
+
   // Loading Overlay
   loadingOverlay: {
     position: 'absolute',
@@ -665,7 +877,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontWeight: '500',
   },
-  
+
   // Error Styles
   errorContainer: {
     backgroundColor: '#FEF2F2',
@@ -678,6 +890,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    zIndex: 10,
   },
   errorText: {
     color: '#DC2626',
