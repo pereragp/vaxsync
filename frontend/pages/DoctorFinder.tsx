@@ -176,41 +176,43 @@ export default function DoctorFinder() {
           {/* Location Filter */}
           <View style={styles.filterSection}>
             <Text style={styles.filterTitle}>Location</Text>
-            <FlatList
+            <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              data={getUniqueValues('hospitals')}
-              keyExtractor={(item) => item}
-              renderItem={({ item: location }) => (
-                renderFilterChip(
-                  location,
-                  location,
-                  selectedLocation === location,
-                  () => setSelectedLocation(location)
-                )
-              )}
               contentContainerStyle={styles.filterListContainer}
-            />
+            >
+              {getUniqueValues('hospitals').map((location) => (
+                <View key={location}>
+                  {renderFilterChip(
+                    location,
+                    location,
+                    selectedLocation === location,
+                    () => setSelectedLocation(location)
+                  )}
+                </View>
+              ))}
+            </ScrollView>
           </View>
 
           {/* Specialty Filter */}
           <View style={styles.filterSection}>
             <Text style={styles.filterTitle}>Specialty</Text>
-            <FlatList
+            <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
-              data={getUniqueValues('specialty')}
-              keyExtractor={(item) => item}
-              renderItem={({ item: specialty }) => (
-                renderFilterChip(
-                  specialty,
-                  specialty,
-                  selectedSpecialty === specialty,
-                  () => setSelectedSpecialty(specialty)
-                )
-              )}
               contentContainerStyle={styles.filterListContainer}
-            />
+            >
+              {getUniqueValues('specialty').map((specialty) => (
+                <View key={specialty}>
+                  {renderFilterChip(
+                    specialty,
+                    specialty,
+                    selectedSpecialty === specialty,
+                    () => setSelectedSpecialty(specialty)
+                  )}
+                </View>
+              ))}
+            </ScrollView>
           </View>
         </View>
       )}
@@ -402,14 +404,20 @@ export default function DoctorFinder() {
       {/* Search and Filters */}
       {renderSearchHeader()}
 
+      {/* Refresh Button */}
+      {loading && (
+        <View style={styles.refreshContainer}>
+          <ActivityIndicator size="small" color="#4F46E5" />
+          <Text style={styles.refreshText}>Refreshing...</Text>
+        </View>
+      )}
+
       {/* Doctor List */}
-      <FlatList
-        data={filteredDoctors}
-        keyExtractor={(item) => item._id}
-        renderItem={renderDoctorItem}
+      <ScrollView
         contentContainerStyle={styles.listContainer}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={() => (
+      >
+        {filteredDoctors.length === 0 ? (
           !loading && (
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyIcon}>👨‍⚕️</Text>
@@ -417,10 +425,14 @@ export default function DoctorFinder() {
               <Text style={styles.emptyText}>Try adjusting your search or filters</Text>
             </View>
           )
+        ) : (
+          filteredDoctors.map((doctor) => (
+            <View key={doctor._id}>
+              {renderDoctorItem({ item: doctor })}
+            </View>
+          ))
         )}
-        refreshing={loading}
-        onRefresh={fetchDoctors}
-      />
+      </ScrollView>
 
       {/* Modal */}
       <Modal
@@ -584,6 +596,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 8,
+  },
+  refreshContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    backgroundColor: '#F8FAFC',
+    marginHorizontal: 20,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  refreshText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#4F46E5',
+    fontWeight: '500',
   },
   resultsCount: {
     fontSize: 14,
