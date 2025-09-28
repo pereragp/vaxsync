@@ -449,6 +449,79 @@ export default function VaxCardScreen() {
     }
   };
 
+
+  // Delete a specific vaccination dose
+  const handleDeleteVaccination = async (vaccineName: string, doseNumber: number) => {
+    const currentProfile = profiles[selectedIdx];
+    if (!currentProfile?.healthCard) {
+      Alert.alert("Error", "No health card data available");
+      return;
+    }
+
+    // Show confirmation dialog
+    Alert.alert(
+      "Delete Vaccination",
+      `Are you sure you want to delete ${vaccineName} dose ${doseNumber}?\n\nThis action cannot be undone.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              
+              // Call the API to delete the vaccination
+              await healthCardAPI.deleteVaccination(
+                currentProfile.healthCard!._id,
+                vaccineName,
+                doseNumber
+              );
+
+              // Update the local state to remove the deleted vaccination
+              setProfiles(prevProfiles => {
+                const updatedProfiles = [...prevProfiles];
+                const currentProfile = updatedProfiles[selectedIdx];
+                
+                if (currentProfile?.healthCard?.completedVaccinations) {
+                  // Remove the deleted vaccination from the health card
+                  currentProfile.healthCard.completedVaccinations = 
+                    currentProfile.healthCard.completedVaccinations.filter(
+                      vaccination => !(vaccination.vaccineName === vaccineName && vaccination.doseNumber === doseNumber)
+                    );
+                  
+                  // Regroup the vaccinations for UI display
+                  currentProfile.vaccines = healthCardAPI.groupVaccinationsByName(
+                    currentProfile.healthCard.completedVaccinations
+                  );
+                }
+                
+                return updatedProfiles;
+              });
+
+              Alert.alert(
+                "Success",
+                `${vaccineName} dose ${doseNumber} has been deleted successfully.`
+              );
+
+            } catch (error: any) {
+              console.error('Error deleting vaccination:', error);
+              Alert.alert(
+                "Error",
+                error.message || "Failed to delete vaccination. Please try again."
+              );
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // Calculate completion stats for progress display
   const completionStats = {
     total: profile.vaccines.length,
@@ -878,11 +951,19 @@ export default function VaxCardScreen() {
                               </Text>
                               <View className="flex-row items-center">
                                 {dose.verified ? (
-                                  <View className="bg-green-100 rounded-full px-2 py-1">
-                                    <Text className="text-xs font-medium text-green-700">
-                                      ✓ Completed
-                                    </Text>
-                                  </View>
+                                  <>
+                                    <View className="bg-green-100 rounded-full px-2 py-1 mr-2">
+                                      <Text className="text-xs font-medium text-green-700">
+                                        ✓ Completed
+                                      </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                      onPress={() => handleDeleteVaccination(vaccine.name, dose.doseNumber)}
+                                      className="bg-red-100 rounded-full p-1"
+                                    >
+                                      <Ionicons name="trash" size={14} color="#ef4444" />
+                                    </TouchableOpacity>
+                                  </>
                                 ) : (
                                   <View className="bg-yellow-100 rounded-full px-2 py-1">
                                     <Text className="text-xs font-medium text-yellow-700">
@@ -1108,19 +1189,29 @@ export default function VaxCardScreen() {
                           <Text className="text-lg font-bold text-gray-800">
                             Dose {dose.doseNumber}
                           </Text>
-                          {dose.verified ? (
-                            <View className="bg-green-100 rounded-full px-3 py-1">
-                              <Text className="text-sm font-medium text-green-700">
-                                ✓ Verified
-                              </Text>
-                            </View>
-                          ) : (
-                            <View className="bg-yellow-100 rounded-full px-3 py-1">
-                              <Text className="text-sm font-medium text-yellow-700">
-                                ⏳ Pending
-                              </Text>
-                            </View>
-                          )}
+                          <View className="flex-row items-center">
+                            {dose.verified ? (
+                              <>
+                                <View className="bg-green-100 rounded-full px-3 py-1 mr-2">
+                                  <Text className="text-sm font-medium text-green-700">
+                                    ✓ Verified
+                                  </Text>
+                                </View>
+                                <TouchableOpacity
+                                  onPress={() => handleDeleteVaccination(selectedVaccine.name, dose.doseNumber)}
+                                  className="bg-red-100 rounded-full p-2"
+                                >
+                                  <Ionicons name="trash" size={16} color="#ef4444" />
+                                </TouchableOpacity>
+                              </>
+                            ) : (
+                              <View className="bg-yellow-100 rounded-full px-3 py-1">
+                                <Text className="text-sm font-medium text-yellow-700">
+                                  ⏳ Pending
+                                </Text>
+                              </View>
+                            )}
+                          </View>
                         </View>
                         
                         <View className="space-y-2">

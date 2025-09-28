@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getHealthCardWithVaccinations = exports.syncCompletedVaccinesToHealthCard = exports.getAllHealthCardsByUserId = exports.getHealthCardByDependentId = exports.getHealthCardByUserId = exports.createHealthCardsForUserAndDependents = exports.createDependentHealthCard = exports.createUserHealthCard = exports.syncVaccinesToHealthCard = void 0;
+exports.deleteVaccinationFromHealthCard = exports.getHealthCardWithVaccinations = exports.syncCompletedVaccinesToHealthCard = exports.getAllHealthCardsByUserId = exports.getHealthCardByDependentId = exports.getHealthCardByUserId = exports.createHealthCardsForUserAndDependents = exports.createDependentHealthCard = exports.createUserHealthCard = exports.syncVaccinesToHealthCard = void 0;
 const healthcardModel_1 = __importDefault(require("../../models/healthCard/healthcardModel"));
 const user_1 = __importDefault(require("../../models/userModels/user"));
 const dependent_1 = __importDefault(require("../../models/userModels/dependent"));
@@ -425,4 +425,71 @@ const getHealthCardWithVaccinations = async (req, res) => {
     }
 };
 exports.getHealthCardWithVaccinations = getHealthCardWithVaccinations;
+const deleteVaccinationFromHealthCard = async (req, res) => {
+    try {
+        const { cardId, vaccineName, doseNumber } = req.params;
+        console.log('Delete vaccination request:', {
+            cardId,
+            vaccineName,
+            doseNumber,
+            decodedVaccineName: decodeURIComponent(vaccineName)
+        });
+        const healthCard = await healthcardModel_1.default.findById(cardId);
+        if (!healthCard) {
+            console.log('Health card not found:', cardId);
+            return res.status(404).json({ message: "Health card not found" });
+        }
+        console.log('Health card found:', {
+            id: healthCard._id,
+            vaccinationsCount: healthCard.completedVaccinations?.length || 0
+        });
+        if (!healthCard.completedVaccinations || healthCard.completedVaccinations.length === 0) {
+            console.log('No vaccinations found in health card');
+            return res.status(404).json({ message: "No vaccinations found in this health card" });
+        }
+        const decodedVaccineName = decodeURIComponent(vaccineName);
+        console.log('Looking for vaccination:', {
+            originalName: vaccineName,
+            decodedName: decodedVaccineName,
+            doseNumber: parseInt(doseNumber),
+            availableVaccinations: healthCard.completedVaccinations.map(v => ({
+                name: v.vaccineName,
+                dose: v.doseNumber
+            }))
+        });
+        const vaccinationIndex = healthCard.completedVaccinations.findIndex(vaccination => vaccination.vaccineName === decodedVaccineName &&
+            vaccination.doseNumber === parseInt(doseNumber));
+        if (vaccinationIndex === -1) {
+            console.log('Vaccination not found in health card');
+            return res.status(404).json({
+                message: `Vaccination not found: ${decodedVaccineName} dose ${doseNumber}`
+            });
+        }
+        console.log('Vaccination found at index:', vaccinationIndex);
+        const deletedVaccination = healthCard.completedVaccinations[vaccinationIndex];
+        healthCard.completedVaccinations.splice(vaccinationIndex, 1);
+        await healthCard.save();
+        console.log('Vaccination deleted successfully:', {
+            deletedVaccination: {
+                vaccineName: deletedVaccination.vaccineName,
+                doseNumber: deletedVaccination.doseNumber
+            },
+            remainingCount: healthCard.completedVaccinations.length
+        });
+        return res.status(200).json({
+            message: "Vaccination deleted successfully",
+            deletedVaccination: {
+                vaccineName: deletedVaccination.vaccineName,
+                doseNumber: deletedVaccination.doseNumber,
+                dateCompleted: deletedVaccination.dateCompleted
+            },
+            remainingVaccinations: healthCard.completedVaccinations.length
+        });
+    }
+    catch (error) {
+        console.error("Error deleting vaccination from health card:", error);
+        return res.status(500).json({ message: "Server error", error: error.message });
+    }
+};
+exports.deleteVaccinationFromHealthCard = deleteVaccinationFromHealthCard;
 //# sourceMappingURL=healthCardController.js.map
