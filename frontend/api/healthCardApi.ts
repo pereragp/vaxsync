@@ -1,10 +1,7 @@
-// Health Card API service for connecting to backend
-//<<<<<<< devMikki
-// const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.20.10.2:5000';
-//const API_BASE_URL = 'http://172.20.10.2:5000/api/users'; // Mishen URL
-=======
-//const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.20.10.2:5000';
-//>>>>>>> mergeAll
+
+const API_BASE_URL = 'http://192.168.1.32:5000'; //Pramod URL
+//const API_BASE_URL = 'http://192.168.1.32:5000/api/users'; // Mishen URL
+
 
 // Types for Health Card API
 export interface HealthCardVaccination {

@@ -78,7 +78,7 @@ export default function ProfilePage() {
       if (error.message.includes('404')) {
         setError('User not found in database. Please check if the backend is running and the user ID is correct.');
       } else if (error.message.includes('Network request failed')) {
-        setError('Cannot connect to backend server. Please ensure the backend is running on http://172.20.10.2:5000');
+        setError('Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.32:5000');
       } else {
         setError(error.message || 'Failed to load user data');
       }

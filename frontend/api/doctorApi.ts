@@ -1,11 +1,7 @@
-//<<<<<<< devMikki
-//const BASE_URL = 'http://172.20.10.2:5000/api/doctors';
-//const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.32:5000';
-//const BASE_URL = "http://172.20.10.2:5000/api/users"; // Mishen URL
-///=======
-//const BASE_URL = 'http://172.20.10.2:5000/api/doctors'; 
-//const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.20.10.2:5000';
-//>>>>>>> mergeAll
+
+const BASE_URL = 'http://192.168.1.32:5000'; //Pramod URL 
+//const BASE_URL = "http://192.168.1.32:5000/api/users"; // Mishen URL
+
 
 // Types
 export interface Doctor {
@@ -175,7 +171,7 @@ export const doctorApi = {
       }
       const queryString = params.toString() ? `?${params.toString()}` : "";
 
-      const response = await apiRequest<Doctor[]>(queryString);
+      const response = await apiRequest<Doctor[]>(`/api/doctors${queryString}`);
 
       if (!response.data) {
         console.warn("No data received from server");
@@ -209,7 +205,7 @@ export const doctorApi = {
     try {
       console.log(`Fetching doctor with ID: ${doctorId}`);
 
-      const response = await apiRequest<Doctor>(`/${doctorId.trim()}`);
+      const response = await apiRequest<Doctor>(`/api/doctors/${doctorId.trim()}`);
 
       if (!response.data) {
         throw new ApiError("Doctor not found");
