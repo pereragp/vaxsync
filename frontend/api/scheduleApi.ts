@@ -23,6 +23,7 @@ export interface VaccineSchedule {
   interval: number;
   doses: VaccineDose[];
   overallStatus: 'in_progress' | 'completed' | 'cancelled';
+  vaccinationType?: 'routine' | 'travel' | 'occupational' | 'emergency';
   healthcareProvider?: {
     name?: string;
   };
@@ -55,6 +56,7 @@ export interface CreateScheduleRequest {
   healthcareProvider?: string;
   notes?: string;
   scheduleDate?: string; // ISO date string for the first dose
+  vaccinationType?: 'routine' | 'travel' | 'occupational' | 'emergency';
 }
 
 export interface UpdateDoseRequest {
