@@ -224,11 +224,13 @@ export interface PaginationInfo {
 export interface IDoctor extends Document {
   name: string;
   specialty: string;
-  location: string;
-  distance?: string;
+  hospitals: string[];
+  phoneNumber: string;
   rating: number;
   availability: string;
-  imageUrl: string;
+  imageUrls: string[];
+  doc990Id: string;
+  doc990Link: string;
   createdAt: Date;
   updatedAt: Date;
 }

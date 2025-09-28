@@ -38,16 +38,9 @@ const doctorSchema = new mongoose_1.Schema({
         trim: true,
         maxlength: [100, "Specialty cannot exceed 100 characters"],
     },
-    location: {
-        type: String,
-        required: [true, "Location is required"],
-        trim: true,
-        maxlength: [200, "Location cannot exceed 200 characters"],
-    },
-    distance: {
-        type: String,
-        default: "",
-        trim: true,
+    hospitals: {
+        type: [String],
+        required: [true, "At least one hospital is required"],
     },
     rating: {
         type: Number,
@@ -60,12 +53,21 @@ const doctorSchema = new mongoose_1.Schema({
         required: [true, "Availability is required"],
         trim: true,
     },
-    imageUrl: {
+    imageUrls: {
+        type: [String],
+        required: [true, "Image URL(s) are required"],
+    },
+    doc990Id: {
         type: String,
-        required: [true, "Image URL is required"],
+        required: [true, "Doc990 ID is required"],
+        trim: true,
+    },
+    doc990Link: {
+        type: String,
+        required: [true, "Doc990 link is required"],
         trim: true,
     },
 }, { timestamps: true });
-doctorSchema.index({ specialty: 1, location: 1 });
+doctorSchema.index({ specialty: 1, "hospitals": 1 });
 exports.default = mongoose_1.default.model("Doctor", doctorSchema);
 //# sourceMappingURL=doctorModel.js.map
