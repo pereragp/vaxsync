@@ -140,7 +140,7 @@ export default function SchedulePage() {
         lastUpdated: new Date(healthCard.updatedAt).toLocaleDateString(),
         healthCard: healthCard,
         isDependent: healthCard.cardType === 'dependent',
-        dependentId: healthCard.cardType === 'dependent' ? healthCard._id : undefined,
+        dependentId: healthCard.cardType === 'dependent' ? healthCard.dependentId : undefined,
       }));
 
       setProfiles(newProfiles);
@@ -219,16 +219,29 @@ export default function SchedulePage() {
       
       if (profile.isDependent && profile.dependentId) {
         // For dependents, only show schedules where this dependent is included and not completed
-        filteredSchedules = allSchedules.filter(schedule => 
-          schedule.dependentIds?.includes(profile.dependentId!) &&
-          schedule.overallStatus !== 'completed'
-        );
+        filteredSchedules = allSchedules.filter(schedule => {
+          // Handle both populated objects and raw IDs
+          const dependentIds = schedule.dependentIds || [];
+          const isIncluded = dependentIds.some((dependent: any) => {
+            // If dependent is populated object, check the _id field
+            if (typeof dependent === 'object' && dependent._id) {
+              return dependent._id === profile.dependentId;
+            }
+            // If dependent is raw string/ID, compare directly
+            return dependent === profile.dependentId;
+          });
+          const isNotCompleted = schedule.overallStatus !== 'completed';
+          
+          return isIncluded && isNotCompleted;
+        });
       } else {
         // For main user, only show schedules where no dependents are specified (user's own schedules) and not completed
-        filteredSchedules = allSchedules.filter(schedule => 
-          (!schedule.dependentIds || schedule.dependentIds.length === 0) &&
-          schedule.overallStatus !== 'completed'
-        );
+        filteredSchedules = allSchedules.filter(schedule => {
+          const hasNoDependents = !schedule.dependentIds || schedule.dependentIds.length === 0;
+          const isNotCompleted = schedule.overallStatus !== 'completed';
+          
+          return hasNoDependents && isNotCompleted;
+        });
       }
       
       setSchedules(filteredSchedules);

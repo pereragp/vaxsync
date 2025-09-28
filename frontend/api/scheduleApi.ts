@@ -17,7 +17,14 @@ export interface VaccineSchedule {
   _id: string;
   recordId: string;
   userId: string;
-  dependentIds?: string[];
+  dependentIds?: (string | {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    dateOfBirth: Date;
+    gender: string;
+    dependentType: string;
+  })[];
   vaccineId?: string;
   vaccineName: string;
   totalDoses: number;
@@ -149,6 +156,7 @@ const scheduleAPI = {
     }
     
     const data: SchedulesResponse = await response.json();
+    
     return {
       schedules: data.data,
       pagination: data.pagination
@@ -157,20 +165,32 @@ const scheduleAPI = {
 
   // Create new vaccine schedule
   async createSchedule(scheduleData: CreateScheduleRequest): Promise<VaccineSchedule> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/schedule`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(scheduleData),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to create schedule: ${response.statusText}`);
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/v1/schedule`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(scheduleData),
+      });
+      
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(`Failed to create schedule: ${errorMessage}`);
+      }
+      
+      const data: ScheduleResponse = await response.json();
+      return data.data;
+    } catch (error) {
+      console.error('Create schedule API error:', error);
+      throw error;
     }
-    
-    const data: ScheduleResponse = await response.json();
-    return data.data;
   },
 
   // Update vaccine schedule

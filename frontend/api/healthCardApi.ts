@@ -162,6 +162,26 @@ const healthCardAPI = {
     return await response.json();
   },
 
+  // Download vaccination certificate as PDF
+  async downloadVaccinationCertificate(cardId: string): Promise<Blob> {
+    const response = await fetch(`${API_BASE_URL}/api/health-card/download-certificate/${cardId}`, {
+      method: 'GET',
+    });
+    
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        errorMessage = response.statusText || errorMessage;
+      }
+      throw new Error(`Failed to download certificate: ${errorMessage}`);
+    }
+    
+    return await response.blob();
+  },
+
   // Group vaccinations by vaccine name for UI display
   groupVaccinationsByName(vaccinations: HealthCardVaccination[]): any[] {
     const grouped: { [key: string]: any } = {};
