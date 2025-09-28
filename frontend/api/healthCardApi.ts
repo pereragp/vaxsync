@@ -139,6 +139,29 @@ const healthCardAPI = {
     return await response.json();
   },
 
+  // Delete a specific vaccination from health card
+  async deleteVaccination(cardId: string, vaccineName: string, doseNumber: number): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/health-card/delete-vaccination/${cardId}/${encodeURIComponent(vaccineName)}/${doseNumber}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        errorMessage = response.statusText || errorMessage;
+      }
+      throw new Error(`Failed to delete vaccination: ${errorMessage}`);
+    }
+    
+    return await response.json();
+  },
+
   // Group vaccinations by vaccine name for UI display
   groupVaccinationsByName(vaccinations: HealthCardVaccination[]): any[] {
     const grouped: { [key: string]: any } = {};

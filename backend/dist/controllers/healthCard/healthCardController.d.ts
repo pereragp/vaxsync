@@ -8,5 +8,6 @@ declare const getHealthCardByDependentId: (req: Request, res: Response) => Promi
 declare const getAllHealthCardsByUserId: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 declare const syncCompletedVaccinesToHealthCard: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
 declare const getHealthCardWithVaccinations: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
-export { createUserHealthCard, createDependentHealthCard, createHealthCardsForUserAndDependents, getHealthCardByUserId, getHealthCardByDependentId, getAllHealthCardsByUserId, syncCompletedVaccinesToHealthCard, getHealthCardWithVaccinations };
+declare const deleteVaccinationFromHealthCard: (req: Request, res: Response) => Promise<Response<any, Record<string, any>>>;
+export { createUserHealthCard, createDependentHealthCard, createHealthCardsForUserAndDependents, getHealthCardByUserId, getHealthCardByDependentId, getAllHealthCardsByUserId, syncCompletedVaccinesToHealthCard, getHealthCardWithVaccinations, deleteVaccinationFromHealthCard };
 //# sourceMappingURL=healthCardController.d.ts.map
