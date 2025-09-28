@@ -13,40 +13,40 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
-import { SafeAreaView } from "react-native-safe-area-context";
-import userAPI, { User, Dependent } from "../api/userApi";
-import { router } from "expo-router";
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import userAPI, { User, Dependent } from '../api/userApi';
 
 const { width } = Dimensions.get("window");
 
 export default function ProfilePage() {
+
   const [user, setUser] = useState<User | null>(null);
   const [dependents, setDependents] = useState<Dependent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
+  
   // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddDependentModal, setShowAddDependentModal] = useState(false);
 
   // Edit form states
   const [editForm, setEditForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    dateOfBirth: "",
-    gender: "",
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    dateOfBirth: '',
+    gender: '',
   });
-
+  
   // Add dependent form states
   const [dependentForm, setDependentForm] = useState({
-    firstName: "",
-    lastName: "",
-    dateOfBirth: "",
-    gender: "",
-    dependentType: "",
+    firstName: '',
+    lastName: '',
+    dateOfBirth: '',
+    gender: '',
+    dependentType: '',
   });
 
   // Load user data
@@ -58,31 +58,29 @@ export default function ProfilePage() {
     try {
       setLoading(true);
       setError(null);
-
+      
       // Fetch real user data from backend using the test user ID
       const userId = "68cfcf945e1c53a931fa032e";
-
+      
       // Try to fetch real user data from backend
       const userData = await userAPI.getUserById(userId);
       setUser(userData);
-
+      
       // Try to fetch dependents
       const dependentsData = await userAPI.getDependents(userId);
       setDependents(dependentsData);
+      
+      
     } catch (error: any) {
-      console.error("Error loading user data:", error);
-
+      console.error('Error loading user data:', error);
+      
       // More detailed error handling
-      if (error.message.includes("404")) {
-        setError(
-          "User not found in database. Please check if the backend is running and the user ID is correct."
-        );
-      } else if (error.message.includes("Network request failed")) {
-        setError(
-          "Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.32:5000"
-        );
+      if (error.message.includes('404')) {
+        setError('User not found in database. Please check if the backend is running and the user ID is correct.');
+      } else if (error.message.includes('Network request failed')) {
+        setError('Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.32:5000');
       } else {
-        setError(error.message || "Failed to load user data");
+        setError(error.message || 'Failed to load user data');
       }
     } finally {
       setLoading(false);
@@ -91,7 +89,7 @@ export default function ProfilePage() {
 
   const handleEditProfile = () => {
     if (!user) return;
-
+    
     setEditForm({
       firstName: user.firstName,
       lastName: user.lastName,
@@ -106,24 +104,25 @@ export default function ProfilePage() {
   const handleEditSubmit = async () => {
     try {
       setLoading(true);
-
+      
       // Mock API call - replace with actual API
-      console.log("Updating user profile:", editForm);
-
+      console.log('Updating user profile:', editForm);
+      
       // Update local state
       if (user) {
         setUser({
           ...user,
           ...editForm,
-          updatedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
         });
       }
-
+      
       setShowEditModal(false);
-      Alert.alert("Success", "Profile updated successfully!");
+      Alert.alert('Success', 'Profile updated successfully!');
+      
     } catch (error: any) {
-      console.error("Error updating profile:", error);
-      Alert.alert("Error", error.message || "Failed to update profile");
+      console.error('Error updating profile:', error);
+      Alert.alert('Error', error.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -132,32 +131,33 @@ export default function ProfilePage() {
   const handleAddDependent = async () => {
     try {
       setLoading(true);
-
+      
       // Mock API call - replace with actual API
-      console.log("Adding dependent:", dependentForm);
-
+      console.log('Adding dependent:', dependentForm);
+      
       const newDependent: Dependent = {
         _id: `dep_${Date.now()}`,
         ...dependentForm,
-        guardianId: user?._id || "",
+        guardianId: user?._id || '',
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
-
+      
       setDependents([...dependents, newDependent]);
       setShowAddDependentModal(false);
       setDependentForm({
-        firstName: "",
-        lastName: "",
-        dateOfBirth: "",
-        gender: "",
-        dependentType: "",
+        firstName: '',
+        lastName: '',
+        dateOfBirth: '',
+        gender: '',
+        dependentType: '',
       });
-
-      Alert.alert("Success", "Dependent added successfully!");
+      
+      Alert.alert('Success', 'Dependent added successfully!');
+      
     } catch (error: any) {
-      console.error("Error adding dependent:", error);
-      Alert.alert("Error", error.message || "Failed to add dependent");
+      console.error('Error adding dependent:', error);
+      Alert.alert('Error', error.message || 'Failed to add dependent');
     } finally {
       setLoading(false);
     }
@@ -168,22 +168,19 @@ export default function ProfilePage() {
     const birthDate = new Date(dateOfBirth);
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (
-      monthDiff < 0 ||
-      (monthDiff === 0 && today.getDate() < birthDate.getDate())
-    ) {
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age--;
     }
-
+    
     return age;
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
   };
 
@@ -205,9 +202,7 @@ export default function ProfilePage() {
         <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
         <View className="flex-1 justify-center items-center p-6">
           <Ionicons name="alert-circle" size={64} color="#ef4444" />
-          <Text className="text-xl font-bold text-gray-800 mt-4 mb-2">
-            Error Loading Profile
-          </Text>
+          <Text className="text-xl font-bold text-gray-800 mt-4 mb-2">Error Loading Profile</Text>
           <Text className="text-gray-600 text-center mb-6">{error}</Text>
           <TouchableOpacity
             onPress={loadUserData}
@@ -221,15 +216,18 @@ export default function ProfilePage() {
   }
 
   return (
+
     <SafeAreaView className="flex-1 bg-white">
       <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-
+      
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 pt-6 pb-8">
           <View className="flex-row items-center justify-between mb-6">
             <View>
-              <Text className="text-white text-2xl font-bold">My Profile</Text>
+              <Text className="text-white text-2xl font-bold">
+                My Profile
+              </Text>
               <Text className="text-blue-100 text-sm">
                 Manage your account and dependents
               </Text>
@@ -241,16 +239,13 @@ export default function ProfilePage() {
               <Ionicons name="create-outline" size={20} color="white" />
             </TouchableOpacity>
           </View>
-
+          
           {/* Profile Card */}
           <View className="bg-white rounded-2xl p-6 shadow-lg">
             <View className="flex-row items-center mb-4">
               <View className="w-16 h-16 bg-blue-100 rounded-full items-center justify-center mr-4">
                 {user?.avatar ? (
-                  <Image
-                    source={{ uri: user.avatar }}
-                    className="w-16 h-16 rounded-full"
-                  />
+                  <Image source={{ uri: user.avatar }} className="w-16 h-16 rounded-full" />
                 ) : (
                   <Ionicons name="person" size={32} color="#175593" />
                 )}
@@ -265,12 +260,10 @@ export default function ProfilePage() {
                 </Text>
               </View>
             </View>
-
+            
             <View className="flex-row justify-between">
               <View className="items-center">
-                <Text className="text-2xl font-bold text-blue-600">
-                  {dependents.length}
-                </Text>
+                <Text className="text-2xl font-bold text-blue-600">{dependents.length}</Text>
                 <Text className="text-sm text-gray-600">Dependents</Text>
               </View>
               <View className="items-center">
@@ -287,10 +280,8 @@ export default function ProfilePage() {
 
         {/* Personal Information */}
         <View className="px-6 py-6">
-          <Text className="text-lg font-bold text-gray-800 mb-4">
-            Personal Information
-          </Text>
-
+          <Text className="text-lg font-bold text-gray-800 mb-4">Personal Information</Text>
+          
           <View className="bg-gray-50 rounded-2xl p-4 mb-4">
             <View className="flex-row items-center mb-3">
               <Ionicons name="mail-outline" size={20} color="#6b7280" />
@@ -298,7 +289,7 @@ export default function ProfilePage() {
             </View>
             <Text className="text-gray-800 font-medium">{user?.email}</Text>
           </View>
-
+          
           <View className="bg-gray-50 rounded-2xl p-4 mb-4">
             <View className="flex-row items-center mb-3">
               <Ionicons name="call-outline" size={20} color="#6b7280" />
@@ -306,7 +297,7 @@ export default function ProfilePage() {
             </View>
             <Text className="text-gray-800 font-medium">{user?.phone}</Text>
           </View>
-
+          
           <View className="bg-gray-50 rounded-2xl p-4 mb-4">
             <View className="flex-row items-center mb-3">
               <Ionicons name="calendar-outline" size={20} color="#6b7280" />
@@ -316,7 +307,7 @@ export default function ProfilePage() {
               {user && formatDate(user.dateOfBirth)}
             </Text>
           </View>
-
+          
           <View className="bg-gray-50 rounded-2xl p-4 mb-6">
             <View className="flex-row items-center mb-3">
               <Ionicons name="person-outline" size={20} color="#6b7280" />
@@ -338,7 +329,7 @@ export default function ProfilePage() {
               <Text className="text-white font-medium ml-1">Add</Text>
             </TouchableOpacity>
           </View>
-
+          
           {dependents.length === 0 ? (
             <View className="bg-gray-50 rounded-2xl p-8 items-center">
               <Ionicons name="people-outline" size={48} color="#9ca3af" />
@@ -352,10 +343,7 @@ export default function ProfilePage() {
           ) : (
             <View className="space-y-3">
               {dependents.map((dependent) => (
-                <View
-                  key={dependent._id}
-                  className="bg-white rounded-2xl p-4 border border-gray-200"
-                >
+                <View key={dependent._id} className="bg-white rounded-2xl p-4 border border-gray-200">
                   <View className="flex-row items-center">
                     <View className="w-12 h-12 bg-green-100 rounded-full items-center justify-center mr-4">
                       <Ionicons name="person" size={20} color="#10b981" />
@@ -365,19 +353,15 @@ export default function ProfilePage() {
                         {dependent.firstName} {dependent.lastName}
                       </Text>
                       <Text className="text-gray-600 text-sm">
-                        {dependent.dependentType} •{" "}
-                        {calculateAge(dependent.dateOfBirth)} years old
+                        {dependent.dependentType} • {calculateAge(dependent.dateOfBirth)} years old
                       </Text>
                       <Text className="text-gray-500 text-xs">
                         Added {formatDate(dependent.createdAt)}
-                      </Text>
+      </Text>
+
                     </View>
                     <TouchableOpacity className="p-2">
-                      <Ionicons
-                        name="chevron-forward"
-                        size={16}
-                        color="#9ca3af"
-                      />
+                      <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -388,52 +372,33 @@ export default function ProfilePage() {
 
         {/* Account Settings */}
         <View className="px-6 pb-8">
-          <Text className="text-lg font-bold text-gray-800 mb-4">
-            Account Settings
-          </Text>
-
+          <Text className="text-lg font-bold text-gray-800 mb-4">Account Settings</Text>
+          
           <TouchableOpacity className="bg-white rounded-2xl p-4 border border-gray-200 mb-3 flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <Ionicons
-                name="shield-checkmark-outline"
-                size={20}
-                color="#6b7280"
-              />
-              <Text className="text-gray-800 font-medium ml-3">
-                Privacy & Security
-              </Text>
+              <Ionicons name="shield-checkmark-outline" size={20} color="#6b7280" />
+              <Text className="text-gray-800 font-medium ml-3">Privacy & Security</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
           </TouchableOpacity>
-
+          
           <TouchableOpacity className="bg-white rounded-2xl p-4 border border-gray-200 mb-3 flex-row items-center justify-between">
             <View className="flex-row items-center">
-              <Ionicons
-                name="notifications-outline"
-                size={20}
-                color="#6b7280"
-              />
-              <Text className="text-gray-800 font-medium ml-3">
-                Notifications
-              </Text>
+              <Ionicons name="notifications-outline" size={20} color="#6b7280" />
+              <Text className="text-gray-800 font-medium ml-3">Notifications</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
           </TouchableOpacity>
-
+          
           <TouchableOpacity className="bg-white rounded-2xl p-4 border border-gray-200 mb-3 flex-row items-center justify-between">
             <View className="flex-row items-center">
               <Ionicons name="help-circle-outline" size={20} color="#6b7280" />
-              <Text className="text-gray-800 font-medium ml-3">
-                Help & Support
-              </Text>
+              <Text className="text-gray-800 font-medium ml-3">Help & Support</Text>
             </View>
             <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
           </TouchableOpacity>
-
-          <TouchableOpacity
-            className="bg-red-50 rounded-2xl p-4 border border-red-200 flex-row items-center justify-between"
-            onPress={() => router.push("/login")}
-          >
+          
+          <TouchableOpacity className="bg-red-50 rounded-2xl p-4 border border-red-200 flex-row items-center justify-between">
             <View className="flex-row items-center">
               <Ionicons name="log-out-outline" size={20} color="#ef4444" />
               <Text className="text-red-600 font-medium ml-3">Sign Out</Text>
@@ -454,10 +419,8 @@ export default function ProfilePage() {
           <View className="bg-white rounded-t-3xl max-h-5/6">
             <View className="p-6 border-b border-gray-100">
               <View className="flex-row justify-between items-center">
-                <Text className="text-xl font-bold text-gray-800">
-                  Edit Profile
-                </Text>
-                <TouchableOpacity
+                <Text className="text-xl font-bold text-gray-800">Edit Profile</Text>
+                <TouchableOpacity 
                   onPress={() => setShowEditModal(false)}
                   className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
                 >
@@ -465,102 +428,78 @@ export default function ProfilePage() {
                 </TouchableOpacity>
               </View>
             </View>
-
+            
             <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
               <View className="space-y-4">
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    First Name *
-                  </Text>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">First Name *</Text>
                   <TextInput
                     className="bg-gray-50 rounded-lg p-3 text-gray-800"
                     placeholder="Enter first name"
                     value={editForm.firstName}
-                    onChangeText={(text) =>
-                      setEditForm({ ...editForm, firstName: text })
-                    }
+                    onChangeText={(text) => setEditForm({...editForm, firstName: text})}
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
-
+                
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Last Name *
-                  </Text>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">Last Name *</Text>
                   <TextInput
                     className="bg-gray-50 rounded-lg p-3 text-gray-800"
                     placeholder="Enter last name"
                     value={editForm.lastName}
-                    onChangeText={(text) =>
-                      setEditForm({ ...editForm, lastName: text })
-                    }
+                    onChangeText={(text) => setEditForm({...editForm, lastName: text})}
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
-
+                
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Email *
-                  </Text>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">Email *</Text>
                   <TextInput
                     className="bg-gray-50 rounded-lg p-3 text-gray-800"
                     placeholder="Enter email"
                     value={editForm.email}
-                    onChangeText={(text) =>
-                      setEditForm({ ...editForm, email: text })
-                    }
+                    onChangeText={(text) => setEditForm({...editForm, email: text})}
                     keyboardType="email-address"
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
-
+                
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Phone *
-                  </Text>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">Phone *</Text>
                   <TextInput
                     className="bg-gray-50 rounded-lg p-3 text-gray-800"
                     placeholder="Enter phone number"
                     value={editForm.phone}
-                    onChangeText={(text) =>
-                      setEditForm({ ...editForm, phone: text })
-                    }
+                    onChangeText={(text) => setEditForm({...editForm, phone: text})}
                     keyboardType="phone-pad"
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
-
+                
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Date of Birth *
-                  </Text>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">Date of Birth *</Text>
                   <TextInput
                     className="bg-gray-50 rounded-lg p-3 text-gray-800"
                     placeholder="YYYY-MM-DD"
                     value={editForm.dateOfBirth}
-                    onChangeText={(text) =>
-                      setEditForm({ ...editForm, dateOfBirth: text })
-                    }
+                    onChangeText={(text) => setEditForm({...editForm, dateOfBirth: text})}
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
-
+                
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Gender *
-                  </Text>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">Gender *</Text>
                   <TextInput
                     className="bg-gray-50 rounded-lg p-3 text-gray-800"
                     placeholder="Enter gender"
                     value={editForm.gender}
-                    onChangeText={(text) =>
-                      setEditForm({ ...editForm, gender: text })
-                    }
+                    onChangeText={(text) => setEditForm({...editForm, gender: text})}
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
               </View>
-
+              
               <View className="flex-row space-x-3 mt-6">
                 <TouchableOpacity
                   onPress={() => setShowEditModal(false)}
@@ -570,19 +509,9 @@ export default function ProfilePage() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleEditSubmit}
-                  disabled={
-                    loading ||
-                    !editForm.firstName.trim() ||
-                    !editForm.lastName.trim() ||
-                    !editForm.email.trim()
-                  }
+                  disabled={loading || !editForm.firstName.trim() || !editForm.lastName.trim() || !editForm.email.trim()}
                   className={`flex-1 rounded-lg py-3 items-center ${
-                    loading ||
-                    !editForm.firstName.trim() ||
-                    !editForm.lastName.trim() ||
-                    !editForm.email.trim()
-                      ? "bg-gray-400"
-                      : "bg-blue-500"
+                    loading || !editForm.firstName.trim() || !editForm.lastName.trim() || !editForm.email.trim() ? 'bg-gray-400' : 'bg-blue-500'
                   }`}
                 >
                   {loading ? (
@@ -608,10 +537,8 @@ export default function ProfilePage() {
           <View className="bg-white rounded-t-3xl max-h-5/6">
             <View className="p-6 border-b border-gray-100">
               <View className="flex-row justify-between items-center">
-                <Text className="text-xl font-bold text-gray-800">
-                  Add Dependent
-                </Text>
-                <TouchableOpacity
+                <Text className="text-xl font-bold text-gray-800">Add Dependent</Text>
+                <TouchableOpacity 
                   onPress={() => setShowAddDependentModal(false)}
                   className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
                 >
@@ -619,88 +546,65 @@ export default function ProfilePage() {
                 </TouchableOpacity>
               </View>
             </View>
-
+            
             <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
               <View className="space-y-4">
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    First Name *
-                  </Text>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">First Name *</Text>
                   <TextInput
                     className="bg-gray-50 rounded-lg p-3 text-gray-800"
                     placeholder="Enter first name"
                     value={dependentForm.firstName}
-                    onChangeText={(text) =>
-                      setDependentForm({ ...dependentForm, firstName: text })
-                    }
+                    onChangeText={(text) => setDependentForm({...dependentForm, firstName: text})}
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
-
+                
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Last Name *
-                  </Text>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">Last Name *</Text>
                   <TextInput
                     className="bg-gray-50 rounded-lg p-3 text-gray-800"
                     placeholder="Enter last name"
                     value={dependentForm.lastName}
-                    onChangeText={(text) =>
-                      setDependentForm({ ...dependentForm, lastName: text })
-                    }
+                    onChangeText={(text) => setDependentForm({...dependentForm, lastName: text})}
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
-
+                
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Date of Birth *
-                  </Text>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">Date of Birth *</Text>
                   <TextInput
                     className="bg-gray-50 rounded-lg p-3 text-gray-800"
                     placeholder="YYYY-MM-DD"
                     value={dependentForm.dateOfBirth}
-                    onChangeText={(text) =>
-                      setDependentForm({ ...dependentForm, dateOfBirth: text })
-                    }
+                    onChangeText={(text) => setDependentForm({...dependentForm, dateOfBirth: text})}
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
-
+                
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Gender *
-                  </Text>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">Gender *</Text>
                   <TextInput
                     className="bg-gray-50 rounded-lg p-3 text-gray-800"
                     placeholder="Enter gender"
                     value={dependentForm.gender}
-                    onChangeText={(text) =>
-                      setDependentForm({ ...dependentForm, gender: text })
-                    }
+                    onChangeText={(text) => setDependentForm({...dependentForm, gender: text})}
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
-
+                
                 <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Relationship *
-                  </Text>
+                  <Text className="text-sm font-medium text-gray-700 mb-2">Relationship *</Text>
                   <TextInput
                     className="bg-gray-50 rounded-lg p-3 text-gray-800"
                     placeholder="e.g., Child, Spouse, Parent"
                     value={dependentForm.dependentType}
-                    onChangeText={(text) =>
-                      setDependentForm({
-                        ...dependentForm,
-                        dependentType: text,
-                      })
-                    }
+                    onChangeText={(text) => setDependentForm({...dependentForm, dependentType: text})}
                     placeholderTextColor="#9ca3af"
                   />
                 </View>
               </View>
-
+              
               <View className="flex-row space-x-3 mt-6">
                 <TouchableOpacity
                   onPress={() => setShowAddDependentModal(false)}
@@ -710,34 +614,24 @@ export default function ProfilePage() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleAddDependent}
-                  disabled={
-                    loading ||
-                    !dependentForm.firstName.trim() ||
-                    !dependentForm.lastName.trim() ||
-                    !dependentForm.dateOfBirth.trim()
-                  }
+                  disabled={loading || !dependentForm.firstName.trim() || !dependentForm.lastName.trim() || !dependentForm.dateOfBirth.trim()}
                   className={`flex-1 rounded-lg py-3 items-center ${
-                    loading ||
-                    !dependentForm.firstName.trim() ||
-                    !dependentForm.lastName.trim() ||
-                    !dependentForm.dateOfBirth.trim()
-                      ? "bg-gray-400"
-                      : "bg-blue-500"
+                    loading || !dependentForm.firstName.trim() || !dependentForm.lastName.trim() || !dependentForm.dateOfBirth.trim() ? 'bg-gray-400' : 'bg-blue-500'
                   }`}
                 >
                   {loading ? (
                     <ActivityIndicator size="small" color="white" />
                   ) : (
-                    <Text className="text-white font-medium">
-                      Add Dependent
-                    </Text>
+                    <Text className="text-white font-medium">Add Dependent</Text>
                   )}
                 </TouchableOpacity>
               </View>
             </ScrollView>
           </View>
-        </View>
+    </View>
+
       </Modal>
     </SafeAreaView>
   );
 }
+
