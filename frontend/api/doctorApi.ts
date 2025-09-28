@@ -1,19 +1,19 @@
-// const BASE_URL = 'http://192.168.1.32:5000/api/doctors'; 
-const BASE_URL = 'http://192.168.1.6:5000/api/users'; // Mishen URL
 
 // Types
 export interface Doctor {
   _id: string;
   name: string;
   specialty: string;
-  location: string;
-  distance?: string;
+  hospitals: string[]; 
   rating: number;
   availability: string;
-  imageUrl: string;
+  imageUrls: string[]; 
+  doc990Id: string;    
+  doc990Link: string;
+  phoneNumber: string;
   createdAt: string;
   updatedAt: string;
-  __v?: number; // MongoDB version field
+  __v?: number; 
 }
 
 export interface ApiResponse<T = any> {
@@ -67,7 +67,7 @@ const apiRequest = async <T>(endpoint = '', options: RequestInit = {}): Promise<
       timeoutPromise(TIMEOUT_DURATION)
     ]) as Response;
 
-    console.log(`Response status: ${response.status}`);
+    
     
     // Check if response is ok
     if (!response.ok) {
@@ -92,7 +92,7 @@ const apiRequest = async <T>(endpoint = '', options: RequestInit = {}): Promise<
     }
 
     const data: ApiResponse<T> = await response.json();
-    console.log(`API Response:`, data);
+   
 
     // Check API-level success
     if (!data.success) {
@@ -164,7 +164,7 @@ export const doctorApi = {
         return [];
       }
       
-      console.log(`Successfully fetched ${response.data.length} doctors`);
+     
       return response.data;
       
     } catch (error) {

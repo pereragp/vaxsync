@@ -14,6 +14,7 @@ export interface HealthCardVaccination {
   facility?: string;
   certificateNumber?: string;
   notes?: string;
+  vaccinationType?: 'routine' | 'travel' | 'occupational' | 'emergency';
 }
 
 export interface HealthCard {
@@ -150,7 +151,7 @@ const healthCardAPI = {
           name: vaccination.vaccineName,
           doses: [],
           totalDoses: vaccination.totalDoses,
-          type: this.getVaccineType(vaccination.vaccineName),
+          type: vaccination.vaccinationType || this.getVaccineType(vaccination.vaccineName),
           icon: this.getVaccineIcon(vaccination.vaccineName),
           manufacturer: vaccination.manufacturer
         };

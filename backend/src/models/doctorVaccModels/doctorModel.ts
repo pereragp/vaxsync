@@ -16,16 +16,22 @@ const doctorSchema = new Schema<IDoctor>(
       trim: true,
       maxlength: [100, "Specialty cannot exceed 100 characters"],
     },
-    location: {
-      type: String,
-      required: [true, "Location is required"],
-      trim: true,
-      maxlength: [200, "Location cannot exceed 200 characters"],
+    hospitals: {
+      type: [String],
+      required: [true, "At least one hospital is required"],
     },
-    distance: {
+    phoneNumber: {
       type: String,
-      default: "",
+      required: [true, "Phone number is required"],
       trim: true,
+      validate: {
+        validator: (v: string) => {
+          // Sri Lankan phone number format validation
+          // e.g., 0712345678 or +94712345678
+          return /^(\+94|0)?[0-9]{9}$/.test(v);
+        },
+        message: (props: any) => `${props.value} is not a valid Sri Lankan phone number!`,
+      },
     },
     rating: {
       type: Number,
@@ -38,16 +44,24 @@ const doctorSchema = new Schema<IDoctor>(
       required: [true, "Availability is required"],
       trim: true,
     },
-    imageUrl: {
+    imageUrls: {
+      type: [String],
+      required: [true, "Image URL(s) are required"],
+    },
+    doc990Id: {
       type: String,
-      required: [true, "Image URL is required"],
+      required: [true, "Doc990 ID is required"],
+      trim: true,
+    },
+    doc990Link: {
+      type: String,
+      required: [true, "Doc990 link is required"],
       trim: true,
     },
   },
   { timestamps: true }
 );
 
-// Index for faster search
-doctorSchema.index({ specialty: 1, location: 1 });
+doctorSchema.index({ specialty: 1, "hospitals": 1 });
 
 export default mongoose.model<IDoctor>("Doctor", doctorSchema);
