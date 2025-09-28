@@ -3,10 +3,72 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllHealthCardsByUserId = exports.getHealthCardByDependentId = exports.getHealthCardByUserId = exports.createHealthCardsForUserAndDependents = exports.createDependentHealthCard = exports.createUserHealthCard = void 0;
+exports.getHealthCardWithVaccinations = exports.syncCompletedVaccinesToHealthCard = exports.getAllHealthCardsByUserId = exports.getHealthCardByDependentId = exports.getHealthCardByUserId = exports.createHealthCardsForUserAndDependents = exports.createDependentHealthCard = exports.createUserHealthCard = exports.syncVaccinesToHealthCard = void 0;
 const healthcardModel_1 = __importDefault(require("../../models/healthCard/healthcardModel"));
 const user_1 = __importDefault(require("../../models/userModels/user"));
 const dependent_1 = __importDefault(require("../../models/userModels/dependent"));
+const vaccineScheduleModel_1 = __importDefault(require("../../models/scheduleModels/vaccineScheduleModel"));
+const mongoose_1 = require("mongoose");
+const syncVaccinesToHealthCard = async (scheduleId) => {
+    try {
+        const schedule = await vaccineScheduleModel_1.default.findById(scheduleId).populate('vaccineId', 'name manufacturer');
+        if (!schedule) {
+            console.log(`Schedule ${scheduleId} not found for sync`);
+            return;
+        }
+        const completedDoses = schedule.doses.filter(dose => dose.status === 'completed');
+        if (completedDoses.length === 0) {
+            console.log(`No completed doses found in schedule ${scheduleId}`);
+            return;
+        }
+        const vaccinationData = completedDoses.map(dose => ({
+            vaccineName: schedule.vaccineName,
+            manufacturer: schedule.vaccineId?.manufacturer || 'Unknown',
+            doseNumber: dose.doseNumber,
+            totalDoses: schedule.totalDoses,
+            dateCompleted: dose.dateCompleted || new Date(),
+            administeredBy: schedule.healthcareProvider?.name || 'Unknown',
+            facility: 'Health Center',
+            certificateNumber: `CERT-${Date.now()}-${dose.doseNumber}`,
+            notes: dose.notes || ''
+        }));
+        const isUserSchedule = !schedule.dependentIds || schedule.dependentIds.length === 0;
+        if (isUserSchedule) {
+            const userHealthCard = await healthcardModel_1.default.findOne({
+                userId: schedule.userId,
+                cardType: "user"
+            });
+            if (userHealthCard) {
+                const existingVaccinations = userHealthCard.completedVaccinations || [];
+                const newVaccinations = vaccinationData.filter(newVaccine => !existingVaccinations.some(existing => existing.vaccineName === newVaccine.vaccineName &&
+                    existing.doseNumber === newVaccine.doseNumber));
+                userHealthCard.completedVaccinations = [...existingVaccinations, ...newVaccinations];
+                await userHealthCard.save();
+                console.log(`Synced ${newVaccinations.length} vaccines to user health card ${userHealthCard._id}`);
+            }
+        }
+        else {
+            for (const dependentId of schedule.dependentIds || []) {
+                const dependentHealthCard = await healthcardModel_1.default.findOne({
+                    dependentId: dependentId,
+                    cardType: "dependent"
+                });
+                if (dependentHealthCard) {
+                    const existingVaccinations = dependentHealthCard.completedVaccinations || [];
+                    const newVaccinations = vaccinationData.filter(newVaccine => !existingVaccinations.some(existing => existing.vaccineName === newVaccine.vaccineName &&
+                        existing.doseNumber === newVaccine.doseNumber));
+                    dependentHealthCard.completedVaccinations = [...existingVaccinations, ...newVaccinations];
+                    await dependentHealthCard.save();
+                    console.log(`Synced ${newVaccinations.length} vaccines to dependent health card ${dependentHealthCard._id}`);
+                }
+            }
+        }
+    }
+    catch (error) {
+        console.error(`Error syncing vaccines to health card for schedule ${scheduleId}:`, error);
+    }
+};
+exports.syncVaccinesToHealthCard = syncVaccinesToHealthCard;
 const createUserHealthCard = async (req, res) => {
     try {
         const { userId } = req.params;
@@ -21,21 +83,19 @@ const createUserHealthCard = async (req, res) => {
                 healthCard: existingCard
             });
         }
+        const dependents = await dependent_1.default.find({ guardianId: userId });
         const dependentsData = [];
-        if (user.dependents && user.dependents.length > 0) {
-            for (const dependentId of user.dependents) {
-                const dependent = await dependent_1.default.findById(dependentId);
-                if (dependent) {
-                    const dependentData = {
-                        _id: dependent._id,
-                        dependentId: dependent._id,
-                        fullName: `${dependent.firstName} ${dependent.lastName}`,
-                        dateOfBirth: dependent.dateOfBirth,
-                        gender: dependent.gender,
-                        dependentType: dependent.dependentType
-                    };
-                    dependentsData.push(dependentData);
-                }
+        if (dependents && dependents.length > 0) {
+            for (const dependent of dependents) {
+                const dependentData = {
+                    _id: dependent._id,
+                    dependentId: dependent._id,
+                    fullName: `${dependent.firstName} ${dependent.lastName}`,
+                    dateOfBirth: dependent.dateOfBirth,
+                    gender: dependent.gender,
+                    dependentType: dependent.dependentType
+                };
+                dependentsData.push(dependentData);
             }
         }
         const healthCard = new healthcardModel_1.default({
@@ -94,27 +154,25 @@ exports.createDependentHealthCard = createDependentHealthCard;
 const createHealthCardsForUserAndDependents = async (req, res) => {
     try {
         const { userId } = req.params;
-        const user = await user_1.default.findById(userId).populate('dependents');
+        const user = await user_1.default.findById(userId);
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
         const createdCards = [];
         const existingCards = [];
+        const dependents = await dependent_1.default.find({ guardianId: userId });
         const dependentsData = [];
-        if (user.dependents && user.dependents.length > 0) {
-            for (const dependentId of user.dependents) {
-                const dependent = await dependent_1.default.findById(dependentId);
-                if (dependent) {
-                    const dependentData = {
-                        _id: dependent._id,
-                        dependentId: dependent._id,
-                        fullName: `${dependent.firstName} ${dependent.lastName}`,
-                        dateOfBirth: dependent.dateOfBirth,
-                        gender: dependent.gender,
-                        dependentType: dependent.dependentType
-                    };
-                    dependentsData.push(dependentData);
-                }
+        if (dependents && dependents.length > 0) {
+            for (const dependent of dependents) {
+                const dependentData = {
+                    _id: dependent._id,
+                    dependentId: dependent._id,
+                    fullName: `${dependent.firstName} ${dependent.lastName}`,
+                    dateOfBirth: dependent.dateOfBirth,
+                    gender: dependent.gender,
+                    dependentType: dependent.dependentType
+                };
+                dependentsData.push(dependentData);
             }
         }
         const existingUserCard = await healthcardModel_1.default.findOne({ userId, cardType: "user" });
@@ -133,28 +191,25 @@ const createHealthCardsForUserAndDependents = async (req, res) => {
         else {
             existingCards.push(existingUserCard);
         }
-        if (user.dependents && user.dependents.length > 0) {
-            for (const dependentId of user.dependents) {
-                const dependent = await dependent_1.default.findById(dependentId);
-                if (dependent) {
-                    const existingDependentCard = await healthcardModel_1.default.findOne({
+        if (dependents && dependents.length > 0) {
+            for (const dependent of dependents) {
+                const existingDependentCard = await healthcardModel_1.default.findOne({
+                    dependentId: dependent._id,
+                    cardType: "dependent"
+                });
+                if (!existingDependentCard) {
+                    const dependentHealthCard = new healthcardModel_1.default({
+                        fullName: `${dependent.firstName} ${dependent.lastName}`,
+                        gender: dependent.gender,
+                        dateOfBirth: dependent.dateOfBirth,
                         dependentId: dependent._id,
                         cardType: "dependent"
                     });
-                    if (!existingDependentCard) {
-                        const dependentHealthCard = new healthcardModel_1.default({
-                            fullName: `${dependent.firstName} ${dependent.lastName}`,
-                            gender: dependent.gender,
-                            dateOfBirth: dependent.dateOfBirth,
-                            dependentId: dependent._id,
-                            cardType: "dependent"
-                        });
-                        const savedDependentCard = await dependentHealthCard.save();
-                        createdCards.push(savedDependentCard);
-                    }
-                    else {
-                        existingCards.push(existingDependentCard);
-                    }
+                    const savedDependentCard = await dependentHealthCard.save();
+                    createdCards.push(savedDependentCard);
+                }
+                else {
+                    existingCards.push(existingDependentCard);
                 }
             }
         }
@@ -213,7 +268,7 @@ exports.getHealthCardByDependentId = getHealthCardByDependentId;
 const getAllHealthCardsByUserId = async (req, res) => {
     try {
         const { userId } = req.params;
-        const user = await user_1.default.findById(userId).populate('dependents');
+        const user = await user_1.default.findById(userId);
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
@@ -222,10 +277,11 @@ const getAllHealthCardsByUserId = async (req, res) => {
         if (userHealthCard) {
             healthCards.push(userHealthCard);
         }
-        if (user.dependents && user.dependents.length > 0) {
-            for (const dependentId of user.dependents) {
+        const dependents = await dependent_1.default.find({ guardianId: userId });
+        if (dependents && dependents.length > 0) {
+            for (const dependent of dependents) {
                 const dependentHealthCard = await healthcardModel_1.default.findOne({
-                    dependentId,
+                    dependentId: dependent._id,
                     cardType: "dependent"
                 });
                 if (dependentHealthCard) {
@@ -245,4 +301,128 @@ const getAllHealthCardsByUserId = async (req, res) => {
     }
 };
 exports.getAllHealthCardsByUserId = getAllHealthCardsByUserId;
+const syncCompletedVaccinesToHealthCard = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const user = await user_1.default.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        const completedSchedules = await vaccineScheduleModel_1.default.find({
+            userId: new mongoose_1.Types.ObjectId(userId),
+            overallStatus: "completed"
+        }).populate('vaccineId', 'name manufacturer');
+        const syncResults = [];
+        const userSchedules = completedSchedules.filter(schedule => !schedule.dependentIds || schedule.dependentIds.length === 0);
+        if (userSchedules.length > 0) {
+            const userHealthCard = await healthcardModel_1.default.findOne({
+                userId: new mongoose_1.Types.ObjectId(userId),
+                cardType: "user"
+            });
+            if (userHealthCard) {
+                const completedVaccines = [];
+                for (const schedule of userSchedules) {
+                    const completedDoses = schedule.doses.filter(dose => dose.status === 'completed');
+                    for (const dose of completedDoses) {
+                        completedVaccines.push({
+                            vaccineName: schedule.vaccineName,
+                            manufacturer: schedule.vaccineId?.manufacturer || 'Unknown',
+                            doseNumber: dose.doseNumber,
+                            totalDoses: schedule.totalDoses,
+                            dateCompleted: dose.dateCompleted || new Date(),
+                            administeredBy: schedule.healthcareProvider?.name || 'Unknown',
+                            facility: 'Health Center',
+                            certificateNumber: `CERT-${Date.now()}-${dose.doseNumber}`,
+                            notes: dose.notes || ''
+                        });
+                    }
+                }
+                userHealthCard.completedVaccinations = completedVaccines;
+                await userHealthCard.save();
+                syncResults.push({
+                    cardType: 'user',
+                    cardId: userHealthCard._id,
+                    vaccinesAdded: completedVaccines.length
+                });
+            }
+        }
+        const dependentSchedules = completedSchedules.filter(schedule => schedule.dependentIds && schedule.dependentIds.length > 0);
+        for (const schedule of dependentSchedules) {
+            for (const dependentId of schedule.dependentIds || []) {
+                const dependentHealthCard = await healthcardModel_1.default.findOne({
+                    dependentId: dependentId,
+                    cardType: "dependent"
+                });
+                if (dependentHealthCard) {
+                    const completedDoses = schedule.doses.filter(dose => dose.status === 'completed');
+                    const completedVaccines = [];
+                    for (const dose of completedDoses) {
+                        completedVaccines.push({
+                            vaccineName: schedule.vaccineName,
+                            manufacturer: schedule.vaccineId?.manufacturer || 'Unknown',
+                            doseNumber: dose.doseNumber,
+                            totalDoses: schedule.totalDoses,
+                            dateCompleted: dose.dateCompleted || new Date(),
+                            administeredBy: schedule.healthcareProvider?.name || 'Unknown',
+                            facility: 'Health Center',
+                            certificateNumber: `CERT-${Date.now()}-${dose.doseNumber}`,
+                            notes: dose.notes || ''
+                        });
+                    }
+                    dependentHealthCard.completedVaccinations = completedVaccines;
+                    await dependentHealthCard.save();
+                    syncResults.push({
+                        cardType: 'dependent',
+                        cardId: dependentHealthCard._id,
+                        dependentId: dependentId,
+                        vaccinesAdded: completedVaccines.length
+                    });
+                }
+            }
+        }
+        return res.status(200).json({
+            message: "Vaccination sync completed successfully",
+            syncResults,
+            summary: {
+                totalCardsUpdated: syncResults.length,
+                totalVaccinesSynced: syncResults.reduce((sum, result) => sum + result.vaccinesAdded, 0)
+            }
+        });
+    }
+    catch (error) {
+        console.error("Error syncing vaccines to health card:", error);
+        return res.status(500).json({ message: "Server error", error });
+    }
+};
+exports.syncCompletedVaccinesToHealthCard = syncCompletedVaccinesToHealthCard;
+const getHealthCardWithVaccinations = async (req, res) => {
+    try {
+        const { cardId } = req.params;
+        const healthCard = await healthcardModel_1.default.findById(cardId);
+        if (!healthCard) {
+            return res.status(404).json({ message: "Health card not found" });
+        }
+        const completedVaccinations = healthCard.completedVaccinations || [];
+        const vaccinationStats = {
+            totalVaccinations: completedVaccinations.length,
+            lastVaccinationDate: completedVaccinations.length > 0
+                ? completedVaccinations.reduce((latest, vaccine) => new Date(vaccine.dateCompleted) > new Date(latest.dateCompleted) ? vaccine : latest).dateCompleted
+                : null,
+            vaccinesByType: completedVaccinations.reduce((acc, vaccine) => {
+                acc[vaccine.vaccineName] = (acc[vaccine.vaccineName] || 0) + 1;
+                return acc;
+            }, {})
+        };
+        return res.status(200).json({
+            message: "Health card with vaccinations retrieved successfully",
+            healthCard,
+            vaccinationStats
+        });
+    }
+    catch (error) {
+        console.error("Error retrieving health card with vaccinations:", error);
+        return res.status(500).json({ message: "Server error", error });
+    }
+};
+exports.getHealthCardWithVaccinations = getHealthCardWithVaccinations;
 //# sourceMappingURL=healthCardController.js.map

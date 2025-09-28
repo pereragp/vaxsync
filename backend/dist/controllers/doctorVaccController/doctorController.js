@@ -7,19 +7,20 @@ exports.getDoctorById = exports.getDoctors = exports.createDoctor = void 0;
 const doctorModel_1 = __importDefault(require("../../models/doctorVaccModels/doctorModel"));
 const createDoctor = async (req, res) => {
     try {
-        const { name, specialty, location, distance, rating, availability, imageUrl } = req.body;
-        if (!name || !specialty || !location || !availability || !imageUrl) {
+        const { name, specialty, hospitals, rating, availability, imageUrls, doc990Id, doc990Link } = req.body;
+        if (!name || !specialty || !hospitals || !availability || !imageUrls || !doc990Id || !doc990Link) {
             res.status(400).json({ success: false, message: "Missing required fields" });
             return;
         }
         const doctor = await doctorModel_1.default.create({
             name,
             specialty,
-            location,
-            distance: distance || "",
+            hospitals,
             rating: rating || 0,
             availability,
-            imageUrl,
+            imageUrls,
+            doc990Id,
+            doc990Link,
         });
         res.status(201).json({ success: true, message: "Doctor created successfully", data: doctor });
     }

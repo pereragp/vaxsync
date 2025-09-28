@@ -24,6 +24,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const healthCardController_1 = require("../../controllers/healthCard/healthCardController");
 const vaccinationRecordSchema = new mongoose_1.Schema({
     recordId: {
         type: String,
@@ -40,9 +41,15 @@ const vaccinationRecordSchema = new mongoose_1.Schema({
         ref: "User",
         required: [true, "User ID is required"],
     },
+    dependentIds: {
+        type: [mongoose_1.Schema.Types.ObjectId],
+        ref: "Dependent",
+        required: false,
+        default: [],
+    },
     vaccineId: {
         type: mongoose_1.Schema.Types.ObjectId,
-        ref: "Vaccine",
+        ref: "Vaccines",
         required: false,
     },
     vaccineName: {
@@ -101,18 +108,8 @@ const vaccinationRecordSchema = new mongoose_1.Schema({
     healthcareProvider: {
         name: {
             type: String,
-            required: false,
             trim: true,
-        },
-        facility: {
-            type: String,
-            required: false,
-            trim: true,
-        },
-        contact: {
-            type: String,
-            required: false,
-            trim: true,
+            maxlength: [100, "Provider name cannot exceed 100 characters"],
         },
     },
     notes: {
@@ -124,7 +121,29 @@ const vaccinationRecordSchema = new mongoose_1.Schema({
     timestamps: true,
 });
 vaccinationRecordSchema.index({ userId: 1, dateScheduled: -1 });
-vaccinationRecordSchema.index({ status: 1 });
+vaccinationRecordSchema.index({ dependentIds: 1 });
+vaccinationRecordSchema.index({ vaccineId: 1 });
+vaccinationRecordSchema.index({ recordId: 1 });
+vaccinationRecordSchema.index({ overallStatus: 1 });
 vaccinationRecordSchema.index({ vaccineName: 1 });
+vaccinationRecordSchema.index({ "doses.status": 1 });
+vaccinationRecordSchema.post('findOneAndUpdate', async function (doc) {
+    if (doc) {
+        const hasCompletedDoses = doc.doses.some((dose) => dose.status === 'completed');
+        if (hasCompletedDoses) {
+            console.log(`Auto-syncing completed vaccines for schedule ${doc._id}`);
+            await (0, healthCardController_1.syncVaccinesToHealthCard)(doc._id.toString());
+        }
+    }
+});
+vaccinationRecordSchema.post('save', async function (doc) {
+    if (doc) {
+        const hasCompletedDoses = doc.doses.some((dose) => dose.status === 'completed');
+        if (hasCompletedDoses) {
+            console.log(`Auto-syncing completed vaccines for schedule ${doc._id}`);
+            await (0, healthCardController_1.syncVaccinesToHealthCard)(doc._id.toString());
+        }
+    }
+});
 exports.default = mongoose_1.default.model("VaccineSchedule", vaccinationRecordSchema);
 //# sourceMappingURL=vaccineScheduleModel.js.map

@@ -105,6 +105,7 @@ export default function SchedulePage() {
   const [scheduleDate, setScheduleDate] = useState("");
   const [healthcareProvider, setHealthcareProvider] = useState("");
   const [notes, setNotes] = useState("");
+  const [vaccinationType, setVaccinationType] = useState<'routine' | 'travel' | 'occupational' | 'emergency'>('routine');
 
   // Update schedule form state
   const [updateVaccineName, setUpdateVaccineName] = useState("");
@@ -391,6 +392,7 @@ export default function SchedulePage() {
         healthcareProvider: healthcareProvider.trim() || undefined,
         notes: notes.trim() || undefined,
         scheduleDate: scheduleDate,
+        vaccinationType: vaccinationType,
       };
 
       // Create schedule
@@ -423,6 +425,7 @@ export default function SchedulePage() {
     setScheduleDate("");
     setHealthcareProvider("");
     setNotes("");
+    setVaccinationType('routine');
   };
 
   const handleDosePress = (schedule: VaccineSchedule, doseNumber: number) => {
@@ -561,22 +564,29 @@ export default function SchedulePage() {
     );
   };
 
-  // Calculate stats for progress display
+  // Calculate stats for progress display based on dose status
   const scheduleStats = {
     total: schedules.length,
-    completed: schedules.filter(s => s.overallStatus === 'completed').length,
-    inProgress: schedules.filter(s => s.overallStatus === 'in_progress').length,
-    cancelled: schedules.filter(s => s.overallStatus === 'cancelled').length,
+    scheduled: schedules.filter(s => s.doses.some(d => d.status === 'scheduled')).length,
+    completed: schedules.filter(s => s.doses.some(d => d.status === 'completed')).length,
+    missed: schedules.filter(s => s.doses.some(d => d.status === 'missed')).length,
+    cancelled: schedules.filter(s => s.doses.some(d => d.status === 'cancelled')).length,
   };
 
-  // Filter schedules
+  // Filter schedules based on dose status
   const filteredSchedules = schedules.filter(schedule => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = schedule.vaccineName.toLowerCase().includes(searchLower) ||
       schedule.healthcareProvider?.name?.toLowerCase().includes(searchLower) ||
       schedule.notes?.toLowerCase().includes(searchLower);
     
-    const matchesFilter = filterStatus === 'all' || schedule.overallStatus === filterStatus;
+    let matchesFilter = true;
+    
+    if (filterStatus !== 'all') {
+      // Check if any dose in the schedule matches the filter status
+      const hasMatchingDose = schedule.doses.some(dose => dose.status === filterStatus);
+      matchesFilter = hasMatchingDose;
+    }
     
     return matchesSearch && matchesFilter;
   });
@@ -671,18 +681,22 @@ export default function SchedulePage() {
         )}
 
         {/* Stats Cards */}
-        <View className="flex-row space-x-3 mb-4">
+        <View className="flex-row space-x-2 mb-4">
           <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
             <Text className="text-2xl font-bold text-blue-600">{scheduleStats.total}</Text>
             <Text className="text-sm text-gray-600">Total Schedules</Text>
+          </View>
+          <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
+            <Text className="text-2xl font-bold text-blue-500">{scheduleStats.scheduled}</Text>
+            <Text className="text-sm text-gray-600">Scheduled</Text>
           </View>
           <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
             <Text className="text-2xl font-bold text-green-600">{scheduleStats.completed}</Text>
             <Text className="text-sm text-gray-600">Completed</Text>
           </View>
           <View className="flex-1 bg-white rounded-xl p-3 shadow-sm">
-            <Text className="text-2xl font-bold text-yellow-600">{scheduleStats.inProgress}</Text>
-            <Text className="text-sm text-gray-600">In Progress</Text>
+            <Text className="text-2xl font-bold text-yellow-600">{scheduleStats.missed}</Text>
+            <Text className="text-sm text-gray-600">Missed</Text>
           </View>
         </View>
       </View>
@@ -698,7 +712,7 @@ export default function SchedulePage() {
           const profileSchedules = schedules.filter(s => 
             p.isDependent ? s.dependentIds?.includes(p.id) : !s.dependentIds?.length
           );
-          const completedCount = profileSchedules.filter(s => s.overallStatus === 'completed').length;
+          const completedCount = profileSchedules.filter(s => s.doses.some(d => d.status === 'completed')).length;
           
           return (
             <TouchableOpacity
@@ -767,7 +781,7 @@ export default function SchedulePage() {
           
           {/* Filter chips */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {['all', 'in_progress', 'completed', 'cancelled'].map(status => (
+            {['all', 'scheduled', 'completed', 'missed', 'cancelled'].map(status => (
               <TouchableOpacity
                 key={status}
                 onPress={() => setFilterStatus(status)}
@@ -1275,6 +1289,45 @@ export default function SchedulePage() {
                       </Text>
                     </View>
                   )}
+
+                  {/* Vaccination Type */}
+                  <View>
+                    <Text className="text-sm font-medium text-gray-700 mb-2">Vaccination Type *</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
+                      {[
+                        { value: 'routine', label: 'Routine', icon: 'shield-checkmark' },
+                        { value: 'travel', label: 'Travel', icon: 'airplane' },
+                        { value: 'occupational', label: 'Occupational', icon: 'briefcase' },
+                        { value: 'emergency', label: 'Emergency', icon: 'medical' }
+                      ].map((type) => (
+                        <TouchableOpacity
+                          key={type.value}
+                          onPress={() => setVaccinationType(type.value as any)}
+                          className={`mr-3 px-4 py-2 rounded-full border-2 ${
+                            vaccinationType === type.value
+                              ? 'border-blue-500 bg-blue-50'
+                              : 'border-gray-200 bg-white'
+                          }`}
+                        >
+                          <View className="flex-row items-center">
+                            <Ionicons 
+                              name={type.icon as any} 
+                              size={16} 
+                              color={vaccinationType === type.value ? '#3b82f6' : '#6b7280'} 
+                            />
+                            <Text className={`ml-2 text-sm font-medium ${
+                              vaccinationType === type.value ? 'text-blue-700' : 'text-gray-600'
+                            }`}>
+                              {type.label}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
+                    <Text className="text-xs text-gray-500">
+                      Select the type of vaccination (default: Routine)
+                    </Text>
+                  </View>
 
                   {/* Healthcare Provider */}
                   <View>

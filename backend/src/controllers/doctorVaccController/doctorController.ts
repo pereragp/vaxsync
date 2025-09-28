@@ -7,10 +7,10 @@ import { IDoctor } from "../../types";
 // @access Public (later: secure with auth)
 export const createDoctor = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, specialty, location, distance, rating, availability, imageUrl } = req.body;
+    const { name, specialty, hospitals, phoneNumber, rating, availability, imageUrls, doc990Id, doc990Link } = req.body;
 
-    // Manual validation (Mongoose also validates)
-    if (!name || !specialty || !location || !availability || !imageUrl) {
+    // Manual validation for required fields, now including phoneNumber
+    if (!name || !specialty || !hospitals || !phoneNumber || !availability || !imageUrls || !doc990Id || !doc990Link) {
       res.status(400).json({ success: false, message: "Missing required fields" });
       return;
     }
@@ -18,11 +18,13 @@ export const createDoctor = async (req: Request, res: Response): Promise<void> =
     const doctor: IDoctor = await Doctor.create({
       name,
       specialty,
-      location,
-      distance: distance || "",
+      hospitals,
+      phoneNumber,
       rating: rating || 0,
       availability,
-      imageUrl,
+      imageUrls,
+      doc990Id,
+      doc990Link,
     });
 
     res.status(201).json({ success: true, message: "Doctor created successfully", data: doctor });
