@@ -1,6 +1,6 @@
-//const BASE_URL = 'http://192.168.1.32:5000/api/doctors';
+const BASE_URL = 'http://172.20.10.2:5000/api/doctors';
 //const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.32:5000';
-const BASE_URL = "http://192.168.1.6:5000/api/users"; // Mishen URL
+//const BASE_URL = "http://172.20.10.2:5000/api/users"; // Mishen URL
 
 // Types
 export interface Doctor {
