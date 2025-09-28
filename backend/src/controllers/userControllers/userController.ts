@@ -43,7 +43,7 @@ const registerUser = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Create new user
-    const newUser = new User({
+    const newUser = new User({    
       username,
       firstName,
       lastName,
