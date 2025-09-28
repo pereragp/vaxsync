@@ -1,5 +1,5 @@
 // Schedule API service for connecting to backend
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.32:5000';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.20.10.2:5000';
 
 // Types for Schedule API
 export interface VaccineDose {
