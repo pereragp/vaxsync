@@ -1,6 +1,5 @@
 // Simple API service to fetch user data from backend for testing
-//const API_BASE_URL = 'http://192.168.1.32:5000/api/users'; // Using same URL as healthCardApi
-const API_BASE_URL = 'http://192.168.1.6:5000/api/users'; // Mishen URL
+const API_BASE_URL = 'http://192.168.1.32:5000/api/users'; // Using same URL as healthCardApi
 
 export interface User {
   _id: string;
