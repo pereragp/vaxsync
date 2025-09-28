@@ -5,6 +5,7 @@ import Dependent from "../../models/userModels/dependent";
 import VaccinationRecord from "../../models/scheduleModels/vaccineScheduleModel";
 import Vaccine from "../../models/scheduleModels/vaccinesModel";
 import { Types } from "mongoose";
+import { VaccinationCertificateService, VaccinationCertificateData } from "../../services/vaccinationCertificateService";
 
 // Helper function to sync completed vaccines to health card
 export const syncVaccinesToHealthCard = async (scheduleId: string) => {
@@ -524,6 +525,103 @@ const getHealthCardWithVaccinations = async (req: Request, res: Response) => {
   }
 };
 
+// Delete a specific vaccination from health card
+const deleteVaccinationFromHealthCard = async (req: Request, res: Response) => {
+  try {
+    const { cardId, vaccineName, doseNumber } = req.params;
+
+    // Find the health card
+    const healthCard = await HealthCard.findById(cardId);
+    if (!healthCard) {
+      return res.status(404).json({ message: "Health card not found" });
+    }
+
+    // Check if the health card has completed vaccinations
+    if (!healthCard.completedVaccinations || healthCard.completedVaccinations.length === 0) {
+      return res.status(404).json({ message: "No vaccinations found in this health card" });
+    }
+
+    // Decode the vaccine name to handle URL encoding
+    const decodedVaccineName = decodeURIComponent(vaccineName);
+
+    // Find the vaccination to delete
+    const vaccinationIndex = healthCard.completedVaccinations.findIndex(
+      vaccination => 
+        vaccination.vaccineName === decodedVaccineName && 
+        vaccination.doseNumber === parseInt(doseNumber)
+    );
+
+    if (vaccinationIndex === -1) {
+      return res.status(404).json({ 
+        message: `Vaccination not found: ${decodedVaccineName} dose ${doseNumber}` 
+      });
+    }
+
+    // Remove the vaccination from the array
+    const deletedVaccination = healthCard.completedVaccinations[vaccinationIndex];
+    healthCard.completedVaccinations.splice(vaccinationIndex, 1);
+
+    // Save the updated health card
+    await healthCard.save();
+
+    return res.status(200).json({
+      message: "Vaccination deleted successfully",
+      deletedVaccination: {
+        vaccineName: deletedVaccination.vaccineName,
+        doseNumber: deletedVaccination.doseNumber,
+        dateCompleted: deletedVaccination.dateCompleted
+      },
+      remainingVaccinations: healthCard.completedVaccinations.length
+    });
+  } catch (error: any) {
+    console.error("Error deleting vaccination from health card:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// Download vaccination certificate as PDF
+const downloadVaccinationCertificate = async (req: Request, res: Response) => {
+  try {
+    const { cardId } = req.params;
+
+    // Find the health card
+    const healthCard = await HealthCard.findById(cardId);
+    if (!healthCard) {
+      return res.status(404).json({ message: "Health card not found" });
+    }
+
+    // Check if the health card has completed vaccinations
+    if (!healthCard.completedVaccinations || healthCard.completedVaccinations.length === 0) {
+      return res.status(404).json({ message: "No vaccinations found to generate certificate" });
+    }
+
+    // Generate certificate data
+    const certificateData: VaccinationCertificateData = {
+      healthCard: healthCard,
+      generatedAt: new Date(),
+      certificateId: VaccinationCertificateService.generateCertificateId(healthCard._id.toString())
+    };
+
+    // Generate PDF certificate
+    const pdfBuffer = await VaccinationCertificateService.generateCertificate(certificateData);
+
+    // Set response headers for PDF download
+    const fileName = `vaccination-certificate-${healthCard.fullName.replace(/\s+/g, '-')}-${Date.now()}.pdf`;
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.setHeader('Cache-Control', 'no-cache');
+
+    // Send the PDF
+    return res.send(pdfBuffer);
+
+  } catch (error: any) {
+    console.error("Error generating vaccination certificate:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
 export {
   createUserHealthCard,
   createDependentHealthCard,
@@ -532,5 +630,7 @@ export {
   getHealthCardByDependentId,
   getAllHealthCardsByUserId,
   syncCompletedVaccinesToHealthCard,
-  getHealthCardWithVaccinations
+  getHealthCardWithVaccinations,
+  deleteVaccinationFromHealthCard,
+  downloadVaccinationCertificate
 };
