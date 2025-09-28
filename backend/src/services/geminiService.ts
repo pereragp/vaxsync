@@ -29,45 +29,29 @@ class GeminiService {
       // Calculate age from date of birth
       const age = Math.floor((Date.now() - new Date(userData.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
 
-      const prompt = `You are a medical AI assistant providing post-vaccination care instructions. 
+      const prompt = `You are a medical AI assistant providing concise, immediate post-vaccination care advice for a mobile push notification.
 
-Based on the following vaccination details, provide comprehensive but concise post-vaccination care instructions:
+Based on the following vaccination details, generate a very brief (max 150 characters total) but actionable message focused on immediate care and next steps.
 
-**Patient Information:**
-- Age: ${age} years old
-- Gender: ${userData.gender || 'Not specified'}
-
-**Vaccination Details:**
+**Input Variables:**
+- Age: ${age}
 - Vaccine: ${userData.vaccineName}
 - Completed Doses: ${userData.completedDoseNo} of ${userData.totalDoses}
-- Date: ${userData.vaccineDate.toLocaleDateString()}
+- Next Dose Required (Yes/No, inferred from completed doses and total doses)
 
-**Instructions:**
-Please provide post-vaccination care instructions including:
+**Instructions for Output:**
+1.  **Format:** Provide the output as a single, short string.
+2.  **Length:** Do not exceed **150 characters** total.
+3.  **Content:** The message must include:
+    * Acknowledge normal **side effects** (e.g., pain/fatigue).
+    * One **immediate care tip** (e.g., rest, cool compress).
+    * A call-to-action to check for **full instructions** or the **next dose**.
+4.  **Tone:** Clear, simple, and direct.
 
-1. **Immediate Care (First 24 hours):**
-   - What to expect (normal side effects)
-   - When to seek medical attention
-   - Activity restrictions
+**Example Target Output (Max 150 chars):**
+"Vaccine Complete! Mild soreness/fatigue is normal. Rest & use a cool compress. Tap to see your next dose date and full care guide."
 
-2. **Follow-up Care:**
-   - Timeline for next dose (if applicable)
-   - Monitoring requirements
-   - Lifestyle recommendations
-
-3. **Special Considerations:**
-   - Age-specific advice
-   - Any contraindications to watch for
-
-**Format Requirements:**
-- Use clear, simple language
-- Include bullet points for easy reading
-- Keep instructions practical and actionable
-- End with a clear medical disclaimer
-
-**Important:** Include a prominent disclaimer that this is general information only and the patient should consult their healthcare provider for personalized medical advice.
-
-Provide instructions in a structured, easy-to-read format suitable for a mobile app notification.`;
+**Final Output:** Generate only the short notification message.`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
