@@ -59,170 +59,351 @@ export default function RegisterPage() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>User Registration</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        value={username}
-        onChangeText={setUsername}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="First Name"
-        value={firstName}
-        onChangeText={setFirstname}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Last Name"
-        value={lastName}
-        onChangeText={setLastname}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Date of Birth (YYYY-MM-DD)"
-        value={dateOfBirth}
-        onChangeText={setDateOfBirth}
-      />
-      <Text style={styles.label}>Gender</Text>
-      <View style={styles.radioGroup}>
-        <TouchableOpacity
-          style={styles.radioButton}
-          onPress={() => setGender("Male")}
-        >
-          <View
-            style={[
-              styles.radioCircle,
-              gender === "Male" && styles.selectedRadio,
-            ]}
-          />
-          <Text style={styles.radioText}>Male</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.radioButton}
-          onPress={() => setGender("Female")}
-        >
-          <View
-            style={[
-              styles.radioCircle,
-              gender === "Female" && styles.selectedRadio,
-            ]}
-          />
-          <Text style={styles.radioText}>Female</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.radioButton}
-          onPress={() => setGender("Other")}
-        >
-          <View
-            style={[
-              styles.radioCircle,
-              gender === "Other" && styles.selectedRadio,
-            ]}
-          />
-          <Text style={styles.radioText}>Other</Text>
-        </TouchableOpacity>
-      </View>
-      <TextInput
-        style={styles.input}
-        placeholder="Phone"
-        value={phone}
-        onChangeText={setPhone}
-        keyboardType="phone-pad"
-      />
+  <View
+    style={{
+      flex: 1,
+      padding: 24,
+      backgroundColor: "#f8fafc",
+    }}
+  >
+    <Text
+      style={{
+        fontSize: 32,
+        fontWeight: "800",
+        marginBottom: 32,
+        color: "#175593",
+        textAlign: "center",
+        letterSpacing: -0.5,
+      }}
+    >
+      Create Account
+    </Text>
+    
+    <TextInput
+      style={{
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: "#e5e7eb",
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
+        backgroundColor: "#fff",
+        color: "#111827",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+      placeholder="Username"
+      value={username}
+      onChangeText={setUsername}
+    />
+    
+    <TextInput
+      style={{
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: "#e5e7eb",
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
+        backgroundColor: "#fff",
+        color: "#111827",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+      placeholder="First Name"
+      value={firstName}
+      onChangeText={setFirstname}
+    />
+    
+    <TextInput
+      style={{
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: "#e5e7eb",
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
+        backgroundColor: "#fff",
+        color: "#111827",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+      placeholder="Last Name"
+      value={lastName}
+      onChangeText={setLastname}
+    />
+    
+    <TextInput
+      style={{
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: "#e5e7eb",
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
+        backgroundColor: "#fff",
+        color: "#111827",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+      placeholder="Email"
+      value={email}
+      onChangeText={setEmail}
+      autoCapitalize="none"
+      keyboardType="email-address"
+    />
+    
+    <TextInput
+      style={{
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: "#e5e7eb",
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
+        backgroundColor: "#fff",
+        color: "#111827",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+      placeholder="Password"
+      value={password}
+      onChangeText={setPassword}
+      secureTextEntry
+    />
+    
+    <TextInput
+      style={{
+        marginBottom: 16,
+        borderWidth: 1,
+        borderColor: "#e5e7eb",
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
+        backgroundColor: "#fff",
+        color: "#111827",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+      placeholder="Date of Birth (YYYY-MM-DD)"
+      value={dateOfBirth}
+      onChangeText={setDateOfBirth}
+    />
+    
+    <Text
+      style={{
+        fontSize: 16,
+        fontWeight: "600",
+        color: "#374151",
+        marginBottom: 12,
+        marginLeft: 4,
+      }}
+    >
+      Gender
+    </Text>
+    
+    <View
+      style={{
+        flexDirection: "row",
+        justifyContent: "space-between",
+        marginBottom: 20,
+        backgroundColor: "#fff",
+        borderRadius: 12,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: "#e5e7eb",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+    >
       <TouchableOpacity
-        style={styles.button}
-        onPress={handleRegister}
-        disabled={loading}
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          flex: 1,
+        }}
+        onPress={() => setGender("Male")}
       >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>Register</Text>
-        )}
+        <View
+          style={[
+            {
+              width: 20,
+              height: 20,
+              borderRadius: 10,
+              borderWidth: 2,
+              borderColor: "#d1d5db",
+              marginRight: 8,
+              alignItems: "center",
+              justifyContent: "center",
+            },
+            gender === "Male" && {
+              borderColor: "#175593",
+              backgroundColor: "#175593",
+            },
+          ]}
+        />
+        <Text
+          style={{
+            fontSize: 15,
+            color: "#374151",
+            fontWeight: "500",
+          }}
+        >
+          Male
+        </Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          flex: 1,
+          justifyContent: "center",
+        }}
+        onPress={() => setGender("Female")}
+      >
+        <View
+          style={[
+            {
+              width: 20,
+              height: 20,
+              borderRadius: 10,
+              borderWidth: 2,
+              borderColor: "#d1d5db",
+              marginRight: 8,
+              alignItems: "center",
+              justifyContent: "center",
+            },
+            gender === "Female" && {
+              borderColor: "#175593",
+              backgroundColor: "#175593",
+            },
+          ]}
+        />
+        <Text
+          style={{
+            fontSize: 15,
+            color: "#374151",
+            fontWeight: "500",
+          }}
+        >
+          Female
+        </Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          flex: 1,
+          justifyContent: "flex-end",
+        }}
+        onPress={() => setGender("Other")}
+      >
+        <View
+          style={[
+            {
+              width: 20,
+              height: 20,
+              borderRadius: 10,
+              borderWidth: 2,
+              borderColor: "#d1d5db",
+              marginRight: 8,
+              alignItems: "center",
+              justifyContent: "center",
+            },
+            gender === "Other" && {
+              borderColor: "#175593",
+              backgroundColor: "#175593",
+            },
+          ]}
+        />
+        <Text
+          style={{
+            fontSize: 15,
+            color: "#374151",
+            fontWeight: "500",
+          }}
+        >
+          Other
+        </Text>
       </TouchableOpacity>
     </View>
-  );
+    
+    <TextInput
+      style={{
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: "#e5e7eb",
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 16,
+        backgroundColor: "#fff",
+        color: "#111827",
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+        elevation: 1,
+      }}
+      placeholder="Phone"
+      value={phone}
+      onChangeText={setPhone}
+      keyboardType="phone-pad"
+    />
+    
+    <TouchableOpacity
+      style={{
+        backgroundColor: "#175593",
+        padding: 18,
+        borderRadius: 12,
+        alignItems: "center",
+        shadowColor: "#175593",
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+      }}
+      onPress={handleRegister}
+      disabled={loading}
+    >
+      {loading ? (
+        <ActivityIndicator color="#fff" />
+      ) : (
+        <Text
+          style={{
+            color: "#fff",
+            fontWeight: "700",
+            fontSize: 16,
+            letterSpacing: 0.5,
+          }}
+        >
+          Create Account
+        </Text>
+      )}
+    </TouchableOpacity>
+  </View>
+);
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    backgroundColor: "#fff",
-    justifyContent: "center",
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    marginBottom: 24,
-    color: "#175593",
-    alignSelf: "center",
-  },
-  input: {
-    borderBottomWidth: 1,
-    borderColor: "#ccc",
-    padding: 12,
-    marginBottom: 16,
-    fontSize: 16,
-  },
-  label: {
-    fontSize: 16,
-    marginBottom: 8,
-    color: "#175593",
-  },
-  radioGroup: {
-    flexDirection: "row",
-    marginBottom: 16,
-    justifyContent: "space-between",
-  },
-  radioButton: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  radioCircle: {
-    height: 20,
-    width: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#175593",
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 8,
-  },
-  selectedRadio: {
-    backgroundColor: "#175593",
-  },
-  radioText: {
-    fontSize: 16,
-    color: "#333",
-  },
-  button: {
-    backgroundColor: "#175593",
-    padding: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-});
