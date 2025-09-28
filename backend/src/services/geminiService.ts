@@ -23,43 +23,88 @@ class GeminiService {
     vaccineDate: Date;
     completedDoseNo: number;
   }): Promise<string> {
+    // Calculate age from date of birth (moved outside try block)
+    const age = Math.floor((Date.now() - new Date(userData.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
+    
     try {
       const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-      // Calculate age from date of birth
-      const age = Math.floor((Date.now() - new Date(userData.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
-
-      const prompt = `You are a medical AI assistant providing concise, immediate post-vaccination care advice for a mobile push notification.
-
-Based on the following vaccination details, generate a very brief (max 150 characters total) but actionable message focused on immediate care and next steps.
+      const prompt = `You are a medical AI assistant providing concise post-vaccination care advice. Generate a brief, point-wise response.
 
 **Input Variables:**
 - Age: ${age}
 - Vaccine: ${userData.vaccineName}
 - Completed Doses: ${userData.completedDoseNo} of ${userData.totalDoses}
-- Next Dose Required (Yes/No, inferred from completed doses and total doses)
 
-**Instructions for Output:**
-1.  **Format:** Provide the output as a single, short string.
-2.  **Length:** Do not exceed **150 characters** total.
-3.  **Content:** The message must include:
-    * Acknowledge normal **side effects** (e.g., pain/fatigue).
-    * One **immediate care tip** (e.g., rest, cool compress).
-    * A call-to-action to check for **full instructions** or the **next dose**.
-4.  **Tone:** Clear, simple, and direct.
+**Required Response Format:**
+Provide a concise response with these sections (keep each section brief):
 
-**Example Target Output (Max 150 chars):**
-"Vaccine Complete! Mild soreness/fatigue is normal. Rest & use a cool compress. Tap to see your next dose date and full care guide."
+1. **About ${userData.vaccineName}:**
+   - What it protects against (1-2 sentences)
+   - Why it's important (1 sentence)
 
-**Final Output:** Generate only the short notification message.`;
+2. **Care Tips for Age ${age}:**
+   - Expected side effects (bullet points)
+   - Immediate care steps (bullet points)
+
+3. **Next 24 Hours:**
+   - Do's and don'ts (bullet points)
+   - When to call doctor (bullet points)
+
+4. **Remaining Doses:**
+   - ${userData.completedDoseNo < userData.totalDoses ? `Next dose in X weeks/months` : 'All doses completed'}
+
+**Guidelines:**
+- Keep each section under 3 bullet points
+- Use simple, clear language
+- Focus on actionable advice
+- Total response should be concise and easy to scan
+
+**Response Format:**
+Use bullet points (•) and keep each point short (1 line max).`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
       
       return response.text();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating vaccine instructions:', error);
-      throw new Error('Failed to generate vaccine instructions');
+      
+      // Provide fallback instructions if API fails
+      const fallbackInstructions = `**About ${userData.vaccineName}:**
+• Protects against specific diseases
+• Important for maintaining health
+
+**Care Tips for Age ${age}:**
+• Expect mild soreness, fatigue, or low fever
+• Side effects usually resolve in 1-2 days
+
+**Next 24 Hours:**
+• Rest and stay hydrated
+• Apply cool compress if sore
+• Avoid strenuous activities
+
+**Remaining Doses:**
+${userData.completedDoseNo < userData.totalDoses ? `• Next dose scheduled by your healthcare provider` : '• All doses completed'}
+
+**When to Call Doctor:**
+• High fever (over 101°F)
+• Severe allergic reactions
+• Symptoms that worsen after 2-3 days`;
+      
+      // Provide more specific error messages
+      if (error.message?.includes('404')) {
+        console.log('Using fallback instructions due to model not found');
+        return fallbackInstructions;
+      } else if (error.message?.includes('API key')) {
+        throw new Error('Invalid API key. Please check your Gemini API configuration.');
+      } else if (error.message?.includes('quota')) {
+        console.log('Using fallback instructions due to quota exceeded');
+        return fallbackInstructions;
+      } else {
+        console.log('Using fallback instructions due to unknown error');
+        return fallbackInstructions;
+      }
     }
   }
 

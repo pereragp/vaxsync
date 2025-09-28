@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
+import { useRouter } from 'expo-router';
 import scheduleAPI, { VaccineSchedule, CreateScheduleRequest, Vaccine } from '../api/scheduleApi';
 import healthCardAPI, { HealthCard } from '../api/healthCardApi';
 
@@ -66,6 +67,8 @@ const doseConfig = {
 };
 
 export default function SchedulePage() {
+  const router = useRouter();
+  
   // Sample user IDs - using the same ID from backend for testing
   const [profiles, setProfiles] = useState<Profile[]>([
     {
@@ -470,14 +473,59 @@ export default function SchedulePage() {
         const completedDoses = currentSchedule.doses.filter(d => d.status === 'completed').length + 1; // +1 for the dose we just completed
         const totalDoses = currentSchedule.doses.length;
         
+        // Prepare completed vaccine data for redirection
+        const completedVaccineData = {
+          vaccineName: currentSchedule.vaccineName,
+          doseNumber: doseNumber,
+          totalDoses: totalDoses,
+          dateCompleted: new Date().toISOString(),
+          scheduleId: scheduleId,
+        };
+        
         if (completedDoses === totalDoses) {
           Alert.alert(
             'Schedule Completed! 🎉', 
-            `All doses completed! This schedule has been moved to your health records.`,
-            [{ text: 'OK', style: 'default' }]
+            `All doses completed! Redirecting to view your vaccination records and post-vaccination instructions.`,
+            [{ 
+              text: 'View Records', 
+              style: 'default',
+              onPress: () => {
+                // Navigate to VaccinesPage with completed vaccine data
+                router.push({
+                  pathname: '/vaccines',
+                  params: {
+                    showInstructions: 'true',
+                    vaccineName: completedVaccineData.vaccineName,
+                    doseNumber: completedVaccineData.doseNumber.toString(),
+                    totalDoses: completedVaccineData.totalDoses.toString(),
+                    dateCompleted: completedVaccineData.dateCompleted,
+                  }
+                });
+              }
+            }]
           );
         } else {
-          Alert.alert('Success', `Dose ${doseNumber} marked as ${newStatus} successfully!`);
+          Alert.alert(
+            'Dose Completed! ✅', 
+            `Dose ${doseNumber} marked as completed! Redirecting to view post-vaccination instructions.`,
+            [{ 
+              text: 'View Instructions', 
+              style: 'default',
+              onPress: () => {
+                // Navigate to VaccinesPage with completed vaccine data
+                router.push({
+                  pathname: '/vaccines',
+                  params: {
+                    showInstructions: 'true',
+                    vaccineName: completedVaccineData.vaccineName,
+                    doseNumber: completedVaccineData.doseNumber.toString(),
+                    totalDoses: completedVaccineData.totalDoses.toString(),
+                    dateCompleted: completedVaccineData.dateCompleted,
+                  }
+                });
+              }
+            }]
+          );
         }
       } else {
         Alert.alert('Success', `Dose ${doseNumber} marked as ${newStatus} successfully!`);
