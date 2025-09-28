@@ -7,7 +7,9 @@ import {
   getHealthCardByDependentId,
   getAllHealthCardsByUserId,
   syncCompletedVaccinesToHealthCard,
-  getHealthCardWithVaccinations
+  getHealthCardWithVaccinations,
+  deleteVaccinationFromHealthCard,
+  downloadVaccinationCertificate
 } from '../../controllers/healthCard/healthCardController';
 
 // TEMPORARILY COMMENTED OUT FOR API TESTING - ENABLE WHEN AUTHENTICATION IS READY
@@ -72,6 +74,18 @@ router.post('/sync-vaccines/:userId',
 router.get('/with-vaccinations/:cardId',
   mockAuth,
   getHealthCardWithVaccinations
+);
+
+// Delete a specific vaccination from health card
+router.delete('/delete-vaccination/:cardId/:vaccineName/:doseNumber',
+  mockAuth,
+  deleteVaccinationFromHealthCard
+);
+
+// Download vaccination certificate as PDF
+router.get('/download-certificate/:cardId',
+  mockAuth,
+  downloadVaccinationCertificate
 );
 
 export default router;

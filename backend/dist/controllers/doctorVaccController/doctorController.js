@@ -7,8 +7,8 @@ exports.getDoctorById = exports.getDoctors = exports.createDoctor = void 0;
 const doctorModel_1 = __importDefault(require("../../models/doctorVaccModels/doctorModel"));
 const createDoctor = async (req, res) => {
     try {
-        const { name, specialty, hospitals, rating, availability, imageUrls, doc990Id, doc990Link } = req.body;
-        if (!name || !specialty || !hospitals || !availability || !imageUrls || !doc990Id || !doc990Link) {
+        const { name, specialty, hospitals, phoneNumber, rating, availability, imageUrls, doc990Id, doc990Link } = req.body;
+        if (!name || !specialty || !hospitals || !phoneNumber || !availability || !imageUrls || !doc990Id || !doc990Link) {
             res.status(400).json({ success: false, message: "Missing required fields" });
             return;
         }
@@ -16,6 +16,7 @@ const createDoctor = async (req, res) => {
             name,
             specialty,
             hospitals,
+            phoneNumber,
             rating: rating || 0,
             availability,
             imageUrls,
