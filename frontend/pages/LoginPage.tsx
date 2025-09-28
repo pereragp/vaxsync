@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Button,
 } from "react-native";
 
 export default function LoginPage() {
@@ -33,7 +32,7 @@ export default function LoginPage() {
           "Login Successful",
           `Welcome, ${data.firstName || data.username}!`
         );
-        router.replace("/schedule");
+        router.replace("/profile");
       } else {
         Alert.alert("Login Failed", data.message || "Invalid Credentials");
       }
