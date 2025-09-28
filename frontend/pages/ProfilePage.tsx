@@ -29,7 +29,7 @@ export default function ProfilePage() {
   // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddDependentModal, setShowAddDependentModal] = useState(false);
-
+  
   // Edit form states
   const [editForm, setEditForm] = useState({
     firstName: '',
