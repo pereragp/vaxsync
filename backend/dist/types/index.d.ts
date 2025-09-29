@@ -206,6 +206,7 @@ export interface IDoctor extends Document {
     name: string;
     specialty: string;
     hospitals: string[];
+    phoneNumber: string;
     rating: number;
     availability: string;
     imageUrls: string[];

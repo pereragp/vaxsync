@@ -1,10 +1,7 @@
-// Health Card API service for connecting to backend
-//<<<<<<< devMikki
-// const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.20.10.2:5000';
-//const API_BASE_URL = 'http://172.20.10.2:5000/api/users'; // Mishen URL
-=======
-//const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.20.10.2:5000';
-//>>>>>>> mergeAll
+
+const API_BASE_URL = 'http://192.168.1.32:5000'; //Pramod URL
+//const API_BASE_URL = 'http://192.168.1.32:5000/api/users'; // Mishen URL
+
 
 // Types for Health Card API
 export interface HealthCardVaccination {
@@ -140,6 +137,49 @@ const healthCardAPI = {
       throw new Error(`Failed to create all health cards: ${response.statusText}`);
     }
     return await response.json();
+  },
+
+  // Delete a specific vaccination from health card
+  async deleteVaccination(cardId: string, vaccineName: string, doseNumber: number): Promise<any> {
+    const response = await fetch(`${API_BASE_URL}/api/health-card/delete-vaccination/${cardId}/${encodeURIComponent(vaccineName)}/${doseNumber}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        errorMessage = response.statusText || errorMessage;
+      }
+      throw new Error(`Failed to delete vaccination: ${errorMessage}`);
+    }
+    
+    return await response.json();
+  },
+
+  // Download vaccination certificate as PDF
+  async downloadVaccinationCertificate(cardId: string): Promise<Blob> {
+    const response = await fetch(`${API_BASE_URL}/api/health-card/download-certificate/${cardId}`, {
+      method: 'GET',
+    });
+    
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch {
+        errorMessage = response.statusText || errorMessage;
+      }
+      throw new Error(`Failed to download certificate: ${errorMessage}`);
+    }
+    
+    return await response.blob();
   },
 
   // Group vaccinations by vaccine name for UI display

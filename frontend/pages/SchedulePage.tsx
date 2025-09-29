@@ -19,6 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
+import { useRouter } from 'expo-router';
 import scheduleAPI, { VaccineSchedule, CreateScheduleRequest, Vaccine } from '../api/scheduleApi';
 import healthCardAPI, { HealthCard } from '../api/healthCardApi';
 
@@ -66,6 +67,8 @@ const doseConfig = {
 };
 
 export default function SchedulePage() {
+  const router = useRouter();
+  
   // Sample user IDs - using the same ID from backend for testing
   const [profiles, setProfiles] = useState<Profile[]>([
     {
@@ -140,7 +143,7 @@ export default function SchedulePage() {
         lastUpdated: new Date(healthCard.updatedAt).toLocaleDateString(),
         healthCard: healthCard,
         isDependent: healthCard.cardType === 'dependent',
-        dependentId: healthCard.cardType === 'dependent' ? healthCard._id : undefined,
+        dependentId: healthCard.cardType === 'dependent' ? healthCard.dependentId : undefined,
       }));
 
       setProfiles(newProfiles);
@@ -219,16 +222,29 @@ export default function SchedulePage() {
       
       if (profile.isDependent && profile.dependentId) {
         // For dependents, only show schedules where this dependent is included and not completed
-        filteredSchedules = allSchedules.filter(schedule => 
-          schedule.dependentIds?.includes(profile.dependentId!) &&
-          schedule.overallStatus !== 'completed'
-        );
+        filteredSchedules = allSchedules.filter(schedule => {
+          // Handle both populated objects and raw IDs
+          const dependentIds = schedule.dependentIds || [];
+          const isIncluded = dependentIds.some((dependent: any) => {
+            // If dependent is populated object, check the _id field
+            if (typeof dependent === 'object' && dependent._id) {
+              return dependent._id === profile.dependentId;
+            }
+            // If dependent is raw string/ID, compare directly
+            return dependent === profile.dependentId;
+          });
+          const isNotCompleted = schedule.overallStatus !== 'completed';
+          
+          return isIncluded && isNotCompleted;
+        });
       } else {
         // For main user, only show schedules where no dependents are specified (user's own schedules) and not completed
-        filteredSchedules = allSchedules.filter(schedule => 
-          (!schedule.dependentIds || schedule.dependentIds.length === 0) &&
-          schedule.overallStatus !== 'completed'
-        );
+        filteredSchedules = allSchedules.filter(schedule => {
+          const hasNoDependents = !schedule.dependentIds || schedule.dependentIds.length === 0;
+          const isNotCompleted = schedule.overallStatus !== 'completed';
+          
+          return hasNoDependents && isNotCompleted;
+        });
       }
       
       setSchedules(filteredSchedules);
@@ -457,14 +473,59 @@ export default function SchedulePage() {
         const completedDoses = currentSchedule.doses.filter(d => d.status === 'completed').length + 1; // +1 for the dose we just completed
         const totalDoses = currentSchedule.doses.length;
         
+        // Prepare completed vaccine data for redirection
+        const completedVaccineData = {
+          vaccineName: currentSchedule.vaccineName,
+          doseNumber: doseNumber,
+          totalDoses: totalDoses,
+          dateCompleted: new Date().toISOString(),
+          scheduleId: scheduleId,
+        };
+        
         if (completedDoses === totalDoses) {
           Alert.alert(
             'Schedule Completed! 🎉', 
-            `All doses completed! This schedule has been moved to your health records.`,
-            [{ text: 'OK', style: 'default' }]
+            `All doses completed! Redirecting to view your vaccination records and post-vaccination instructions.`,
+            [{ 
+              text: 'View Records', 
+              style: 'default',
+              onPress: () => {
+                // Navigate to VaccinesPage with completed vaccine data
+                router.push({
+                  pathname: '/vaccines',
+                  params: {
+                    showInstructions: 'true',
+                    vaccineName: completedVaccineData.vaccineName,
+                    doseNumber: completedVaccineData.doseNumber.toString(),
+                    totalDoses: completedVaccineData.totalDoses.toString(),
+                    dateCompleted: completedVaccineData.dateCompleted,
+                  }
+                });
+              }
+            }]
           );
         } else {
-          Alert.alert('Success', `Dose ${doseNumber} marked as ${newStatus} successfully!`);
+          Alert.alert(
+            'Dose Completed! ✅', 
+            `Dose ${doseNumber} marked as completed! Redirecting to view post-vaccination instructions.`,
+            [{ 
+              text: 'View Instructions', 
+              style: 'default',
+              onPress: () => {
+                // Navigate to VaccinesPage with completed vaccine data
+                router.push({
+                  pathname: '/vaccines',
+                  params: {
+                    showInstructions: 'true',
+                    vaccineName: completedVaccineData.vaccineName,
+                    doseNumber: completedVaccineData.doseNumber.toString(),
+                    totalDoses: completedVaccineData.totalDoses.toString(),
+                    dateCompleted: completedVaccineData.dateCompleted,
+                  }
+                });
+              }
+            }]
+          );
         }
       } else {
         Alert.alert('Success', `Dose ${doseNumber} marked as ${newStatus} successfully!`);
@@ -645,7 +706,7 @@ export default function SchedulePage() {
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
       
       {/* Header with Stats */}
-      <View className="pt-4 pb-6 px-4">
+      <View className="pt-1 pb-6 px-4">
         <View className="flex-row items-center justify-between mb-2">
           <Text className="text-2xl font-bold text-gray-800">Vaccine Schedules</Text>
           <TouchableOpacity
