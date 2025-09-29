@@ -4,7 +4,10 @@ import {
   getUserById,
   loginUser,
 } from "../../controllers/userControllers/userController";
-import { addDependent, getDependentsByGuardian } from "../../controllers/userControllers/dependentController";
+import {
+  addDependent,
+  getDependentsByGuardian,
+} from "../../controllers/userControllers/dependentController";
 
 const router = express.Router();
 

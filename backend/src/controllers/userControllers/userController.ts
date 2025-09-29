@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import User from "../../models/userModels/user";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 // User Registration
 const registerUser = async (req: Request, res: Response) => {
@@ -95,11 +96,11 @@ const getUserById = async (req: Request, res: Response) => {
     avatar: user.avatar,
     dependents: user.dependents,
     createdAt: user.createdAt,
-    updatedAt: user.updatedAt
+    updatedAt: user.updatedAt,
   });
 };
 
-// User Login
+// User Login Controller
 const loginUser = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
@@ -112,7 +113,7 @@ const loginUser = async (req: Request, res: Response) => {
 
     if (!existingUser) {
       return res.status(401).json({
-        message: "Invalid email or password",
+        message: "Invalid Email",
       });
     }
 
@@ -128,14 +129,29 @@ const loginUser = async (req: Request, res: Response) => {
       });
     }
 
+    //Generate JWT
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      throw new Error("JWT_SECRET environment variable is not set");
+    }
+    const token = jwt.sign(
+      { userId: existingUser._id, email: existingUser.email },
+      jwtSecret,
+      { expiresIn: "60d" }
+    );
+
     // Send user data (excluding sensitive information)
     return res.status(200).json({
-      _id: existingUser._id,
-      username: existingUser.username,
-      firstName: existingUser.firstName,
-      lastName: existingUser.lastName,
-      email: existingUser.email,
+      token,
+      existingUser: {
+        _id: existingUser._id,
+        username: existingUser.username,
+        firstName: existingUser.firstName,
+        lastName: existingUser.lastName,
+        email: existingUser.email,
+      },
     });
+
   } catch (error) {
     console.error("Error logging in user:", error);
     return res.status(500).json({ message: "Server error", error });

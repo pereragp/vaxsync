@@ -14,12 +14,17 @@ import {
   TextInput,
   StatusBar,
   ActivityIndicator,
+  Linking,
+  Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
+import { useLocalSearchParams } from 'expo-router';
 import healthCardAPI, { HealthCard, HealthCardVaccination } from '../api/healthCardApi';
+import InstructionsPopup from '../components/InstructionsPopup';
+import geminiAPI from '../api/geminiApi';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -70,6 +75,8 @@ const vaccineConfig = {
 };
 
 export default function VaxCardScreen() {
+  const params = useLocalSearchParams();
+  
   // Sample user IDs - using the same ID from backend for testing
   const [profiles, setProfiles] = useState<Profile[]>([
     {
@@ -96,6 +103,18 @@ export default function VaxCardScreen() {
   const [selectedVaccine, setSelectedVaccine] = useState<Vaccine | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>('all');
+
+  // Instructions popup state
+  const [showInstructionsPopup, setShowInstructionsPopup] = useState(false);
+  const [instructionsData, setInstructionsData] = useState<{
+    instructions: string;
+    vaccineName: string;
+    completedDoseNo: number;
+    totalDoses: number;
+  } | null>(null);
+  const [generatingInstructions, setGeneratingInstructions] = useState(false);
+  const [hasShownAutoPopup, setHasShownAutoPopup] = useState(false);
+  const [autoPopupTriggered, setAutoPopupTriggered] = useState(false);
 
   // Animations
   const cardAnimations = useRef<{[key: string]: Animated.Value}>({});
@@ -304,7 +323,40 @@ export default function VaxCardScreen() {
   // Load health card data when component mounts
   useEffect(() => {
     loadAllHealthCards();
+    
+    // Cleanup function to reset auto popup state when component unmounts
+    return () => {
+      setAutoPopupTriggered(false);
+    };
   }, []);
+
+  // Handle auto-showing instructions popup when redirected from SchedulePage
+  useEffect(() => {
+    if (params.showInstructions === 'true' && 
+        params.vaccineName && 
+        params.doseNumber && 
+        params.totalDoses && 
+        params.dateCompleted &&
+        !autoPopupTriggered &&
+        !showInstructionsPopup && // Additional check to prevent showing if already visible
+        profiles.length > 0 && 
+        profiles[selectedIdx]?.healthCard) {
+      
+      setAutoPopupTriggered(true); // Prevent multiple triggers - this should never be reset
+      
+      const vaccination: HealthCardVaccination = {
+        vaccineName: params.vaccineName as string,
+        doseNumber: parseInt(params.doseNumber as string),
+        totalDoses: parseInt(params.totalDoses as string),
+        dateCompleted: new Date(params.dateCompleted as string),
+      };
+      
+      // Auto-generate and show instructions
+      setTimeout(() => {
+        generateInstructionsAndShowPopup(vaccination);
+      }, 1000); // Small delay to ensure UI is ready
+    }
+  }, [params.showInstructions, params.vaccineName, params.doseNumber, params.totalDoses, params.dateCompleted, autoPopupTriggered, showInstructionsPopup, profiles.length, selectedIdx]);
 
   // Load health card data when profile changes
   useEffect(() => {
@@ -365,6 +417,60 @@ export default function VaxCardScreen() {
     });
   };
 
+  const generateInstructionsAndShowPopup = async (vaccination: HealthCardVaccination) => {
+    // Prevent multiple simultaneous calls
+    if (generatingInstructions) {
+      return;
+    }
+
+    try {
+      setGeneratingInstructions(true);
+      setShowInstructionsPopup(true);
+
+      const currentProfile = profiles[selectedIdx];
+      if (!currentProfile?.healthCard) {
+        throw new Error('No health card data available');
+      }
+
+      const requestData = {
+        dateOfBirth: new Date(currentProfile.healthCard.dateOfBirth).toISOString(),
+        gender: currentProfile.healthCard.gender,
+        vaccineName: vaccination.vaccineName,
+        totalDoses: vaccination.totalDoses,
+        vaccineDate: new Date(vaccination.dateCompleted).toISOString(),
+        completedDoseNo: vaccination.doseNumber,
+        userId: currentProfile.healthCard._id,
+      };
+
+      const response = await geminiAPI.generateVaccineInstructions(requestData);
+      
+      setInstructionsData({
+        instructions: response.data.instructions,
+        vaccineName: vaccination.vaccineName,
+        completedDoseNo: vaccination.doseNumber,
+        totalDoses: vaccination.totalDoses,
+      });
+
+    } catch (error: any) {
+      console.error('Error generating instructions:', error);
+      Alert.alert(
+        '⚠️ Unable to Generate Instructions',
+        'We couldn\'t generate personalized care instructions at this time. This might be due to a network issue or service temporarily unavailable.\n\nYou can still follow general post-vaccination care guidelines.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setShowInstructionsPopup(false);
+              // Don't reset autoPopupTriggered - this prevents the loop
+            },
+          },
+        ]
+      );
+    } finally {
+      setGeneratingInstructions(false);
+    }
+  };
+
   const handleVaccinePress = (vaccine: Vaccine) => {
     setSelectedVaccine(vaccine);
     setShowVaccineModal(true);
@@ -413,40 +519,194 @@ export default function VaxCardScreen() {
 
   const handleDownload = async () => {
     const currentProfile = profiles[selectedIdx];
-    if (currentProfile?.healthCard) {
-      try {
-        // In a real implementation, this would generate and download a PDF
+    if (!currentProfile?.healthCard) {
+      Alert.alert("No Data", "No health card data available to download");
+      return;
+    }
+
+    // Check if there are any completed vaccinations
+    const hasVaccinations = currentProfile.healthCard.completedVaccinations && 
+                           currentProfile.healthCard.completedVaccinations.length > 0;
+    
+    if (!hasVaccinations) {
+      Alert.alert(
+        "No Vaccinations", 
+        "No completed vaccinations found to generate certificate.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Generate the download URL
+      const downloadUrl = `http://192.168.1.32:5000/api/health-card/download-certificate/${currentProfile.healthCard._id}`;
+      
+      // Open the download URL in the browser
+      const supported = await Linking.canOpenURL(downloadUrl);
+      
+      if (supported) {
+        await Linking.openURL(downloadUrl);
+        
         Alert.alert(
-          "Download Health Card", 
-          `Downloading vaccination certificate for ${currentProfile.name}...`,
+          "Download Started", 
+          `Vaccination certificate for ${currentProfile.name} is being downloaded. Check your browser's download folder.`,
           [{ text: "OK" }]
         );
-        // TODO: Implement actual PDF generation and download
-      } catch (error) {
-        Alert.alert("Error", "Failed to download health card");
+      } else {
+        Alert.alert(
+          "Download Error", 
+          "Cannot open download link. Please try again.",
+          [{ text: "OK" }]
+        );
       }
-    } else {
-      Alert.alert("No Data", "No health card data available to download");
+
+    } catch (error: any) {
+      console.error('Error downloading certificate:', error);
+      Alert.alert(
+        "Download Error", 
+        error.message || "Failed to download vaccination certificate. Please try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleShare = async () => {
     const currentProfile = profiles[selectedIdx];
-    if (currentProfile?.healthCard) {
-      try {
-        // In a real implementation, this would share the health card
+    if (!currentProfile?.healthCard) {
+      Alert.alert("No Data", "No health card data available to share");
+      return;
+    }
+
+    // Check if there are any completed vaccinations
+    const hasVaccinations = currentProfile.healthCard.completedVaccinations && 
+                           currentProfile.healthCard.completedVaccinations.length > 0;
+    
+    if (!hasVaccinations) {
+      Alert.alert(
+        "No Vaccinations", 
+        "No completed vaccinations found to generate certificate.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Generate the download URL for the PDF
+      const downloadUrl = `http://192.168.1.32:5000/api/health-card/download-certificate/${currentProfile.healthCard._id}`;
+      
+      // Prepare share content
+      const shareMessage = `📋 Vaccination Certificate for ${currentProfile.name}\n\n` +
+        `This is my digital vaccination certificate generated by VaxSync.\n` +
+        `It contains my complete vaccination history.\n\n` +
+        `Download PDF: ${downloadUrl}\n\n` +
+        `Generated on: ${new Date().toLocaleDateString()}`;
+
+      // Open native share options
+      const result = await Share.share({
+        message: shareMessage,
+        url: downloadUrl, // This will be available on platforms that support it
+        title: `Vaccination Certificate - ${currentProfile.name}`,
+      });
+
+      if (result.action === Share.sharedAction) {
         Alert.alert(
-          "Share Health Card", 
-          `Sharing vaccination certificate for ${currentProfile.name}...\n\nCard ID: ${currentProfile.healthCard._id}`,
+          "Shared Successfully", 
+          `Vaccination certificate for ${currentProfile.name} has been shared.`,
           [{ text: "OK" }]
         );
-        // TODO: Implement actual sharing functionality
-      } catch (error) {
-        Alert.alert("Error", "Failed to share health card");
+      } else if (result.action === Share.dismissedAction) {
+        // User dismissed the share dialog
       }
-    } else {
-      Alert.alert("No Data", "No health card data available to share");
+
+    } catch (error: any) {
+      console.error('Error sharing certificate:', error);
+      Alert.alert(
+        "Share Error", 
+        error.message || "Failed to share vaccination certificate. Please try again.",
+        [{ text: "OK" }]
+      );
+    } finally {
+      setLoading(false);
     }
+  };
+
+
+  // Delete a specific vaccination dose
+  const handleDeleteVaccination = async (vaccineName: string, doseNumber: number) => {
+    const currentProfile = profiles[selectedIdx];
+    if (!currentProfile?.healthCard) {
+      Alert.alert("Error", "No health card data available");
+      return;
+    }
+
+    // Show confirmation dialog
+    Alert.alert(
+      "Delete Vaccination",
+      `Are you sure you want to delete ${vaccineName} dose ${doseNumber}?\n\nThis action cannot be undone.`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              
+              // Call the API to delete the vaccination
+              await healthCardAPI.deleteVaccination(
+                currentProfile.healthCard!._id,
+                vaccineName,
+                doseNumber
+              );
+
+              // Update the local state to remove the deleted vaccination
+              setProfiles(prevProfiles => {
+                const updatedProfiles = [...prevProfiles];
+                const currentProfile = updatedProfiles[selectedIdx];
+                
+                if (currentProfile?.healthCard?.completedVaccinations) {
+                  // Remove the deleted vaccination from the health card
+                  currentProfile.healthCard.completedVaccinations = 
+                    currentProfile.healthCard.completedVaccinations.filter(
+                      vaccination => !(vaccination.vaccineName === vaccineName && vaccination.doseNumber === doseNumber)
+                    );
+                  
+                  // Regroup the vaccinations for UI display
+                  currentProfile.vaccines = healthCardAPI.groupVaccinationsByName(
+                    currentProfile.healthCard.completedVaccinations
+                  );
+                }
+                
+                return updatedProfiles;
+              });
+
+              Alert.alert(
+                "Success",
+                `${vaccineName} dose ${doseNumber} has been deleted successfully.`
+              );
+
+            } catch (error: any) {
+              console.error('Error deleting vaccination:', error);
+              Alert.alert(
+                "Error",
+                error.message || "Failed to delete vaccination. Please try again."
+              );
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   // Calculate completion stats for progress display
@@ -552,7 +812,7 @@ export default function VaxCardScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
       
       {/* Header with Stats */}
-      <View className="pt-4 pb-6 px-4">
+      <View className="pt-1 pb-6 px-4">
         <View className="flex-row items-center justify-between mb-2">
           <Text className="text-2xl font-bold text-gray-800">My Vaccine Records</Text>
         </View>
@@ -878,11 +1138,47 @@ export default function VaxCardScreen() {
                               </Text>
                               <View className="flex-row items-center">
                                 {dose.verified ? (
-                                  <View className="bg-green-100 rounded-full px-2 py-1">
-                                    <Text className="text-xs font-medium text-green-700">
-                                      ✓ Completed
-                                    </Text>
-                                  </View>
+                                  <>
+                                    <View className="bg-green-100 rounded-full px-2 py-1 mr-2">
+                                      <Text className="text-xs font-medium text-green-700">
+                                        ✓ Completed
+                                      </Text>
+                                    </View>
+                                    <TouchableOpacity
+                                      onPress={() => {
+                                        // Only allow for completed doses with valid dates
+                                        if (dose.verified && dose.date !== 'Pending' && dose.date !== 'TBD') {
+                                          const vaccination = {
+                                            vaccineName: vaccine.name,
+                                            doseNumber: dose.doseNumber,
+                                            totalDoses: vaccine.totalDoses,
+                                            dateCompleted: new Date(dose.date),
+                                          };
+                                          generateInstructionsAndShowPopup(vaccination as HealthCardVaccination);
+                                        } else {
+                                          Alert.alert(
+                                            '⚠️ Unable to Generate Instructions',
+                                            'This dose doesn\'t have a valid completion date yet. Please ensure the vaccination is properly recorded with a completion date.',
+                                            [
+                                              { 
+                                                text: 'OK', 
+                                                style: 'default'
+                                              }
+                                            ]
+                                          );
+                                        }
+                                      }}
+                                      className="bg-blue-100 rounded-full p-1 mr-1"
+                                    >
+                                      <Ionicons name="medical" size={14} color="#3b82f6" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity
+                                      onPress={() => handleDeleteVaccination(vaccine.name, dose.doseNumber)}
+                                      className="bg-red-100 rounded-full p-1"
+                                    >
+                                      <Ionicons name="trash" size={14} color="#ef4444" />
+                                    </TouchableOpacity>
+                                  </>
                                 ) : (
                                   <View className="bg-yellow-100 rounded-full px-2 py-1">
                                     <Text className="text-xs font-medium text-yellow-700">
@@ -1026,12 +1322,14 @@ export default function VaxCardScreen() {
       </Animated.View>
 
       {/* Enhanced Floating Action Buttons */}
-      <View className="absolute bottom-6 right-6">
+      <View className="absolute right-6 z-50" style={{ bottom: 100 }}>
         <TouchableOpacity
-          onPress={handleShare}
+          onPress={() => {
+            handleShare();
+          }}
           className="w-14 h-14 bg-blue-600 rounded-full shadow-lg items-center justify-center mb-3"
           style={{
-            elevation: 5,
+            elevation: 10,
             shadowColor: '#3b82f6',
             shadowOffset: { width: 0, height: 4 },
             shadowOpacity: 0.3,
@@ -1041,17 +1339,19 @@ export default function VaxCardScreen() {
           <Ionicons name="share-social" size={24} color="white" />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={handleDownload}
-          className="w-14 h-14 bg-white rounded-full shadow-lg items-center justify-center"
+          onPress={() => {
+            handleDownload();
+          }}
+          className="w-14 h-14 bg-green-500 rounded-full shadow-lg items-center justify-center"
           style={{
-            elevation: 5,
-            shadowColor: '#000',
+            elevation: 10,
+            shadowColor: '#16a34a',
             shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.1,
+            shadowOpacity: 0.3,
             shadowRadius: 8,
           }}
         >
-          <Ionicons name="download" size={24} color="#16a34a" />
+          <Ionicons name="download" size={24} color="white" />
         </TouchableOpacity>
       </View>
 
@@ -1108,19 +1408,29 @@ export default function VaxCardScreen() {
                           <Text className="text-lg font-bold text-gray-800">
                             Dose {dose.doseNumber}
                           </Text>
-                          {dose.verified ? (
-                            <View className="bg-green-100 rounded-full px-3 py-1">
-                              <Text className="text-sm font-medium text-green-700">
-                                ✓ Verified
-                              </Text>
-                            </View>
-                          ) : (
-                            <View className="bg-yellow-100 rounded-full px-3 py-1">
-                              <Text className="text-sm font-medium text-yellow-700">
-                                ⏳ Pending
-                              </Text>
-                            </View>
-                          )}
+                          <View className="flex-row items-center">
+                            {dose.verified ? (
+                              <>
+                                <View className="bg-green-100 rounded-full px-3 py-1 mr-2">
+                                  <Text className="text-sm font-medium text-green-700">
+                                    ✓ Verified
+                                  </Text>
+                                </View>
+                                <TouchableOpacity
+                                  onPress={() => handleDeleteVaccination(selectedVaccine.name, dose.doseNumber)}
+                                  className="bg-red-100 rounded-full p-2"
+                                >
+                                  <Ionicons name="trash" size={16} color="#ef4444" />
+                                </TouchableOpacity>
+                              </>
+                            ) : (
+                              <View className="bg-yellow-100 rounded-full px-3 py-1">
+                                <Text className="text-sm font-medium text-yellow-700">
+                                  ⏳ Pending
+                                </Text>
+                              </View>
+                            )}
+                          </View>
                         </View>
                         
                         <View className="space-y-2">
@@ -1152,6 +1462,21 @@ export default function VaxCardScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Instructions Popup */}
+      <InstructionsPopup
+        visible={showInstructionsPopup}
+        onClose={() => {
+          setShowInstructionsPopup(false);
+          setInstructionsData(null);
+          // Don't reset autoPopupTriggered - this prevents the loop
+        }}
+        instructions={instructionsData?.instructions || ''}
+        vaccineName={instructionsData?.vaccineName || ''}
+        completedDoseNo={instructionsData?.completedDoseNo || 0}
+        totalDoses={instructionsData?.totalDoses || 0}
+        loading={generatingInstructions}
+      />
     </SafeAreaView>
   );
 }

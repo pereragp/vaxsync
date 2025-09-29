@@ -50,8 +50,8 @@ const startServer = async () => {
         app.listen(PORT, "0.0.0.0", () => {
             console.log(`🚀 VaxSync Backend running on port ${PORT}`);
             console.log(`🔗 Server URL: http://localhost:${PORT}`);
-            console.log(`📱 For mobile access: http://172.20.10.2:${PORT}`);
-            console.log(`💚 Health Check: http://172.20.10.2:${PORT}/health`);
+            console.log(`📱 For mobile access: http://192.168.1.32:${PORT}`);
+            console.log(`💚 Health Check: http://192.168.1.32:${PORT}/health`);
         });
     }
     catch (error) {

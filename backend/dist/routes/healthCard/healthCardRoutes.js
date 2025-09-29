@@ -20,5 +20,7 @@ router.get('/dependent/:dependentId', mockAuth, healthCardController_1.getHealth
 router.get('/all/:userId', mockAuth, healthCardController_1.getAllHealthCardsByUserId);
 router.post('/sync-vaccines/:userId', mockAuth, healthCardController_1.syncCompletedVaccinesToHealthCard);
 router.get('/with-vaccinations/:cardId', mockAuth, healthCardController_1.getHealthCardWithVaccinations);
+router.delete('/delete-vaccination/:cardId/:vaccineName/:doseNumber', mockAuth, healthCardController_1.deleteVaccinationFromHealthCard);
+router.get('/download-certificate/:cardId', mockAuth, healthCardController_1.downloadVaccinationCertificate);
 exports.default = router;
 //# sourceMappingURL=healthCardRoutes.js.map
