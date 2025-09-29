@@ -12,6 +12,7 @@ import scheduleRoutes from './routes/scheduleRoutes/scheduleRoutes';
 import vaccineRoutes from "./routes/scheduleRoutes/vaccineRoutes";
 import doctorRoutes from './routes/doctorVaccRoutes/doctorRoutes';
 import geminiRoutes from './routes/geminiRoutes';
+import vaccCenterRoutes from './routes/doctorVaccRoutes/vaccinationCenterRoutes';
 // Load environment variables
 dotenv.config();
 
@@ -50,6 +51,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/vaccines", vaccineRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/gemini", geminiRoutes);
+app.use("/api/centers", vaccCenterRoutes);
 // Error handling middleware (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
