@@ -1,3 +1,5 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 const API_BASE_URL = "http://192.168.1.4:5000/api/users"; // Pramod URL
 
 export interface User {
@@ -107,6 +109,24 @@ class UserAPI {
       method: "POST",
       body: JSON.stringify(userData),
     });
+  }
+
+  //Logout Method
+  async logout(): Promise<void> {
+    try {
+      //backend logout endpoint
+      await this.makeAuthenticatedRequest<any>("/logout", {
+        method: "POST",
+      });
+    } catch (error) {
+      console.error("Error while logging out: ", error);
+    } finally {
+      try {
+        await AsyncStorage.removeItem("userToken");
+      } catch (error) {
+        console.error("Error removing token from storage: ", error);
+      }
+    }
   }
 
   // Get current user's profile (protected route)
