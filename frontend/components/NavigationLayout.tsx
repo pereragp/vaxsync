@@ -74,7 +74,7 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
         return 'schedule';
       case '/profile':
         return 'profile';
-      case 'health-services':
+      case '/health-services':
         return 'services';
       default:
         return 'home';
