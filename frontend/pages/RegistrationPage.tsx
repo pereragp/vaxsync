@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
+import UserAPI from "../api/userApi";
 import {
   View,
   Text,
@@ -26,33 +27,43 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        "http://192.168.1.32:5000/api/users/register",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            username,
-            firstName,
-            lastName,
-            email,
-            password,
-            dateOfBirth,
-            gender,
-            phone,
-          }),
-        }
-      );
-      const data = await response.json();
-
-      if (response.ok) {
-        Alert.alert("Registration Successful", "You can now log in.");
-        router.replace("/login"); // Redirect to login page
-      } else {
-        Alert.alert("Registration Failed", data.message || "Please try again.");
+      // Basic validation
+      if (
+        !username.trim() ||
+        !firstName.trim() ||
+        !lastName.trim() ||
+        !email.trim() ||
+        !password.trim() ||
+        !dateOfBirth.trim() ||
+        !gender.trim() ||
+        !phone.trim()
+      ) {
+        Alert.alert("Error", "Please fill in all fields");
+        return;
       }
+
+      const userData = {
+        username,
+        firstName,
+        lastName,
+        email,
+        password,
+        dateOfBirth,
+        gender,
+        phone,
+      };
+
+      await UserAPI.register(userData);
+
+      Alert.alert("Registration Successful", "You can now login..", [
+        { text: "OK", onPress: () => router.replace("/login") },
+      ]);
     } catch (error) {
-      Alert.alert("Error", "Network error. Please try again.");
+      console.error("Registration error:", error);
+      Alert.alert(
+        "Registration Failed",
+        "Please check your information and try again."
+      );
     } finally {
       setLoading(false);
     }
