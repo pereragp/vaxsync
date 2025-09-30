@@ -234,3 +234,20 @@ export interface IDoctor extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface IVaccinationCenter extends Document {
+  _id: Types.ObjectId;
+  name: string;
+  address: string;
+  district: string;
+  phone: string;
+  location: {
+    type: "Point";
+    coordinates: [number, number]; // [lng, lat]
+  };
+  vaccineTypes: string[];
+  availability: Record<string, number>; // { covid: 50, hepB: 20 }
+  openingHours: Record<string, string>; // { mon-fri: "08:00-17:00" }
+  createdAt: Date;
+  updatedAt: Date;
+}
