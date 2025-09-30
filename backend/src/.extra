@@ -1,5 +1,0 @@
-# PORT=5000
-# NODE_ENV=development
-# MONGODB_URI=mongodb+srv://vaxsyncdb:vaxsyncdb%4001@cluster2.xd0c4vr.mongodb.net/
-# JWT_SECRET=your_super_secret_key
-# GEMINI_API_KEY=AIzaSyAOajTN7bvCGezTeqa_oVbKaYYQXFz5PVE
