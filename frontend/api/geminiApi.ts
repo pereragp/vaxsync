@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://192.168.1.32:5000';
+const API_BASE_URL = "http://192.168.1.4:5000";
 
 export interface GeminiInstructionsRequest {
   dateOfBirth: string;
@@ -29,15 +29,20 @@ class GeminiAPI {
   /**
    * Generate vaccine instructions using Gemini AI
    */
-  async generateVaccineInstructions(requestData: GeminiInstructionsRequest): Promise<GeminiInstructionsResponse> {
+  async generateVaccineInstructions(
+    requestData: GeminiInstructionsRequest
+  ): Promise<GeminiInstructionsResponse> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/gemini/generate-instructions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/gemini/generate-instructions`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(requestData),
+        }
+      );
 
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}`;
@@ -53,7 +58,7 @@ class GeminiAPI {
       const data: GeminiInstructionsResponse = await response.json();
       return data;
     } catch (error) {
-      console.error('Gemini API error:', error);
+      console.error("Gemini API error:", error);
       throw error;
     }
   }
