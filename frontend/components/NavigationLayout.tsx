@@ -81,6 +81,7 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
     }
   };
 
+  const useScrollView = !['/vaccination-center'].includes(pathname);
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }} edges={['top']}>
       <View style={{ flex: 1, backgroundColor: colors.white }}>
@@ -121,17 +122,23 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Main Content Area */}
-      <ScrollView 
-        style={{ 
-          flex: 1, 
-          paddingBottom: 80,
-          backgroundColor: colors.white 
-        }}
-        contentContainerStyle={{ flexGrow: 1 }}
-      >
-        {children}
-      </ScrollView>
+        {/* Main Content Area */}
+        {useScrollView ? (
+          <ScrollView
+            style={{
+              flex: 1,
+              paddingBottom: 80,
+              backgroundColor: colors.white,
+            }}
+            contentContainerStyle={{ flexGrow: 1 }}
+          >
+            {children}
+          </ScrollView>
+        ) : (
+          <View style={{ flex: 1, backgroundColor: colors.white }}>
+            {children}
+          </View>
+        )}
 
       {/* Bottom Tab Navigation */}
       <View 
