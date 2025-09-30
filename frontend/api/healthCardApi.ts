@@ -1,5 +1,5 @@
-const API_BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
-//const API_BASE_URL = 'http://192.168.1.32:5000/api/users'; // Mishen URL
+const API_BASE_URL = "http://10.170.82.39:5000"; //Pramod URL
+//const API_BASE_URL = 'http://10.170.82.39:5000/api/users'; // Mishen URL
 
 // Types for Health Card API
 export interface HealthCardVaccination {

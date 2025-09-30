@@ -1,6 +1,4 @@
-
-const BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
-
+const BASE_URL = "http://10.170.82.39:5000"; //Pramod URL
 
 // Types
 export interface Doctor {
@@ -28,7 +26,11 @@ export interface ApiResponse<T = any> {
 
 // Enhanced error handling
 class ApiError extends Error {
-  constructor(message: string, public status?: number, public code?: string) {
+  constructor(
+    message: string,
+    public status?: number,
+    public code?: string
+  ) {
     super(message);
     this.name = "ApiError";
   }
@@ -155,7 +157,6 @@ export const doctorApi = {
    */
   getAllDoctors: async (query?: string): Promise<Doctor[]> => {
     try {
-
       const params = new URLSearchParams();
       if (query && query.trim()) {
         params.append("q", query.trim());
@@ -194,7 +195,6 @@ export const doctorApi = {
     }
 
     try {
-
       const response = await apiRequest<Doctor>(
         `/api/doctors/${doctorId.trim()}`
       );

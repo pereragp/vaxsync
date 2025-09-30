@@ -595,7 +595,7 @@ export default function VaxCardScreen() {
       setLoading(true);
 
       // Generate the download URL
-      const downloadUrl = `http://192.168.1.32:5000/api/health-card/download-certificate/${currentProfile.healthCard._id}`;
+      const downloadUrl = `http://10.170.82.39:5000/api/health-card/download-certificate/${currentProfile.healthCard._id}`;
 
       // Open the download URL in the browser
       const supported = await Linking.canOpenURL(downloadUrl);
@@ -653,7 +653,7 @@ export default function VaxCardScreen() {
       setLoading(true);
 
       // Generate the download URL for the PDF
-      const downloadUrl = `http://192.168.1.32:5000/api/health-card/download-certificate/${currentProfile.healthCard._id}`;
+      const downloadUrl = `http://10.170.82.39:5000/api/health-card/download-certificate/${currentProfile.healthCard._id}`;
 
       // Prepare share content
       const shareMessage =
@@ -1215,20 +1215,20 @@ export default function VaxCardScreen() {
                                     isCompleted
                                       ? "border-2"
                                       : isPending
-                                      ? "border border-dashed"
-                                      : "bg-gray-200"
+                                        ? "border border-dashed"
+                                        : "bg-gray-200"
                                   }`}
                                   style={{
                                     backgroundColor: isCompleted
                                       ? config.color
                                       : isPending
-                                      ? "#fef3c7"
-                                      : "#e5e7eb",
+                                        ? "#fef3c7"
+                                        : "#e5e7eb",
                                     borderColor: isCompleted
                                       ? config.color
                                       : isPending
-                                      ? "#f59e0b"
-                                      : "transparent",
+                                        ? "#f59e0b"
+                                        : "transparent",
                                   }}
                                 />
                               );

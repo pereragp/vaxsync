@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://192.168.1.32:5000";
+const API_BASE_URL = "http://10.170.82.39:5000";
 
 export interface GeminiInstructionsRequest {
   dateOfBirth: string;
