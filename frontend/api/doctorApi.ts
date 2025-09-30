@@ -1,14 +1,6 @@
-//<<<<<<< devMikki
-//const BASE_URL = "http://192.168.1.4:5000"; //Pramod URL
-//const BASE_URL = "http://192.168.1.4:5000/api/users"; // Mishen URL
 
+const BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
 
-//const BASE_URL = 'http://192.168.1.32:5000'; //Pramod URL 
-//const BASE_URL = "http://192.168.1.32:5000/api/users"; // Mishen URL
-//const BASE_URL = 'http://172.29.6.227:5000'; // biba Url
-
-
-//>>>>>>> mergeAll
 
 // Types
 export interface Doctor {
