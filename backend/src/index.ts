@@ -1,17 +1,20 @@
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import dotenv from "dotenv";
 import { connectDB, disconnectDB } from "./config/database";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 import userRoutes from "./routes/userRoutes/userRoutes";
 
 // Routes
-import healthCardRoutes from './routes/healthCard/healthCardRoutes';
-import scheduleRoutes from './routes/scheduleRoutes/scheduleRoutes';
+import healthCardRoutes from "./routes/healthCard/healthCardRoutes";
+import scheduleRoutes from "./routes/scheduleRoutes/scheduleRoutes";
 import vaccineRoutes from "./routes/scheduleRoutes/vaccineRoutes";
+
 import doctorRoutes from './routes/doctorVaccRoutes/doctorRoutes';
 import geminiRoutes from './routes/geminiRoutes';
+import vaccCenterRoutes from './routes/doctorVaccRoutes/vaccinationCenterRoutes';
+
 // Load environment variables
 dotenv.config();
 
@@ -50,6 +53,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/vaccines", vaccineRoutes);
 app.use("/api/doctors", doctorRoutes);
 app.use("/api/gemini", geminiRoutes);
+app.use("/api/centers", vaccCenterRoutes);
 // Error handling middleware (must be last)
 app.use(notFoundHandler);
 app.use(errorHandler);
