@@ -16,6 +16,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import userAPI, { User, Dependent } from "../api/userApi";
+import { router } from "expo-router";
 
 const { width } = Dimensions.get("window");
 
@@ -101,6 +102,29 @@ export default function ProfilePage() {
       gender: user.gender,
     });
     setShowEditModal(true);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await userAPI.logout();
+      //navigate to login page
+      Alert.alert(
+        "Logout Successful",
+        "You have been logged out successfully!",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              // Navigate to login page
+              router.replace("/login"); // or router.push('/login')
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Logout Failed: ", error);
+      Alert.alert("Logout failed, please try again...");
+    }
   };
 
   const handleEditSubmit = async () => {
@@ -430,7 +454,10 @@ export default function ProfilePage() {
             <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
           </TouchableOpacity>
 
-          <TouchableOpacity className="bg-red-50 rounded-2xl p-4 border border-red-200 flex-row items-center justify-between">
+          <TouchableOpacity
+            onPress={handleLogout}
+            className="bg-red-50 rounded-2xl p-4 border border-red-200 flex-row items-center justify-between"
+          >
             <View className="flex-row items-center">
               <Ionicons name="log-out-outline" size={20} color="#ef4444" />
               <Text className="text-red-600 font-medium ml-3">Sign Out</Text>

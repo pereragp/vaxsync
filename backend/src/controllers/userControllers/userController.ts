@@ -191,6 +191,19 @@ const getMyProfile = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-//Logout 
+//Logout Controller
+const logoutUser = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    return res.status(200).json({
+      message: "Logged out successfully",
+      success: true,
+    });
+  } catch (error) {
+    console.error("Error during logout: ", error);
+    return res
+      .status(500)
+      .json({ message: "Server error during logout", error });
+  }
+};
 
-export { registerUser, getUserById, loginUser, getMyProfile };
+export { registerUser, getUserById, loginUser, getMyProfile, logoutUser };

@@ -4,6 +4,7 @@ import {
   getUserById,
   loginUser,
   getMyProfile,
+  logoutUser
 } from "../../controllers/userControllers/userController";
 import {
   addDependent,
@@ -16,6 +17,7 @@ const router = express.Router();
 // User registration route
 router.post("/register", registerUser);
 router.post("/login", loginUser);
+router.post("/logout", protect, logoutUser)
 router.post("/new-dependent", addDependent);
 
 // Protected route to get current user's profile
