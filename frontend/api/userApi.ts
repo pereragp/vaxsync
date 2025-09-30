@@ -1,8 +1,4 @@
-
-const API_BASE_URL = 'http://192.168.1.32:5000/api/users'; // Pramod URL
-//const API_BASE_URL = 'http://192.168.1.32:5000/api/users'; // Mishen URL
-
-
+const API_BASE_URL = "http://192.168.1.4:5000/api/users"; // Pramod URL
 
 export interface User {
   _id: string;
@@ -32,14 +28,23 @@ export interface Dependent {
 }
 
 class UserAPI {
-  private async makeRequest<T>(endpoint: string): Promise<T> {
+  private async makeRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
     try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`);
-      
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          ...options.headers,
+        },
+      });
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       return data;
     } catch (error) {
@@ -48,34 +53,116 @@ class UserAPI {
     }
   }
 
-  // Get user by ID
-  async getUserById(userId: string): Promise<User> {
-    const userData = await this.makeRequest<any>(`/${userId}`);
-    
+  private async makeAuthenticatedRequest<T>(
+    endpoint: string,
+    options: RequestInit = {}
+  ): Promise<T> {
+    const token = await this.getStoredToken();
+
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+
+    return this.makeRequest<T>(endpoint, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
+
+  private async getStoredToken(): Promise<string | null> {
+    // For React Native with AsyncStorage
+    try {
+      const AsyncStorage =
+        require("@react-native-async-storage/async-storage").default;
+      return await AsyncStorage.getItem("userToken");
+    } catch (error) {
+      console.error("Error getting stored token:", error);
+      return null;
+    }
+  }
+
+  //Login Method
+  async login(email: string, password: string): Promise<any> {
+    return this.makeRequest<any>("/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
+  //Register Method
+  async register(userData: {
+    username: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    password: string;
+    dateOfBirth: string;
+    gender: string;
+    phone: string;
+  }): Promise<any> {
+    return this.makeRequest<any>("/register", {
+      method: "POST",
+      body: JSON.stringify(userData),
+    });
+  }
+
+  // Get current user's profile (protected route)
+  async getCurrentUser(): Promise<User> {
+    const userData = await this.makeAuthenticatedRequest<any>("/profile");
+
     // Transform backend response to match our User interface
     return {
       _id: userData._id,
-      username: userData.username || 'unknown',
+      username: userData.username || "unknown",
       firstName: userData.firstName,
       lastName: userData.lastName,
       email: userData.email,
       dateOfBirth: userData.dateOfBirth,
       gender: userData.gender,
       phone: userData.phone,
-      avatar: userData.avatar || '',
+      avatar: userData.avatar || "",
       dependents: userData.dependents || [],
       createdAt: userData.createdAt || new Date().toISOString(),
-      updatedAt: userData.updatedAt || new Date().toISOString()
+      updatedAt: userData.updatedAt || new Date().toISOString(),
+    };
+  }
+
+  // Get user by ID
+  async getUserById(userId: string): Promise<User> {
+    const userData = await this.makeRequest<any>(`/${userId}`);
+
+    // Transform backend response to match our User interface
+    return {
+      _id: userData._id,
+      username: userData.username || "unknown",
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      email: userData.email,
+      dateOfBirth: userData.dateOfBirth,
+      gender: userData.gender,
+      phone: userData.phone,
+      avatar: userData.avatar || "",
+      dependents: userData.dependents || [],
+      createdAt: userData.createdAt || new Date().toISOString(),
+      updatedAt: userData.updatedAt || new Date().toISOString(),
     };
   }
 
   // Get dependents by guardian ID
   async getDependents(guardianId: string): Promise<Dependent[]> {
     try {
-      const response = await this.makeRequest<any>(`/dependents/${guardianId}`);
+      const response = await this.makeAuthenticatedRequest<any>(
+        `/dependents/${guardianId}`
+      );
       return response.dependents || [];
     } catch (error) {
-      console.log('No dependents endpoint available, returning empty array');
+      console.log(
+        "No dependents endpoint available, returning empty array",
+        error
+      );
       return [];
     }
   }

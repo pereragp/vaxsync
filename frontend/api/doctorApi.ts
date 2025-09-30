@@ -1,7 +1,5 @@
-
-const BASE_URL = 'http://192.168.1.32:5000'; //Pramod URL 
-//const BASE_URL = "http://192.168.1.32:5000/api/users"; // Mishen URL
-
+const BASE_URL = "http://192.168.1.4:5000"; //Pramod URL
+//const BASE_URL = "http://192.168.1.4:5000/api/users"; // Mishen URL
 
 // Types
 export interface Doctor {
@@ -29,11 +27,7 @@ export interface ApiResponse<T = any> {
 
 // Enhanced error handling
 class ApiError extends Error {
-  constructor(
-    message: string,
-    public status?: number,
-    public code?: string
-  ) {
+  constructor(message: string, public status?: number, public code?: string) {
     super(message);
     this.name = "ApiError";
   }
@@ -205,7 +199,9 @@ export const doctorApi = {
     try {
       console.log(`Fetching doctor with ID: ${doctorId}`);
 
-      const response = await apiRequest<Doctor>(`/api/doctors/${doctorId.trim()}`);
+      const response = await apiRequest<Doctor>(
+        `/api/doctors/${doctorId.trim()}`
+      );
 
       if (!response.data) {
         throw new ApiError("Doctor not found");
