@@ -80,7 +80,7 @@ export default function ProfilePage() {
         );
       } else if (error.message.includes("Network request failed")) {
         setError(
-          "Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.4:5000"
+          "Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.32:5000"
         );
       } else {
         setError(error.message || "Failed to load user data");
