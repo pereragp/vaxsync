@@ -884,205 +884,318 @@ export default function VaxCardScreen() {
 
   return (
     <SafeAreaView
-      className="flex-1 bg-gradient-to-b from-blue-50 to-white"
+      className="flex-1"
       edges={["top"]}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
-
-      {/* Header with Stats */}
-      <View className="pt-1 pb-6 px-4">
-        <View className="flex-row items-center justify-between mb-2">
-          <Text className="text-2xl font-bold text-gray-800">
-            My Vaccine Records
-          </Text>
-        </View>
-
-        {loading && (
-          <View className="bg-blue-50 rounded-xl p-3 mb-4 flex-row items-center">
-            <ActivityIndicator size="small" color="#3b82f6" />
-            <Text className="ml-2 text-blue-700 text-sm">
-              Loading vaccination data...
+      <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
+      
+      {/* Enhanced Header with Gradient */}
+      <LinearGradient
+        colors={['#1e40af', '#3b82f6', '#60a5fa']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        className="pt-4 pb-8 px-6"
+      >
+        <View className="flex-row items-center justify-between mb-6">
+          <View className="flex-1">
+            <Text className="text-3xl font-bold text-white mb-1">
+              My Vaccine Records
+            </Text>
+            <Text className="text-blue-100 text-base">
+              Track your vaccination journey
             </Text>
           </View>
-        )}
-
-        {error && (
-          <View className="bg-red-50 rounded-xl p-3 mb-4">
-            <View className="flex-row items-center mb-2">
-              <Ionicons name="warning" size={20} color="#ef4444" />
-              <Text className="ml-2 text-red-700 text-sm flex-1">{error}</Text>
-            </View>
-            {(error.includes("Health card not found") ||
-              error.includes("No health cards found")) && (
-              <TouchableOpacity
-                onPress={() => {
-                  if (error.includes("No health cards found")) {
-                    createAllHealthCards();
-                  } else {
-                    const currentProfile = profiles[selectedIdx];
-                    if (currentProfile) {
-                      createHealthCard(
-                        currentProfile.id,
-                        selectedIdx,
-                        currentProfile.isDependent
-                      );
-                    }
-                  }
-                }}
-                className="bg-blue-500 rounded-lg px-4 py-2 self-start"
-              >
-                <Text className="text-white text-sm font-medium">
-                  {error.includes("No health cards found")
-                    ? "Create Health Cards"
-                    : "Create Health Card"}
-                </Text>
-              </TouchableOpacity>
-            )}
+          <View className="bg-white/20 rounded-2xl p-3">
+            <Ionicons name="shield-checkmark" size={32} color="white" />
           </View>
-        )}
-      </View>
+        </View>
 
-      {/* Enhanced Profile Carousel */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16 }}
-      >
-        {profiles.map((p, index) => {
-          const isSelected = index === selectedIdx;
-          const completedCount = p.vaccines.filter(
-            (v) => v.doses.length === v.totalDoses
-          ).length;
-          const hasHealthCard = !!p.healthCard;
+        {/* Stats Cards */}
+        <View className="flex-row justify-between">
+          <View className="bg-white/15 rounded-2xl p-4 flex-1 mr-2 backdrop-blur-sm">
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="checkmark-circle" size={20} color="white" />
+              <Text className="text-white/90 text-sm font-medium ml-2">Completed</Text>
+            </View>
+            <Text className="text-2xl font-bold text-white">{completionStats.completed}</Text>
+            <Text className="text-white/70 text-xs">vaccines</Text>
+          </View>
+          
+          <View className="bg-white/15 rounded-2xl p-4 flex-1 mx-1 backdrop-blur-sm">
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="shield" size={20} color="white" />
+              <Text className="text-white/90 text-sm font-medium ml-2">Total</Text>
+            </View>
+            <Text className="text-2xl font-bold text-white">{completionStats.total}</Text>
+            <Text className="text-white/70 text-xs">vaccines</Text>
+          </View>
+          
+          <View className="bg-white/15 rounded-2xl p-4 flex-1 ml-2 backdrop-blur-sm">
+            <View className="flex-row items-center mb-2">
+              <Ionicons name="checkmark-circle" size={20} color="white" />
+              <Text className="text-white/90 text-sm font-medium ml-2">Verified</Text>
+            </View>
+            <Text className="text-2xl font-bold text-white">{completionStats.verified}</Text>
+            <Text className="text-white/70 text-xs">doses</Text>
+          </View>
+        </View>
+      </LinearGradient>
 
-          return (
-            <TouchableOpacity
-              key={p.id}
-              onPress={() => handleProfileSwitch(index)}
-              className={`mr-4 p-4 rounded-2xl shadow-md min-w-32 ${
-                isSelected ? "bg-blue-500" : "bg-white"
-              }`}
-              style={{
-                transform: isSelected ? [{ scale: 1.05 }] : [{ scale: 1 }],
-              }}
-            >
-              <View className="items-center">
-                <View
-                  className={`w-12 h-12 rounded-full items-center justify-center mb-2 ${
-                    isSelected ? "bg-white/20" : "bg-blue-100"
-                  }`}
-                >
-                  <Ionicons
-                    name="person"
-                    size={24}
-                    color={isSelected ? "white" : "#3b82f6"}
-                  />
-                  {hasHealthCard && (
-                    <View className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full items-center justify-center">
-                      <Ionicons name="checkmark" size={10} color="white" />
-                    </View>
+      {/* Content Container */}
+      <View className="flex-1 bg-gray-50 -mt-4 rounded-t-3xl">
+        <View className="pt-6 px-4">
+
+          {/* Enhanced Loading State */}
+          {loading && (
+            <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-gray-100">
+              <View className="flex-row items-center">
+                <View className="bg-blue-100 rounded-full p-2 mr-3">
+                  <ActivityIndicator size="small" color="#3b82f6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-gray-800 font-medium text-base">
+                    Loading vaccination data...
+                  </Text>
+                  <Text className="text-gray-500 text-sm mt-1">
+                    Please wait while we fetch your records
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Enhanced Error State */}
+          {error && (
+            <View className="bg-white rounded-2xl p-4 mb-4 shadow-sm border border-red-100">
+              <View className="flex-row items-start">
+                <View className="bg-red-100 rounded-full p-2 mr-3">
+                  <Ionicons name="warning" size={20} color="#ef4444" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-red-800 font-medium text-base mb-1">
+                    Something went wrong
+                  </Text>
+                  <Text className="text-red-600 text-sm mb-3">{error}</Text>
+                  {(error.includes("Health card not found") ||
+                    error.includes("No health cards found")) && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        if (error.includes("No health cards found")) {
+                          createAllHealthCards();
+                        } else {
+                          const currentProfile = profiles[selectedIdx];
+                          if (currentProfile) {
+                            createHealthCard(
+                              currentProfile.id,
+                              selectedIdx,
+                              currentProfile.isDependent
+                            );
+                          }
+                        }
+                      }}
+                      className="bg-red-500 rounded-xl px-4 py-3 self-start"
+                    >
+                      <Text className="text-white text-sm font-semibold">
+                        {error.includes("No health cards found")
+                          ? "Create Health Cards"
+                          : "Create Health Card"}
+                      </Text>
+                    </TouchableOpacity>
                   )}
                 </View>
-                <Text
-                  className={`font-semibold text-center ${
-                    isSelected ? "text-white" : "text-gray-800"
-                  }`}
-                >
-                  {p.healthCard
-                    ? p.healthCard.fullName.split(" ")[0]
-                    : p.name.split(" ")[0]}
-                </Text>
-                <Text
-                  className={`text-xs text-center ${
-                    isSelected ? "text-blue-100" : "text-gray-500"
-                  }`}
-                >
-                  {p.healthCard
-                    ? p.healthCard.cardType === "dependent"
-                      ? "Dependent"
-                      : "User"
-                    : p.relation}
-                </Text>
-                {hasHealthCard ? (
-                  <View
-                    className={`mt-1 px-2 py-1 rounded-full ${
-                      isSelected ? "bg-white/20" : "bg-green-100"
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-medium ${
-                        isSelected ? "text-white" : "text-green-700"
-                      }`}
-                    >
-                      {completedCount} complete
-                    </Text>
-                  </View>
-                ) : (
-                  <View
-                    className={`mt-1 px-2 py-1 rounded-full ${
-                      isSelected ? "bg-white/20" : "bg-yellow-100"
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-medium ${
-                        isSelected ? "text-white" : "text-yellow-700"
-                      }`}
-                    >
-                      Loading...
-                    </Text>
-                  </View>
-                )}
               </View>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
+            </View>
+          )}
+        </View>
 
-      {/* Enhanced Search and Filter */}
-      <View className="px-4 pb-4">
-        <View className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-          <View className="flex-row items-center mb-3">
-            <Ionicons name="search" size={20} color="#64748b" />
-            <TextInput
-              className="flex-1 ml-3 text-gray-700 text-base"
-              placeholder="Search vaccines, dates, or providers..."
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor="#94a3b8"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery("")}>
-                <Ionicons name="close-circle" size={20} color="#64748b" />
-              </TouchableOpacity>
-            )}
-          </View>
+        {/* Enhanced Profile Carousel */}
+        <View className="mb-6">
+          <Text className="text-lg font-bold text-gray-800 mb-4 px-4">
+            Profiles
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 16 }}
+          >
+            {profiles.map((p, index) => {
+              const isSelected = index === selectedIdx;
+              const completedCount = p.vaccines.filter(
+                (v) => v.doses.length === v.totalDoses
+              ).length;
+              const hasHealthCard = !!p.healthCard;
+              const completionPercentage = p.vaccines.length > 0 
+                ? Math.round((completedCount / p.vaccines.length) * 100)
+                : 0;
 
-          {/* Filter chips */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {["all", "routine", "travel", "occupational", "emergency"].map(
-              (type) => (
+              return (
                 <TouchableOpacity
-                  key={type}
-                  onPress={() => setFilterType(type)}
-                  className={`mr-2 px-3 py-1 rounded-full ${
-                    filterType === type ? "bg-blue-500" : "bg-gray-100"
+                  key={p.id}
+                  onPress={() => handleProfileSwitch(index)}
+                  className={`mr-4 p-4 rounded-2xl min-w-36 shadow-sm border-2 ${
+                    isSelected 
+                      ? "bg-blue-500 border-blue-500 shadow-lg" 
+                      : "bg-white border-gray-100"
                   }`}
+                  style={{
+                    transform: isSelected ? [{ scale: 1.05 }] : [{ scale: 1 }],
+                    elevation: isSelected ? 8 : 2,
+                  }}
                 >
-                  <Text
-                    className={`text-sm capitalize ${
-                      filterType === type
-                        ? "text-white font-medium"
-                        : "text-gray-600"
-                    }`}
-                  >
-                    {type}
-                  </Text>
+                  <View className="items-center">
+                    <View className="relative mb-3">
+                      <View
+                        className={`w-14 h-14 rounded-full items-center justify-center ${
+                          isSelected ? "bg-white/20" : "bg-blue-100"
+                        }`}
+                      >
+                        <Ionicons
+                          name="person"
+                          size={28}
+                          color={isSelected ? "white" : "#3b82f6"}
+                        />
+                      </View>
+                      {hasHealthCard && (
+                        <View className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full items-center justify-center border-2 border-white">
+                          <Ionicons name="checkmark" size={12} color="white" />
+                        </View>
+                      )}
+                    </View>
+                    
+                    <Text
+                      className={`font-bold text-center text-base mb-1 ${
+                        isSelected ? "text-white" : "text-gray-800"
+                      }`}
+                    >
+                      {p.healthCard
+                        ? p.healthCard.fullName.split(" ")[0]
+                        : p.name.split(" ")[0]}
+                    </Text>
+                    
+                    <Text
+                      className={`text-sm text-center mb-2 ${
+                        isSelected ? "text-blue-100" : "text-gray-500"
+                      }`}
+                    >
+                      {p.healthCard
+                        ? p.healthCard.cardType === "dependent"
+                          ? "Dependent"
+                          : "User"
+                        : p.relation}
+                    </Text>
+
+                    {/* Progress Bar */}
+                    <View className={`w-full h-2 rounded-full mb-2 ${
+                      isSelected ? "bg-white/20" : "bg-gray-200"
+                    }`}>
+                      <View 
+                        className={`h-full rounded-full ${
+                          isSelected ? "bg-white" : "bg-blue-500"
+                        }`}
+                        style={{ width: `${completionPercentage}%` }}
+                      />
+                    </View>
+                    
+                    <View
+                      className={`px-3 py-1 rounded-full ${
+                        isSelected 
+                          ? "bg-white/20" 
+                          : completionPercentage === 100 
+                            ? "bg-green-100" 
+                            : completionPercentage > 0 
+                              ? "bg-blue-100" 
+                              : "bg-gray-100"
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-semibold ${
+                          isSelected 
+                            ? "text-white" 
+                            : completionPercentage === 100 
+                              ? "text-green-700" 
+                              : completionPercentage > 0 
+                                ? "text-blue-700" 
+                                : "text-gray-600"
+                        }`}
+                      >
+                        {hasHealthCard ? `${completionPercentage}% complete` : "Loading..."}
+                      </Text>
+                    </View>
+                  </View>
                 </TouchableOpacity>
-              )
-            )}
+              );
+            })}
           </ScrollView>
         </View>
-      </View>
+
+        {/* Enhanced Search and Filter */}
+        <View className="px-4 pb-4">
+          <View className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <Text className="text-lg font-bold text-gray-800 mb-4">
+              Search & Filter
+            </Text>
+            
+            <View className="flex-row items-center mb-4 bg-gray-50 rounded-2xl px-4 py-3">
+              <Ionicons name="search" size={22} color="#64748b" />
+              <TextInput
+                className="flex-1 ml-3 text-gray-700 text-base"
+                placeholder="Search vaccines, dates, or providers..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                placeholderTextColor="#94a3b8"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity 
+                  onPress={() => setSearchQuery("")}
+                  className="bg-gray-200 rounded-full p-1"
+                >
+                  <Ionicons name="close" size={16} color="#64748b" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Enhanced Filter chips */}
+            <View>
+              <Text className="text-sm font-semibold text-gray-600 mb-3">
+                Filter by type
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                {[
+                  { key: "all", label: "All", icon: "grid", color: "#6b7280" },
+                  { key: "routine", label: "Routine", icon: "shield-checkmark", color: "#10b981" },
+                  { key: "travel", label: "Travel", icon: "airplane", color: "#3b82f6" },
+                  { key: "occupational", label: "Work", icon: "briefcase", color: "#f59e0b" },
+                  { key: "emergency", label: "Emergency", icon: "medical", color: "#ef4444" },
+                ].map((filter) => (
+                  <TouchableOpacity
+                    key={filter.key}
+                    onPress={() => setFilterType(filter.key)}
+                    className={`mr-3 px-4 py-3 rounded-2xl border-2 flex-row items-center ${
+                      filterType === filter.key 
+                        ? "border-blue-500 bg-blue-50" 
+                        : "border-gray-200 bg-white"
+                    }`}
+                  >
+                    <Ionicons 
+                      name={filter.icon as any} 
+                      size={18} 
+                      color={filterType === filter.key ? "#3b82f6" : filter.color} 
+                    />
+                    <Text
+                      className={`ml-2 text-sm font-semibold ${
+                        filterType === filter.key
+                          ? "text-blue-700"
+                          : "text-gray-600"
+                      }`}
+                    >
+                      {filter.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </View>
 
       <Animated.View
         style={{
@@ -1098,14 +1211,25 @@ export default function VaxCardScreen() {
         >
           {/* Enhanced Vaccine Cards */}
           {filteredVaccines.length === 0 ? (
-            <View className="bg-white rounded-2xl p-8 items-center shadow-sm">
-              <Ionicons name="search" size={48} color="#94a3b8" />
-              <Text className="text-lg font-semibold text-gray-600 mt-4">
+            <View className="bg-white rounded-2xl p-8 items-center shadow-sm border border-gray-100">
+              <View className="bg-gray-100 rounded-full p-4 mb-4">
+                <Ionicons name="search" size={48} color="#94a3b8" />
+              </View>
+              <Text className="text-xl font-bold text-gray-800 mb-2">
                 No vaccines found
               </Text>
-              <Text className="text-sm text-gray-500 text-center mt-2">
-                Try adjusting your search or filter criteria
+              <Text className="text-gray-500 text-center mb-4">
+                Try adjusting your search or filter criteria to find what you're looking for
               </Text>
+              <TouchableOpacity 
+                onPress={() => {
+                  setSearchQuery("");
+                  setFilterType("all");
+                }}
+                className="bg-blue-500 rounded-xl px-6 py-3"
+              >
+                <Text className="text-white font-semibold">Clear Filters</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             filteredVaccines.map((vaccine, index) => {
@@ -1137,302 +1261,364 @@ export default function VaxCardScreen() {
                 >
                   <TouchableOpacity
                     onPress={() => toggleExpand(vaccine.id)}
-                    className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden"
+                    className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
                     style={{
-                      elevation: 3,
+                      elevation: 4,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 8,
                     }}
                   >
                     {/* Card header with gradient accent */}
                     <View
-                      className="h-1"
+                      className="h-2"
                       style={{ backgroundColor: config.color }}
                     />
 
-                    <View className="p-4">
-                      <View className="flex-row justify-between items-start mb-3">
+                    <View className="p-5">
+                      <View className="flex-row justify-between items-start mb-4">
                         <View className="flex-row items-center flex-1">
                           <View
-                            className="w-12 h-12 rounded-2xl items-center justify-center mr-3"
+                            className="w-14 h-14 rounded-2xl items-center justify-center mr-4 shadow-sm"
                             style={{ backgroundColor: config.bgColor }}
                           >
                             <Ionicons
                               name={config.icon as any}
-                              size={24}
+                              size={28}
                               color={config.color}
                             />
                           </View>
                           <View className="flex-1">
-                            <View className="flex-row items-center">
-                              <Text className="font-bold text-gray-800 text-lg">
+                            <View className="flex-row items-center mb-2">
+                              <Text className="font-bold text-gray-800 text-xl flex-1">
                                 {vaccine.name}
                               </Text>
                               {allVerified && (
-                                <View className="ml-2 bg-green-100 rounded-full px-2 py-1">
-                                  <Text className="text-xs font-medium text-green-700">
-                                    ✓ Verified
-                                  </Text>
+                                <View className="bg-green-500 rounded-full px-4 py-2 ml-2 shadow-sm">
+                                  <View className="flex-row items-center">
+                                    <Ionicons name="shield-checkmark" size={14} color="white" />
+                                    <Text className="text-xs font-bold text-white ml-1">
+                                      COMPLETED
+                                    </Text>
+                                  </View>
                                 </View>
                               )}
                             </View>
-                            <Text className="text-sm text-gray-500 mt-1">
-                              {latestDose.provider} • {latestDose.date}
-                            </Text>
-                            <Text className="text-xs text-gray-400 mt-1 capitalize">
-                              {vaccine.type} vaccination
-                            </Text>
+                            <View className="flex-row items-center mb-1">
+                              <Ionicons name="location" size={14} color="#6b7280" />
+                              <Text className="text-sm text-gray-600 ml-1 flex-1">
+                                {latestDose.provider}
+                              </Text>
+                            </View>
+                            <View className="flex-row items-center">
+                              <Ionicons name="calendar" size={14} color="#6b7280" />
+                              <Text className="text-sm text-gray-600 ml-1">
+                                {latestDose.date}
+                              </Text>
+                              <View className="ml-3 bg-gray-100 rounded-full px-2 py-1">
+                                <Text className="text-xs font-medium text-gray-600 capitalize">
+                                  {vaccine.type}
+                                </Text>
+                              </View>
+                            </View>
                           </View>
                         </View>
 
                         <View className="items-center ml-3">
-                          <CircularProgress
-                            percentage={completionPercentage}
-                            vaccine={vaccine}
-                            size={50}
-                          />
-                          <Ionicons
-                            name={isExpanded ? "chevron-up" : "chevron-down"}
-                            size={16}
-                            color="#94a3b8"
-                            style={{ marginTop: 4 }}
-                          />
-                        </View>
-                      </View>
-
-                      {/* Dose indicators */}
-                      <View className="flex-row items-center justify-between">
-                        <View className="flex-row items-center">
-                          {Array.from(
-                            { length: vaccine.totalDoses },
-                            (_, i) => {
-                              const dose = vaccine.doses[i];
-                              const isCompleted = dose && dose.verified;
-                              const isPending = dose && !dose.verified;
-
-                              return (
-                                <View
-                                  key={i}
-                                  className={`w-3 h-3 rounded-full mr-1 ${
-                                    isCompleted
-                                      ? "border-2"
-                                      : isPending
-                                      ? "border border-dashed"
-                                      : "bg-gray-200"
-                                  }`}
-                                  style={{
-                                    backgroundColor: isCompleted
-                                      ? config.color
-                                      : isPending
-                                      ? "#fef3c7"
-                                      : "#e5e7eb",
-                                    borderColor: isCompleted
-                                      ? config.color
-                                      : isPending
-                                      ? "#f59e0b"
-                                      : "transparent",
-                                  }}
-                                />
-                              );
-                            }
-                          )}
-                        </View>
-                        <Text className="text-sm font-medium text-gray-600">
-                          {completedDoses.length}/{vaccine.totalDoses} completed
-                        </Text>
-                      </View>
-
-                      {/* Expanded dose details */}
-                      {isExpanded && (
-                        <View className="mt-4 space-y-3">
-                          {vaccine.doses.map((dose, doseIndex) => (
-                            <Animated.View
-                              key={dose.doseNumber}
-                              className={`p-3 rounded-xl border ${
-                                dose.verified
-                                  ? "bg-gray-50 border-gray-100"
-                                  : "bg-yellow-50 border-yellow-200"
-                              }`}
-                              style={{
-                                opacity:
-                                  cardAnimations.current[
-                                    vaccine.id
-                                  ]?.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [0, 1],
-                                  }) || 1,
-                                transform: [
-                                  {
-                                    translateY:
-                                      cardAnimations.current[
-                                        vaccine.id
-                                      ]?.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [20, 0],
-                                      }) || 0,
-                                  },
-                                ],
-                              }}
-                            >
-                              <View className="flex-row justify-between items-center mb-2">
-                                <Text
-                                  className={`font-semibold ${
-                                    dose.verified
-                                      ? "text-gray-800"
-                                      : "text-yellow-800"
-                                  }`}
-                                >
-                                  Dose {dose.doseNumber}
+                          {allVerified ? (
+                            // Completion Badge for fully completed vaccines
+                            <View className="items-center">
+                              <View className="w-16 h-16 bg-green-100 rounded-full items-center justify-center mb-2 border-2 border-green-200">
+                                <Ionicons name="checkmark-circle" size={32} color="#16a34a" />
+                              </View>
+                              <View className="bg-green-50 rounded-lg px-3 py-2 border border-green-200">
+                                <Text className="text-xs font-bold text-green-700 text-center">COMPLETED</Text>
+                                <Text className="text-xs text-green-600 text-center mt-1">
+                                  {latestDose.date}
                                 </Text>
-                                <View className="flex-row items-center">
-                                  {dose.verified ? (
-                                    <>
-                                      <View className="bg-green-100 rounded-full px-2 py-1 mr-2">
-                                        <Text className="text-xs font-medium text-green-700">
-                                          ✓ Completed
+                                {latestDose.date !== "Pending" && latestDose.date !== "TBD" && (
+                                  <Text className="text-xs text-green-500 text-center mt-1">
+                                    {(() => {
+                                      const completionDate = new Date(latestDose.date);
+                                      const today = new Date();
+                                      const diffTime = today.getTime() - completionDate.getTime();
+                                      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                                      
+                                      if (diffDays === 0) return "Today";
+                                      if (diffDays === 1) return "1 day ago";
+                                      if (diffDays < 30) return `${diffDays} days ago`;
+                                      if (diffDays < 365) {
+                                        const months = Math.floor(diffDays / 30);
+                                        return `${months} month${months > 1 ? 's' : ''} ago`;
+                                      }
+                                      const years = Math.floor(diffDays / 365);
+                                      return `${years} year${years > 1 ? 's' : ''} ago`;
+                                    })()}
+                                  </Text>
+                                )}
+                              </View>
+                            </View>
+                          ) : (
+                            // Progress Circle for incomplete vaccines
+                            <View className="items-center">
+                              <CircularProgress
+                                percentage={completionPercentage}
+                                vaccine={vaccine}
+                                size={60}
+                              />
+                              <Text className="text-xs text-gray-500 mt-1 text-center">
+                                {completedDoses.length}/{vaccine.totalDoses} doses
+                              </Text>
+                            </View>
+                          )}
+                          <View className="bg-gray-100 rounded-full p-1 mt-2">
+                            <Ionicons
+                              name={isExpanded ? "chevron-up" : "chevron-down"}
+                              size={16}
+                              color="#6b7280"
+                            />
+                          </View>
+                        </View>
+                      </View>
+
+
+                      {/* Enhanced Expanded dose details */}
+                      {isExpanded && (
+                        <View className="mt-4">
+                          <Text className="text-lg font-bold text-gray-800 mb-4">
+                            Dose Details
+                          </Text>
+                          <View className="space-y-3">
+                            {vaccine.doses.map((dose, doseIndex) => (
+                              <Animated.View
+                                key={dose.doseNumber}
+                                className={`p-4 rounded-2xl border-2 ${
+                                  dose.verified
+                                    ? "bg-white border-green-100 shadow-sm"
+                                    : "bg-yellow-50 border-yellow-200 shadow-sm"
+                                }`}
+                                style={{
+                                  opacity:
+                                    cardAnimations.current[
+                                      vaccine.id
+                                    ]?.interpolate({
+                                      inputRange: [0, 1],
+                                      outputRange: [0, 1],
+                                    }) || 1,
+                                  transform: [
+                                    {
+                                      translateY:
+                                        cardAnimations.current[
+                                          vaccine.id
+                                        ]?.interpolate({
+                                          inputRange: [0, 1],
+                                          outputRange: [20, 0],
+                                        }) || 0,
+                                    },
+                                  ],
+                                }}
+                              >
+                                <View className="flex-row justify-between items-start mb-4">
+                                  <View className="flex-row items-center">
+                                    <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
+                                      dose.verified ? "bg-green-100" : "bg-yellow-100"
+                                    }`}>
+                                      <Ionicons 
+                                        name={dose.verified ? "checkmark" : "time"} 
+                                        size={20} 
+                                        color={dose.verified ? "#16a34a" : "#f59e0b"} 
+                                      />
+                                    </View>
+                                    <View>
+                                      <Text
+                                        className={`text-lg font-bold ${
+                                          dose.verified
+                                            ? "text-gray-800"
+                                            : "text-yellow-800"
+                                        }`}
+                                      >
+                                        Dose {dose.doseNumber}
+                                      </Text>
+                                      <Text className={`text-sm ${
+                                        dose.verified ? "text-green-600" : "text-yellow-600"
+                                      }`}>
+                                        {dose.verified ? "Completed" : "Pending"}
+                                      </Text>
+                                    </View>
+                                  </View>
+                                  
+                                  <View className="flex-row items-center">
+                                    {dose.verified ? (
+                                      <>
+                                        <TouchableOpacity
+                                          onPress={() => {
+                                            // Only allow for completed doses with valid dates
+                                            if (
+                                              dose.verified &&
+                                              dose.date !== "Pending" &&
+                                              dose.date !== "TBD"
+                                            ) {
+                                              const vaccination = {
+                                                vaccineName: vaccine.name,
+                                                doseNumber: dose.doseNumber,
+                                                totalDoses: vaccine.totalDoses,
+                                                dateCompleted: new Date(
+                                                  dose.date
+                                                ),
+                                              };
+                                              generateInstructionsAndShowPopup(
+                                                vaccination as HealthCardVaccination
+                                              );
+                                            } else {
+                                              Alert.alert(
+                                                "⚠️ Unable to Generate Instructions",
+                                                "This dose doesn't have a valid completion date yet. Please ensure the vaccination is properly recorded with a completion date.",
+                                                [
+                                                  {
+                                                    text: "OK",
+                                                    style: "default",
+                                                  },
+                                                ]
+                                              );
+                                            }
+                                          }}
+                                          className="bg-blue-100 rounded-xl p-2 mr-2"
+                                        >
+                                          <Ionicons
+                                            name="medical"
+                                            size={18}
+                                            color="#3b82f6"
+                                          />
+                                        </TouchableOpacity>
+                                        <TouchableOpacity
+                                          onPress={() =>
+                                            handleDeleteVaccination(
+                                              vaccine.name,
+                                              dose.doseNumber
+                                            )
+                                          }
+                                          className="bg-red-100 rounded-xl p-2"
+                                        >
+                                          <Ionicons
+                                            name="trash"
+                                            size={18}
+                                            color="#ef4444"
+                                          />
+                                        </TouchableOpacity>
+                                      </>
+                                    ) : (
+                                      <View className="bg-yellow-100 rounded-xl px-3 py-2">
+                                        <Text className="text-sm font-semibold text-yellow-700">
+                                          ⏳ Pending
                                         </Text>
                                       </View>
-                                      <TouchableOpacity
-                                        onPress={() => {
-                                          // Only allow for completed doses with valid dates
-                                          if (
-                                            dose.verified &&
-                                            dose.date !== "Pending" &&
-                                            dose.date !== "TBD"
-                                          ) {
-                                            const vaccination = {
-                                              vaccineName: vaccine.name,
-                                              doseNumber: dose.doseNumber,
-                                              totalDoses: vaccine.totalDoses,
-                                              dateCompleted: new Date(
-                                                dose.date
-                                              ),
-                                            };
-                                            generateInstructionsAndShowPopup(
-                                              vaccination as HealthCardVaccination
-                                            );
-                                          } else {
-                                            Alert.alert(
-                                              "⚠️ Unable to Generate Instructions",
-                                              "This dose doesn't have a valid completion date yet. Please ensure the vaccination is properly recorded with a completion date.",
-                                              [
-                                                {
-                                                  text: "OK",
-                                                  style: "default",
-                                                },
-                                              ]
-                                            );
-                                          }
-                                        }}
-                                        className="bg-blue-100 rounded-full p-1 mr-1"
-                                      >
-                                        <Ionicons
-                                          name="medical"
-                                          size={14}
-                                          color="#3b82f6"
-                                        />
-                                      </TouchableOpacity>
-                                      <TouchableOpacity
-                                        onPress={() =>
-                                          handleDeleteVaccination(
-                                            vaccine.name,
-                                            dose.doseNumber
-                                          )
-                                        }
-                                        className="bg-red-100 rounded-full p-1"
-                                      >
-                                        <Ionicons
-                                          name="trash"
-                                          size={14}
-                                          color="#ef4444"
-                                        />
-                                      </TouchableOpacity>
-                                    </>
-                                  ) : (
-                                    <View className="bg-yellow-100 rounded-full px-2 py-1">
-                                      <Text className="text-xs font-medium text-yellow-700">
-                                        ⏳ Pending
-                                      </Text>
+                                    )}
+                                  </View>
+                                </View>
+                                {/* Enhanced Dose Information Grid */}
+                                <View className="bg-gray-50 rounded-2xl p-4">
+                                  <View className="grid grid-cols-2 gap-4">
+                                    <View className="flex-row items-center mb-3">
+                                      <View className="bg-white rounded-full p-2 mr-3">
+                                        <Ionicons name="calendar" size={16} color="#6b7280" />
+                                      </View>
+                                      <View>
+                                        <Text className="text-xs text-gray-500 mb-1">Date</Text>
+                                        <Text
+                                          className={`text-sm font-semibold ${
+                                            dose.verified
+                                              ? "text-gray-800"
+                                              : "text-yellow-700"
+                                          }`}
+                                        >
+                                          {dose.date}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                    
+                                    <View className="flex-row items-center mb-3">
+                                      <View className="bg-white rounded-full p-2 mr-3">
+                                        <Ionicons name="barcode" size={16} color="#6b7280" />
+                                      </View>
+                                      <View>
+                                        <Text className="text-xs text-gray-500 mb-1">Batch</Text>
+                                        <Text
+                                          className={`text-sm font-mono font-semibold ${
+                                            dose.verified
+                                              ? "text-gray-800"
+                                              : "text-yellow-700"
+                                          }`}
+                                        >
+                                          {dose.batch}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                    
+                                    <View className="flex-row items-center mb-3">
+                                      <View className="bg-white rounded-full p-2 mr-3">
+                                        <Ionicons name="medical" size={16} color="#6b7280" />
+                                      </View>
+                                      <View>
+                                        <Text className="text-xs text-gray-500 mb-1">Provider</Text>
+                                        <Text
+                                          className={`text-sm font-semibold ${
+                                            dose.verified
+                                              ? "text-gray-800"
+                                              : "text-yellow-700"
+                                          }`}
+                                        >
+                                          {dose.provider}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                    
+                                    {dose.facility && dose.facility !== "TBD" && (
+                                      <View className="flex-row items-center mb-3">
+                                        <View className="bg-white rounded-full p-2 mr-3">
+                                          <Ionicons name="location" size={16} color="#6b7280" />
+                                        </View>
+                                        <View>
+                                          <Text className="text-xs text-gray-500 mb-1">Facility</Text>
+                                          <Text
+                                            className={`text-sm font-semibold ${
+                                              dose.verified
+                                                ? "text-gray-800"
+                                                : "text-yellow-700"
+                                            }`}
+                                          >
+                                            {dose.facility}
+                                          </Text>
+                                        </View>
+                                      </View>
+                                    )}
+                                  </View>
+                                  
+                                  {dose.notes && (
+                                    <View className="mt-3 pt-3 border-t border-gray-200">
+                                      <View className="flex-row items-start">
+                                        <View className="bg-white rounded-full p-2 mr-3 mt-1">
+                                          <Ionicons name="document-text" size={16} color="#6b7280" />
+                                        </View>
+                                        <View className="flex-1">
+                                          <Text className="text-xs text-gray-500 mb-1">Notes</Text>
+                                          <Text
+                                            className={`text-sm ${
+                                              dose.verified
+                                                ? "text-gray-700"
+                                                : "text-yellow-700"
+                                            }`}
+                                          >
+                                            {dose.notes}
+                                          </Text>
+                                        </View>
+                                      </View>
                                     </View>
                                   )}
                                 </View>
-                              </View>
-                              <View className="space-y-1">
-                                <View className="flex-row">
-                                  <Text className="text-xs text-gray-500 w-16">
-                                    Date:
-                                  </Text>
-                                  <Text
-                                    className={`text-xs font-medium ${
-                                      dose.verified
-                                        ? "text-gray-700"
-                                        : "text-yellow-700"
-                                    }`}
-                                  >
-                                    {dose.date}
-                                  </Text>
-                                </View>
-                                <View className="flex-row">
-                                  <Text className="text-xs text-gray-500 w-16">
-                                    Batch:
-                                  </Text>
-                                  <Text
-                                    className={`text-xs font-mono ${
-                                      dose.verified
-                                        ? "text-gray-700"
-                                        : "text-yellow-700"
-                                    }`}
-                                  >
-                                    {dose.batch}
-                                  </Text>
-                                </View>
-                                <View className="flex-row">
-                                  <Text className="text-xs text-gray-500 w-16">
-                                    Provider:
-                                  </Text>
-                                  <Text
-                                    className={`text-xs ${
-                                      dose.verified
-                                        ? "text-gray-700"
-                                        : "text-yellow-700"
-                                    }`}
-                                  >
-                                    {dose.provider}
-                                  </Text>
-                                </View>
-                                {dose.facility && dose.facility !== "TBD" && (
-                                  <View className="flex-row">
-                                    <Text className="text-xs text-gray-500 w-16">
-                                      Facility:
-                                    </Text>
-                                    <Text
-                                      className={`text-xs ${
-                                        dose.verified
-                                          ? "text-gray-700"
-                                          : "text-yellow-700"
-                                      }`}
-                                    >
-                                      {dose.facility}
-                                    </Text>
-                                  </View>
-                                )}
-                                {dose.notes && (
-                                  <View className="flex-row">
-                                    <Text className="text-xs text-gray-500 w-16">
-                                      Notes:
-                                    </Text>
-                                    <Text
-                                      className={`text-xs flex-1 ${
-                                        dose.verified
-                                          ? "text-gray-700"
-                                          : "text-yellow-700"
-                                      }`}
-                                    >
-                                      {dose.notes}
-                                    </Text>
-                                  </View>
-                                )}
-                              </View>
-                            </Animated.View>
-                          ))}
+                              </Animated.View>
+                            ))}
+                          </View>
                         </View>
                       )}
                     </View>
@@ -1443,14 +1629,24 @@ export default function VaxCardScreen() {
           )}
 
           {/* Enhanced Timeline */}
-          <View className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-lg font-bold text-gray-800">
-                Recent Activity
-              </Text>
-              <View className="bg-blue-100 rounded-full px-3 py-1">
-                <Text className="text-xs font-medium text-blue-700">
-                  {profile.vaccines.flatMap((v) => v.doses).length} total doses
+          <View className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+            <View className="flex-row items-center justify-between mb-6">
+              <View className="flex-row items-center">
+                <View className="bg-blue-100 rounded-2xl p-3 mr-3">
+                  <Ionicons name="time" size={24} color="#3b82f6" />
+                </View>
+                <View>
+                  <Text className="text-xl font-bold text-gray-800">
+                    Recent Activity
+                  </Text>
+                  <Text className="text-gray-500 text-sm">
+                    Latest vaccination updates
+                  </Text>
+                </View>
+              </View>
+              <View className="bg-blue-50 rounded-2xl px-4 py-2">
+                <Text className="text-sm font-bold text-blue-700">
+                  {profile.vaccines.flatMap((v) => v.doses).length} doses
                 </Text>
               </View>
             </View>
@@ -1465,15 +1661,18 @@ export default function VaxCardScreen() {
               .slice(0, 5) // Show only recent 5
               .map((item, i, arr) => {
                 const config = vaccineConfig[item.vaccine.type];
+                const isLatest = i === 0;
 
                 return (
                   <View
                     key={`${item.vaccine.id}-${item.dose.doseNumber}`}
-                    className="flex-row items-start mb-4 last:mb-0"
+                    className="flex-row items-start mb-6 last:mb-0"
                   >
                     <View className="items-center mr-4">
                       <Animated.View
-                        className="w-4 h-4 rounded-full"
+                        className={`w-6 h-6 rounded-full items-center justify-center ${
+                          isLatest ? "shadow-lg" : ""
+                        }`}
                         style={{
                           backgroundColor: config.color,
                           transform:
@@ -1482,44 +1681,71 @@ export default function VaxCardScreen() {
                                   {
                                     scale: pulseAnim.interpolate({
                                       inputRange: [0, 1],
-                                      outputRange: [1, 1.3],
+                                      outputRange: [1, 1.2],
                                     }),
                                   },
                                 ]
                               : [],
                         }}
-                      />
+                      >
+                        <Ionicons name="checkmark" size={12} color="white" />
+                      </Animated.View>
                       {i < arr.length - 1 && (
                         <View
-                          className="w-0.5 h-8 mt-2"
+                          className="w-0.5 h-12 mt-3"
                           style={{ backgroundColor: "#e5e7eb" }}
                         />
                       )}
                     </View>
-                    <View className="flex-1">
-                      <View className="flex-row items-center">
-                        <Text className="font-semibold text-gray-800">
-                          {item.vaccine.name}
-                        </Text>
-                        <View
-                          className="ml-2 px-2 py-1 rounded-full"
-                          style={{ backgroundColor: config.bgColor }}
-                        >
-                          <Text
-                            className="text-xs font-medium"
-                            style={{ color: config.color }}
+                    
+                    <View className="flex-1 bg-gray-50 rounded-2xl p-4">
+                      <View className="flex-row items-center justify-between mb-3">
+                        <View className="flex-row items-center">
+                          <Text className="font-bold text-gray-800 text-lg">
+                            {item.vaccine.name}
+                          </Text>
+                          <View
+                            className="ml-3 px-3 py-1 rounded-full"
+                            style={{ backgroundColor: config.bgColor }}
                           >
-                            Dose {item.dose.doseNumber}
+                            <Text
+                              className="text-sm font-semibold"
+                              style={{ color: config.color }}
+                            >
+                              Dose {item.dose.doseNumber}
+                            </Text>
+                          </View>
+                        </View>
+                        {isLatest && (
+                          <View className="bg-green-100 rounded-full px-3 py-1">
+                            <Text className="text-xs font-semibold text-green-700">
+                              Latest
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      
+                      <View className="flex-row items-center mb-2">
+                        <Ionicons name="calendar" size={16} color="#6b7280" />
+                        <Text className="text-gray-600 font-medium ml-2">
+                          {item.dose.date}
+                        </Text>
+                      </View>
+                      
+                      <View className="flex-row items-center">
+                        <Ionicons name="medical" size={16} color="#6b7280" />
+                        <Text className="text-gray-600 ml-2">
+                          {item.dose.provider}
+                        </Text>
+                      </View>
+                      
+                      {item.dose.batch && item.dose.batch !== "N/A" && (
+                        <View className="flex-row items-center mt-2">
+                          <Ionicons name="barcode" size={16} color="#6b7280" />
+                          <Text className="text-gray-500 text-sm font-mono ml-2">
+                            Batch: {item.dose.batch}
                           </Text>
                         </View>
-                      </View>
-                      <Text className="text-sm text-gray-500 mt-1">
-                        {item.dose.date} • {item.dose.provider}
-                      </Text>
-                      {i === 0 && (
-                        <Text className="text-xs text-blue-600 font-medium mt-1">
-                          Latest vaccination
-                        </Text>
                       )}
                     </View>
                   </View>
@@ -1529,107 +1755,132 @@ export default function VaxCardScreen() {
         </ScrollView>
       </Animated.View>
 
-      {/* Enhanced Floating Action Buttons */}
-      <View className="absolute right-6 z-50" style={{ bottom: 100 }}>
-        <TouchableOpacity
-          onPress={() => {
-            handleShare();
-          }}
-          className="w-14 h-14 bg-blue-600 rounded-full shadow-lg items-center justify-center mb-3"
-          style={{
-            elevation: 10,
-            shadowColor: "#3b82f6",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-          }}
-        >
-          <Ionicons name="share-social" size={24} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => {
-            handleDownload();
-          }}
-          className="w-14 h-14 bg-green-500 rounded-full shadow-lg items-center justify-center"
-          style={{
-            elevation: 10,
-            shadowColor: "#16a34a",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 8,
-          }}
-        >
-          <Ionicons name="download" size={24} color="white" />
-        </TouchableOpacity>
-      </View>
+        {/* Enhanced Floating Action Buttons - Float in View */}
+        <View className="absolute right-4 z-50" style={{ bottom: 120 }}>
+          <View className="bg-white rounded-3xl p-2 shadow-xl border border-gray-100">
+            <TouchableOpacity
+              onPress={() => {
+                handleShare();
+              }}
+              className="w-16 h-16 bg-blue-600 rounded-2xl shadow-lg items-center justify-center mb-2"
+              style={{
+                elevation: 8,
+                shadowColor: "#3b82f6",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+              }}
+            >
+              <Ionicons name="share-social" size={28} color="white" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              onPress={() => {
+                handleDownload();
+              }}
+              className="w-16 h-16 bg-green-500 rounded-2xl shadow-lg items-center justify-center"
+              style={{
+                elevation: 8,
+                shadowColor: "#16a34a",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+              }}
+            >
+              <Ionicons name="download" size={28} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
 
-      {/* Enhanced Modal */}
-      <Modal
-        visible={showVaccineModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowVaccineModal(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl max-h-5/6">
-            {selectedVaccine && (
-              <>
-                <View className="p-6 border-b border-gray-100">
-                  <View className="flex-row justify-between items-center">
-                    <View className="flex-row items-center">
-                      <View
-                        className="w-12 h-12 rounded-2xl items-center justify-center mr-3"
-                        style={{
-                          backgroundColor:
-                            vaccineConfig[selectedVaccine.type].bgColor,
-                        }}
-                      >
-                        <Ionicons
-                          name={vaccineConfig[selectedVaccine.type].icon as any}
-                          size={24}
-                          color={vaccineConfig[selectedVaccine.type].color}
-                        />
-                      </View>
-                      <View>
-                        <Text className="text-xl font-bold text-gray-800">
-                          {selectedVaccine.name}
-                        </Text>
-                        <Text className="text-sm text-gray-500 capitalize">
-                          {selectedVaccine.type} vaccination
-                        </Text>
-                      </View>
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => setShowVaccineModal(false)}
-                      className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
-                    >
-                      <Ionicons name="close" size={24} color="#64748b" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <ScrollView
-                  className="p-6"
-                  showsVerticalScrollIndicator={false}
-                >
-                  <View className="space-y-4">
-                    {selectedVaccine.doses.map((dose, index) => (
-                      <View
-                        key={dose.doseNumber}
-                        className="bg-gray-50 p-4 rounded-2xl border border-gray-100"
-                      >
-                        <View className="flex-row justify-between items-center mb-3">
-                          <Text className="text-lg font-bold text-gray-800">
-                            Dose {dose.doseNumber}
+        {/* Enhanced Modal */}
+        <Modal
+          visible={showVaccineModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowVaccineModal(false)}
+        >
+          <View className="flex-1 bg-black/50 justify-end">
+            <View className="bg-white rounded-t-3xl max-h-5/6">
+              {selectedVaccine && (
+                <>
+                  <View className="p-6 border-b border-gray-100">
+                    <View className="flex-row justify-between items-center">
+                      <View className="flex-row items-center">
+                        <View
+                          className="w-16 h-16 rounded-2xl items-center justify-center mr-4 shadow-sm"
+                          style={{
+                            backgroundColor:
+                              vaccineConfig[selectedVaccine.type].bgColor,
+                          }}
+                        >
+                          <Ionicons
+                            name={vaccineConfig[selectedVaccine.type].icon as any}
+                            size={32}
+                            color={vaccineConfig[selectedVaccine.type].color}
+                          />
+                        </View>
+                        <View>
+                          <Text className="text-2xl font-bold text-gray-800">
+                            {selectedVaccine.name}
                           </Text>
-                          <View className="flex-row items-center">
-                            {dose.verified ? (
-                              <>
-                                <View className="bg-green-100 rounded-full px-3 py-1 mr-2">
-                                  <Text className="text-sm font-medium text-green-700">
-                                    ✓ Verified
-                                  </Text>
-                                </View>
+                          <Text className="text-gray-500 capitalize text-base">
+                            {selectedVaccine.type} vaccination
+                          </Text>
+                          <View className="flex-row items-center mt-1">
+                            <Ionicons name="shield-checkmark" size={16} color="#16a34a" />
+                            <Text className="text-green-600 font-medium ml-1 text-sm">
+                              Verified Records
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => setShowVaccineModal(false)}
+                        className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center"
+                      >
+                        <Ionicons name="close" size={24} color="#64748b" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <ScrollView
+                    className="p-6"
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <Text className="text-lg font-bold text-gray-800 mb-4">
+                      All Doses
+                    </Text>
+                    <View className="space-y-4">
+                      {selectedVaccine.doses.map((dose, index) => (
+                        <View
+                          key={dose.doseNumber}
+                          className="bg-white p-5 rounded-2xl border-2 border-gray-100 shadow-sm"
+                        >
+                          <View className="flex-row justify-between items-center mb-4">
+                            <View className="flex-row items-center">
+                              <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 ${
+                                dose.verified ? "bg-green-100" : "bg-yellow-100"
+                              }`}>
+                                <Ionicons 
+                                  name={dose.verified ? "checkmark" : "time"} 
+                                  size={24} 
+                                  color={dose.verified ? "#16a34a" : "#f59e0b"} 
+                                />
+                              </View>
+                              <View>
+                                <Text className="text-xl font-bold text-gray-800">
+                                  Dose {dose.doseNumber}
+                                </Text>
+                                <Text className={`text-sm font-medium ${
+                                  dose.verified ? "text-green-600" : "text-yellow-600"
+                                }`}>
+                                  {dose.verified ? "Completed" : "Pending"}
+                                </Text>
+                              </View>
+                            </View>
+                            
+                            <View className="flex-row items-center">
+                              {dose.verified ? (
                                 <TouchableOpacity
                                   onPress={() =>
                                     handleDeleteVaccination(
@@ -1637,75 +1888,103 @@ export default function VaxCardScreen() {
                                       dose.doseNumber
                                     )
                                   }
-                                  className="bg-red-100 rounded-full p-2"
+                                  className="bg-red-100 rounded-xl p-3"
                                 >
                                   <Ionicons
                                     name="trash"
-                                    size={16}
+                                    size={20}
                                     color="#ef4444"
                                   />
                                 </TouchableOpacity>
-                              </>
-                            ) : (
-                              <View className="bg-yellow-100 rounded-full px-3 py-1">
-                                <Text className="text-sm font-medium text-yellow-700">
-                                  ⏳ Pending
-                                </Text>
+                              ) : (
+                                <View className="bg-yellow-100 rounded-xl px-4 py-3">
+                                  <Text className="text-sm font-semibold text-yellow-700">
+                                    ⏳ Pending
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          </View>
+
+                          <View className="bg-gray-50 rounded-2xl p-4">
+                            <View className="grid grid-cols-2 gap-4">
+                              <View className="flex-row items-center">
+                                <View className="bg-white rounded-full p-2 mr-3">
+                                  <Ionicons name="calendar" size={16} color="#6b7280" />
+                                </View>
+                                <View>
+                                  <Text className="text-xs text-gray-500 mb-1">Date</Text>
+                                  <Text className="text-sm font-semibold text-gray-800">
+                                    {dose.date}
+                                  </Text>
+                                </View>
                               </View>
-                            )}
+                              
+                              <View className="flex-row items-center">
+                                <View className="bg-white rounded-full p-2 mr-3">
+                                  <Ionicons name="barcode" size={16} color="#6b7280" />
+                                </View>
+                                <View>
+                                  <Text className="text-xs text-gray-500 mb-1">Batch</Text>
+                                  <Text className="text-sm font-mono font-semibold text-gray-800">
+                                    {dose.batch}
+                                  </Text>
+                                </View>
+                              </View>
+                              
+                              <View className="flex-row items-center">
+                                <View className="bg-white rounded-full p-2 mr-3">
+                                  <Ionicons name="medical" size={16} color="#6b7280" />
+                                </View>
+                                <View>
+                                  <Text className="text-xs text-gray-500 mb-1">Provider</Text>
+                                  <Text className="text-sm font-semibold text-gray-800">
+                                    {dose.provider}
+                                  </Text>
+                                </View>
+                              </View>
+                              
+                              {dose.facility && dose.facility !== "TBD" && (
+                                <View className="flex-row items-center">
+                                  <View className="bg-white rounded-full p-2 mr-3">
+                                    <Ionicons name="location" size={16} color="#6b7280" />
+                                  </View>
+                                  <View>
+                                    <Text className="text-xs text-gray-500 mb-1">Facility</Text>
+                                    <Text className="text-sm font-semibold text-gray-800">
+                                      {dose.facility}
+                                    </Text>
+                                  </View>
+                                </View>
+                              )}
+                            </View>
                           </View>
                         </View>
-
-                        <View className="space-y-2">
-                          <View className="flex-row">
-                            <Text className="text-sm text-gray-500 w-20">
-                              Date:
-                            </Text>
-                            <Text className="text-sm text-gray-800 font-medium flex-1">
-                              {dose.date}
-                            </Text>
-                          </View>
-                          <View className="flex-row">
-                            <Text className="text-sm text-gray-500 w-20">
-                              Batch:
-                            </Text>
-                            <Text className="text-sm text-gray-800 font-mono flex-1">
-                              {dose.batch}
-                            </Text>
-                          </View>
-                          <View className="flex-row">
-                            <Text className="text-sm text-gray-500 w-20">
-                              Provider:
-                            </Text>
-                            <Text className="text-sm text-gray-800 flex-1">
-                              {dose.provider}
-                            </Text>
-                          </View>
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                </ScrollView>
-              </>
-            )}
+                      ))}
+                    </View>
+                  </ScrollView>
+                </>
+              )}
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      {/* Instructions Popup */}
-      <InstructionsPopup
-        visible={showInstructionsPopup}
-        onClose={() => {
-          setShowInstructionsPopup(false);
-          setInstructionsData(null);
-          // Don't reset autoPopupTriggered - this prevents the loop
-        }}
-        instructions={instructionsData?.instructions || ""}
-        vaccineName={instructionsData?.vaccineName || ""}
-        completedDoseNo={instructionsData?.completedDoseNo || 0}
-        totalDoses={instructionsData?.totalDoses || 0}
-        loading={generatingInstructions}
-      />
+        {/* Instructions Popup */}
+        <InstructionsPopup
+          visible={showInstructionsPopup}
+          onClose={() => {
+            setShowInstructionsPopup(false);
+            setInstructionsData(null);
+            // Don't reset autoPopupTriggered - this prevents the loop
+          }}
+          instructions={instructionsData?.instructions || ""}
+          vaccineName={instructionsData?.vaccineName || ""}
+          completedDoseNo={instructionsData?.completedDoseNo || 0}
+          totalDoses={instructionsData?.totalDoses || 0}
+          loading={generatingInstructions}
+        />
+      </View>
     </SafeAreaView>
   );
 }
+
