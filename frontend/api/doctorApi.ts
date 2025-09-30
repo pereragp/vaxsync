@@ -4,6 +4,7 @@
 const BASE_URL = 'http://172.29.6.227:5000'; // biba Url
 
 
+
 // Types
 export interface Doctor {
   _id: string;
@@ -71,7 +72,6 @@ const apiRequest = async <T>(
   };
 
   const fullUrl = `${BASE_URL}${endpoint}`;
-  console.log(`Making request to: ${fullUrl}`);
 
   try {
     // Add timeout to prevent hanging requests
@@ -162,9 +162,6 @@ export const doctorApi = {
    */
   getAllDoctors: async (query?: string): Promise<Doctor[]> => {
     try {
-      console.log(
-        `Fetching doctors${query ? ` with query: "${query}"` : ""}...`
-      );
 
       const params = new URLSearchParams();
       if (query && query.trim()) {
@@ -204,7 +201,6 @@ export const doctorApi = {
     }
 
     try {
-      console.log(`Fetching doctor with ID: ${doctorId}`);
 
       const response = await apiRequest<Doctor>(`/api/doctors/${doctorId.trim()}`);
 
@@ -212,7 +208,6 @@ export const doctorApi = {
         throw new ApiError("Doctor not found");
       }
 
-      console.log(`Successfully fetched doctor: ${response.data.name}`);
       return response.data;
     } catch (error) {
       console.error(`Failed to fetch doctor ${doctorId}:`, error);

@@ -16,14 +16,12 @@ import {
 } from "react-native";
 import * as Location from "expo-location";
 import MapView, { Marker, PROVIDER_GOOGLE, MapViewProps, Region } from "react-native-maps";
-import { vaccCenterApi, VaccinationCenter } from "../api/vaccCenterApi"; // Assuming this path is correct
+import { vaccCenterApi, VaccinationCenter , Googele_API_KEY} from "../api/vaccCenterApi";
 import { Ionicons } from "@expo/vector-icons";
 import MapViewDirections from "react-native-maps-directions";
-import Constants from "expo-constants"; // Import Constants
 
-// 1. USE EXPO CONSTANTS TO SAFELY READ THE API KEY
-// NOTE: For Expo to expose this, the variable MUST be prefixed with EXPO_PUBLIC_ in your .env file
-const GOOGLE_MAPS_API_KEY = "AIzaSyDhfgoyumPBmt0HVYBc8QzFZ6LJDAGI1Uc"
+// Read Google Maps API Key from environment variables
+const GOOGLE_MAPS_API_KEY = Googele_API_KEY;
 
 const { width } = Dimensions.get("window");
 
@@ -43,19 +41,20 @@ const VaccinationCentersScreen = () => {
   const [showDirections, setShowDirections] = useState(false);
   const [directionsCenter, setDirectionsCenter] = useState<VaccinationCenter | null>(null);
   const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
+  const [searchMode, setSearchMode] = useState<"nearby" | "all">("nearby");
 
 
   useEffect(() => {
-    // 2. IMPORTANT: Check if API Key is available
-    if (!GOOGLE_MAPS_API_KEY || GOOGLE_MAPS_API_KEY === "AIzaSyDhfgoyumPBmt0HVYBc8QzFZ6LJDAGI1Uc" || GOOGLE_MAPS_API_KEY === "AIzaSyDhfgoyumPBmt0HVYBc8QzFZ6LJDAGI1Uc") {
-
+    // Check if API Key is available
+    if (!GOOGLE_MAPS_API_KEY) {
+      console.warn("Google Maps API Key is not configured. Please add EXPO_PUBLIC_GOOGLE_MAPS_API_KEY to your .env file");
     }
     fetchCenters();
-  }, []);
+  }, [searchMode]);
 
   useEffect(() => {
     filterCenters();
-  }, [searchQuery, selectedVaccineType, centers]);
+  }, [searchQuery, selectedVaccineType, centers, searchMode]);
 
   const fetchCenters = async () => {
     setLoading(true);
@@ -72,11 +71,18 @@ const VaccinationCentersScreen = () => {
       const lng = location.coords.longitude;
       setUserLocation({ latitude: lat, longitude: lng });
 
-      // Fetch nearby centers using the user's current location
-      const nearbyCenters = await vaccCenterApi.getNearbyCenters(lat, lng, 50000, 50);
-      setCenters(nearbyCenters);
+      // Fetch centers based on search mode
+      let fetchedCenters;
+      if (searchMode === "nearby") {
+        fetchedCenters = await vaccCenterApi.getNearbyCenters(lat, lng, 50000, 50);
+      } else {
+        // Fetch all centers - use a very large radius or a different API endpoint if available
+        fetchedCenters = await vaccCenterApi.getNearbyCenters(lat, lng, 500000, 500); // 500km radius, up to 500 centers
+      }
+      
+      setCenters(fetchedCenters);
 
-      const types = [...new Set(nearbyCenters.flatMap((c) => c.vaccineTypes))];
+      const types = [...new Set(fetchedCenters.flatMap((c) => c.vaccineTypes))];
       setVaccineTypes(types);
     } catch (error) {
       console.error("Failed to fetch centers:", error);
@@ -144,8 +150,6 @@ const VaccinationCentersScreen = () => {
         duration: Math.round(result.duration).toString(),
     });
 
-    console.log(`Distance: ${result.distance} km`);
-    console.log(`Duration: ${result.duration} min`);
   };
   
   const handleDirectionsError = (errorMessage: string) => {
@@ -272,11 +276,47 @@ const VaccinationCentersScreen = () => {
       {showFilters && (
         <View style={styles.filterSection}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChipsContainer}>
+            {/* Search Mode Toggle */}
+            <View style={styles.searchModeContainer}>
+              <TouchableOpacity
+                style={[styles.searchModeBtn, searchMode === "nearby" && styles.searchModeBtnActive]}
+                onPress={() => setSearchMode("nearby")}
+              >
+                <Ionicons 
+                  name="locate" 
+                  size={14} 
+                  color={searchMode === "nearby" ? "#fff" : "#666"} 
+                  style={styles.searchModeIcon}
+                />
+                <Text style={[styles.searchModeText, searchMode === "nearby" && styles.searchModeTextActive]}>
+                  Nearby
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.searchModeBtn, searchMode === "all" && styles.searchModeBtnActive]}
+                onPress={() => setSearchMode("all")}
+              >
+                <Ionicons 
+                  name="globe-outline" 
+                  size={14} 
+                  color={searchMode === "all" ? "#fff" : "#666"}
+                  style={styles.searchModeIcon}
+                />
+                <Text style={[styles.searchModeText, searchMode === "all" && styles.searchModeTextActive]}>
+                  All Centers
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.filterDivider} />
+
+            {/* Vaccine Type Filters */}
             <TouchableOpacity
               style={[styles.filterChip, !selectedVaccineType && styles.filterChipActive]}
               onPress={() => setSelectedVaccineType(null)}
             >
-              <Text style={[styles.filterChipText, !selectedVaccineType && styles.filterChipTextActive]}>All</Text>
+              <Text style={[styles.filterChipText, !selectedVaccineType && styles.filterChipTextActive]}>All Vaccines</Text>
             </TouchableOpacity>
             {vaccineTypes.map((type) => (
               <TouchableOpacity
@@ -463,26 +503,6 @@ const VaccinationCentersScreen = () => {
                 </View>
               </View>
 
-              {/* Availability */}
-              {selectedCenter && Object.keys(selectedCenter.availability).length > 0 && (
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Current Stock</Text>
-                  {Object.entries(selectedCenter.availability).map(([vaccine, qty]) => (
-                    <View key={vaccine} style={styles.availabilityRow}>
-                      <Text style={styles.availabilityVaccine}>{vaccine}</Text>
-                      <Text
-                        style={[
-                          styles.availabilityQty,
-                          qty > 50 ? styles.stockHigh : qty > 20 ? styles.stockMedium : styles.stockLow,
-                        ]}
-                      >
-                        {qty} doses
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
               {/* Opening Hours */}
               {selectedCenter && Object.keys(selectedCenter.openingHours).length > 0 && (
                 <View style={styles.modalSection}>
@@ -568,6 +588,41 @@ const styles = StyleSheet.create({
   iconBtnActive: { backgroundColor: "#4A90E2" },
   filterSection: { backgroundColor: "#fff", borderBottomWidth: 1, borderBottomColor: "#E8ECF0" },
   filterChipsContainer: { paddingHorizontal: 16, paddingVertical: 12 },
+  searchModeContainer: {
+    flexDirection: "row",
+    backgroundColor: "#F5F7FA",
+    borderRadius: 16,
+    padding: 2,
+    marginRight: 12,
+  },
+  searchModeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  searchModeBtnActive: {
+    backgroundColor: "#4A90E2",
+  },
+  searchModeIcon: {
+    marginRight: 4,
+  },
+  searchModeText: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
+  },
+  searchModeTextActive: {
+    color: "#fff",
+  },
+  filterDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: "#E8ECF0",
+    marginHorizontal: 12,
+    alignSelf: "center",
+  },
   filterChip: {
     paddingHorizontal: 14,
     paddingVertical: 7,
