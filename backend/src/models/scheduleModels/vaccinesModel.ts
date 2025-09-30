@@ -28,7 +28,6 @@ const vaccineSchema = new Schema<IVaccine>(
     },
     manufacturer: {
       type: String,
-      required: [true, "Manufacturer is required"],
       trim: true,
       maxlength: [100, "Manufacturer name cannot exceed 100 characters"],
     },
@@ -48,55 +47,7 @@ const vaccineSchema = new Schema<IVaccine>(
           "Target population must be one of: all, female, male, pregnant",
       },
       default: "female",
-    },
-    ageGroups: [
-      {
-        minAge: {
-          type: Number,
-          required: true,
-          min: [0, "Minimum age cannot be negative"],
-        },
-        maxAge: {
-          type: Number,
-          required: true,
-          validate: {
-            validator: function (this: any, value: number) {
-              return value >= this.minAge;
-            },
-            message: "Maximum age must be greater than or equal to minimum age",
-          },
-        },
-        doses: {
-          type: Number,
-          required: true,
-          min: [1, "Number of doses must be at least 1"],
-          max: [10, "Number of doses cannot exceed 10"],
-        },
-        interval: {
-          type: Number,
-          required: true,
-          min: [0, "Interval cannot be negative"],
-        },
-      },
-    ],
-    doseSchedule: [
-      {
-        pregnancyNumber: { type: Number, required: true },
-        doseNumber: { type: Number, required: true },
-        weeksAfterPOA: { type: Number }, // optional, only for first dose of that pregnancy
-        weeksAfterPreviousDose: { type: Number }, // optional, for 2nd dose
-      },
-    ],
-    sideEffects: [
-      {
-        type: String,
-        trim: true,
-        maxlength: [
-          200,
-          "Side effect description cannot exceed 200 characters",
-        ],
-      },
-    ],
+    },  
     isActive: {
       type: Boolean,
       default: true,

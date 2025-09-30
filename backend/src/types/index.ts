@@ -3,21 +3,34 @@ import { Request } from "express";
 
 export interface IUser extends Document {
   _id: Types.ObjectId;
-  userId: string;
-  name: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+
   email: string;
   password: string;
   dateOfBirth: Date;
+  gender: string;
   phone: string;
   avatar?: string;
-  role: "user" | "parent" | "healthcare_provider" | "admin";
-  verificationCode: string;
   dependents: Types.ObjectId[];
   guardians: Types.ObjectId[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
+}
+
+export interface IDependent extends Document {
+  _id: Types.ObjectId;
+  firstName: string;
+  lastName: string;
+  dateOfBirth: Date;
+  gender: string;
+  dependentType: string;
+  guardianId: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface IVaccine extends Document {
@@ -62,14 +75,48 @@ export interface IHealthcareProvider {
 
 export interface IVaccineSchedule extends Document {
   recordId: string;
-  userId: string;
-  vaccineId?: string;
+  userId: Types.ObjectId;
+  dependentIds?: Types.ObjectId[]; // Array of dependent IDs
+  vaccineId?: Types.ObjectId; // Made optional for manual entries
   vaccineName: string;
   totalDoses: number;
   doses: IDose[];
   overallStatus: "in_progress" | "completed" | "cancelled";
-  healthcareProvider?: IHealthcareProvider;
+  healthcareProvider?: {
+    name?: string;
+  };
   notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IHealthCard extends Document {
+  _id: Types.ObjectId;
+  fullName: string;
+  gender: string;
+  dateOfBirth: Date;
+  userId?: Types.ObjectId; // For main user
+  dependentId?: Types.ObjectId; // For dependent
+  cardType: "user" | "dependent";
+  dependents?: {
+    _id: Types.ObjectId;
+    dependentId: Types.ObjectId;
+    fullName: string;
+    dateOfBirth: Date;
+    gender: string;
+    dependentType: string;
+  }[];
+  completedVaccinations?: {
+    vaccineName: string;
+    manufacturer?: string;
+    doseNumber: number;
+    totalDoses: number;
+    dateCompleted: Date;
+    administeredBy?: string;
+    facility?: string;
+    certificateNumber?: string;
+    notes?: string;
+  }[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -178,4 +225,35 @@ export interface PaginationInfo {
   totalRecords: number;
   hasNextPage: boolean;
   hasPreviousPage: boolean;
+}
+
+export interface IDoctor extends Document {
+  name: string;
+  specialty: string;
+  hospitals: string[];
+  phoneNumber: string;
+  rating: number;
+  availability: string;
+  imageUrls: string[];
+  doc990Id: string;
+  doc990Link: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IVaccinationCenter extends Document {
+  _id: Types.ObjectId;
+  name: string;
+  address: string;
+  district: string;
+  phone: string;
+  location: {
+    type: "Point";
+    coordinates: [number, number]; // [lng, lat]
+  };
+  vaccineTypes: string[];
+  availability: Record<string, number>; // { covid: 50, hepB: 20 }
+  openingHours: Record<string, string>; // { mon-fri: "08:00-17:00" }
+  createdAt: Date;
+  updatedAt: Date;
 }

@@ -1,74 +1,8 @@
-import mongoose, { Schema, Document } from "mongoose";
-import { Types } from "mongoose"; // Import Types for ObjectId
+import mongoose, { Schema } from "mongoose";
+import { IVaccinationRecord } from "../../types";
+import { syncVaccinesToHealthCard } from "../../controllers/healthCard/healthCardController";
 
-export interface IDose {
-  doseNumber: number;
-  dateScheduled: Date;
-  dateCompleted?: Date;
-  batchNo?: string;
-  vaccinatedLocation?: string;
-  status: "scheduled" | "completed" | "missed" | "cancelled";
-  notes?: string;
-}
-
-export interface IVaccineSchedule extends Document {
-  recordId: string;
-  userId: mongoose.Types.ObjectId;
-  vaccineId?: mongoose.Types.ObjectId;
-  vaccineName: string;
-  totalDoses: number;
-  doses: IDose[];
-  overallStatus: "in_progress" | "completed" | "cancelled";
-  healthcareProvider?: {
-    name?: string;
-    facility?: string;
-    contact?: string;
-  };
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const doseSchema = new Schema<IDose>({
-  doseNumber: {
-    type: Number,
-    required: true,
-    min: [1, "Dose number must be at least 1"],
-  },
-  dateScheduled: {
-    type: Date,
-    required: true,
-  },
-  dateCompleted: {
-    type: Date,
-    required: false,
-  },
-  batchNo: {
-    type: String,
-    required: false,
-    trim: true,
-  },
-  vaccinatedLocation: {
-    type: String,
-    required: false,
-    trim: true,
-  },
-  status: {
-    type: String,
-    enum: {
-      values: ["scheduled", "completed", "missed", "cancelled"],
-      message: "Status must be one of: scheduled, completed, missed, cancelled",
-    },
-    default: "scheduled",
-  },
-  notes: {
-    type: String,
-    maxlength: [500, "Dose notes cannot exceed 500 characters"],
-    trim: true,
-  },
-});
-
-const vaccineScheduleSchema = new Schema<IVaccineSchedule>(
+const vaccinationRecordSchema = new Schema<IVaccinationRecord>(
   {
     recordId: {
       type: String,
@@ -87,10 +21,16 @@ const vaccineScheduleSchema = new Schema<IVaccineSchedule>(
       ref: "User",
       required: [true, "User ID is required"],
     },
+    dependentIds: {
+      type: [Schema.Types.ObjectId],
+      ref: "Dependent",
+      required: false, // Optional - only if user has dependents
+      default: [],
+    }, // Array of dependent IDs for parent users
     vaccineId: {
       type: Schema.Types.ObjectId,
-      ref: "Vaccine",
-      required: false,
+      ref: "Vaccines",
+      required: false, // Optional for manual entries
     },
     vaccineName: {
       type: String,
@@ -114,9 +54,11 @@ const vaccineScheduleSchema = new Schema<IVaccineSchedule>(
       default: "in_progress",
     },
     healthcareProvider: {
-      name: { type: String, trim: true },
-      facility: { type: String, trim: true },
-      contact: { type: String, trim: true },
+      name: {
+        type: String,
+        trim: true,
+        maxlength: [100, "Provider name cannot exceed 100 characters"],
+      },
     },
     notes: {
       type: String,
@@ -129,19 +71,41 @@ const vaccineScheduleSchema = new Schema<IVaccineSchedule>(
   }
 );
 
-// Indexes for performance
-vaccineScheduleSchema.index({ userId: 1 });
-vaccineScheduleSchema.index({ "doses.status": 1 });
-vaccineScheduleSchema.index({ "doses.dateScheduled": 1 });
-vaccineScheduleSchema.index({ vaccineName: 1 });
-vaccineScheduleSchema.index({ overallStatus: 1 });
+// Indexes for better performance
+vaccinationRecordSchema.index({ userId: 1, dateScheduled: -1 });
+vaccinationRecordSchema.index({ dependentIds: 1 });
+vaccinationRecordSchema.index({ vaccineId: 1 });
+vaccinationRecordSchema.index({ recordId: 1 });
+vaccinationRecordSchema.index({ overallStatus: 1 });
+vaccinationRecordSchema.index({ vaccineName: 1 });
+vaccinationRecordSchema.index({ "doses.status": 1 });
 
-// Middleware to validate doses array
-vaccineScheduleSchema.pre("save", function (next) {
-  if (this.doses.length > this.totalDoses) {
-    return next(new Error("Number of doses cannot exceed total doses"));
+// Middleware to automatically sync completed vaccines to health cards
+vaccinationRecordSchema.post("findOneAndUpdate", async function (doc) {
+  if (doc) {
+    // Check if any doses were marked as completed
+    const hasCompletedDoses = doc.doses.some(
+      (dose: any) => dose.status === "completed"
+    );
+    if (hasCompletedDoses) {
+      console.log(`Auto-syncing completed vaccines for schedule ${doc._id}`);
+      await syncVaccinesToHealthCard(doc._id.toString());
+    }
   }
-  next();
+});
+
+// Also trigger on direct save operations
+vaccinationRecordSchema.post("save", async function (doc) {
+  if (doc) {
+    // Check if any doses were marked as completed
+    const hasCompletedDoses = doc.doses.some(
+      (dose: any) => dose.status === "completed"
+    );
+    if (hasCompletedDoses) {
+      console.log(`Auto-syncing completed vaccines for schedule ${doc._id}`);
+      await syncVaccinesToHealthCard(doc._id.toString());
+    }
+  }
 });
 
 export default mongoose.model<IVaccineSchedule>(

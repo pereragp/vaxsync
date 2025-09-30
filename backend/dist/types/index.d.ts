@@ -1,16 +1,16 @@
-import { Document, Types } from 'mongoose';
-import { Request } from 'express';
+import { Document, Types } from "mongoose";
+import { Request } from "express";
 export interface IUser extends Document {
     _id: Types.ObjectId;
-    userId: string;
-    name: string;
+    username: string;
+    firstName: string;
+    lastName: string;
     email: string;
     password: string;
     dateOfBirth: Date;
+    gender: string;
     phone: string;
     avatar?: string;
-    role: 'user' | 'parent' | 'healthcare_provider' | 'admin';
-    verificationCode: string;
     dependents: Types.ObjectId[];
     guardians: Types.ObjectId[];
     isActive: boolean;
@@ -18,21 +18,38 @@ export interface IUser extends Document {
     updatedAt: Date;
     comparePassword(candidatePassword: string): Promise<boolean>;
 }
+export interface IDependent extends Document {
+    _id: Types.ObjectId;
+    firstName: string;
+    lastName: string;
+    dateOfBirth: Date;
+    gender: string;
+    dependentType: string;
+    guardianId: Types.ObjectId;
+    createdAt: Date;
+    updatedAt: Date;
+}
 export interface IVaccine extends Document {
     _id: Types.ObjectId;
     vaccineId: string;
     name: string;
     description: string;
     manufacturer: string;
-    type: 'routine' | 'travel' | 'emergency' | 'seasonal';
+    type: "routine" | "travel" | "emergency" | "seasonal";
+    targetPopulation: "all" | "female" | "male" | "pregnant";
     ageGroups: {
         minAge: number;
         maxAge: number;
         doses: number;
         interval: number;
     }[];
+    doseSchedule: {
+        pregnancyNumber: number;
+        doseNumber: number;
+        weeksAfterPOA?: number;
+        weeksAfterPreviousDose?: number;
+    }[];
     sideEffects: string[];
-    contraindications: string[];
     isActive: boolean;
     createdAt: Date;
 }
@@ -40,6 +57,7 @@ export interface IVaccinationRecord extends Document {
     _id: Types.ObjectId;
     recordId: string;
     userId: Types.ObjectId;
+    dependentIds?: Types.ObjectId[];
     vaccineId?: Types.ObjectId;
     vaccineName: string;
     totalDoses: number;
@@ -48,16 +66,44 @@ export interface IVaccinationRecord extends Document {
         doseNumber: number;
         dateScheduled: Date;
         dateCompleted?: Date;
-        status: 'scheduled' | 'completed' | 'missed' | 'cancelled';
+        status: "scheduled" | "completed" | "missed" | "cancelled";
         notes?: string;
     }[];
-    overallStatus: 'in_progress' | 'completed' | 'cancelled';
+    overallStatus: "in_progress" | "completed" | "cancelled";
     healthcareProvider?: {
         name?: string;
-        facility?: string;
-        contact?: string;
     };
     notes?: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+export interface IHealthCard extends Document {
+    _id: Types.ObjectId;
+    fullName: string;
+    gender: string;
+    dateOfBirth: Date;
+    userId?: Types.ObjectId;
+    dependentId?: Types.ObjectId;
+    cardType: "user" | "dependent";
+    dependents?: {
+        _id: Types.ObjectId;
+        dependentId: Types.ObjectId;
+        fullName: string;
+        dateOfBirth: Date;
+        gender: string;
+        dependentType: string;
+    }[];
+    completedVaccinations?: {
+        vaccineName: string;
+        manufacturer?: string;
+        doseNumber: number;
+        totalDoses: number;
+        dateCompleted: Date;
+        administeredBy?: string;
+        facility?: string;
+        certificateNumber?: string;
+        notes?: string;
+    }[];
     createdAt: Date;
     updatedAt: Date;
 }
@@ -69,7 +115,7 @@ export interface IDigitalHealthCard extends Document {
     qrCode: string;
     issuedDate: Date;
     lastUpdated: Date;
-    status: 'active' | 'inactive';
+    status: "active" | "inactive";
     userInfo: {
         fullName: string;
         dateOfBirth: Date;
@@ -105,7 +151,7 @@ export interface IReport extends Document {
     _id: Types.ObjectId;
     reportId: string;
     userId: Types.ObjectId;
-    reportType: 'vaccination_history' | 'travel_certificate' | 'medical_report' | 'compliance_report';
+    reportType: "vaccination_history" | "travel_certificate" | "medical_report" | "compliance_report";
     title: string;
     generatedAt: Date;
     dateRange?: {
@@ -113,13 +159,13 @@ export interface IReport extends Document {
         to: Date;
     };
     includeRecords: Types.ObjectId[];
-    format: 'pdf' | 'json' | 'csv';
+    format: "pdf" | "json" | "csv";
     filePath?: string;
     downloadCount: number;
     sharedWith: {
         email: string;
         sharedAt: Date;
-        accessLevel: 'read' | 'download';
+        accessLevel: "read" | "download";
     }[];
     isActive: boolean;
     expiresAt: Date;
@@ -155,5 +201,34 @@ export interface PaginationInfo {
     totalRecords: number;
     hasNextPage: boolean;
     hasPreviousPage: boolean;
+}
+export interface IDoctor extends Document {
+    name: string;
+    specialty: string;
+    hospitals: string[];
+    phoneNumber: string;
+    rating: number;
+    availability: string;
+    imageUrls: string[];
+    doc990Id: string;
+    doc990Link: string;
+    createdAt: Date;
+    updatedAt: Date;
+}
+export interface IVaccinationCenter extends Document {
+    _id: Types.ObjectId;
+    name: string;
+    address: string;
+    district: string;
+    phone: string;
+    location: {
+        type: "Point";
+        coordinates: [number, number];
+    };
+    vaccineTypes: string[];
+    availability: Record<string, number>;
+    openingHours: Record<string, string>;
+    createdAt: Date;
+    updatedAt: Date;
 }
 //# sourceMappingURL=index.d.ts.map

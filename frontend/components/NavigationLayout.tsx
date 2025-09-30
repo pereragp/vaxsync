@@ -1,6 +1,7 @@
 import React, {useState, ReactNode } from 'react';
 import { useRouter, usePathname } from 'expo-router';
 import { View, Text, TouchableOpacity, ScrollView, Pressable } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 interface NavigationLayoutProps {
@@ -20,11 +21,11 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
   };
 
   const tabs = [
-    { id: 'home', name: 'Home', icon: 'home', route: '/' },
-    { id: 'vaccines', name: 'Vaccines', icon: 'shield', route: '/vaccines' },
     { id: 'schedule', name: 'Schedule', icon: 'calendar', route: '/schedule' },
+    { id: 'vaccines', name: 'Records', icon: 'shield', route: '/vaccines' },
+    { id: 'home', name: 'Home', icon: 'home', route: '/' },
+    { id: 'services', name: 'Services', icon: 'medkit', route: '/health-services' },
     { id: 'profile', name: 'Profile', icon: 'person', route: '/profile' },
-    { id: 'services', name: 'Health Services', icon: 'search', route: '/health-services' },
   ];
 
   const sideMenuItems = [
@@ -73,7 +74,7 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
         return 'schedule';
       case '/profile':
         return 'profile';
-      case 'health-services':
+      case '/health-services':
         return 'services';
       default:
         return 'home';
@@ -81,7 +82,8 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.white }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }} edges={['top']}>
+      <View style={{ flex: 1, backgroundColor: colors.white }}>
       {/* Header */}
       <View 
         style={{
@@ -113,7 +115,7 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
           fontSize: 18, 
           color: colors.primary 
         }}>
-          HealthTracker
+          VaxSync
         </Text>
         
         <View style={{ width: 40 }} />
@@ -381,6 +383,7 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
           </View>
         </Pressable>
       )}
-    </View>
+      </View>
+    </SafeAreaView>
   );
 }

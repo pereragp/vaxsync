@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import { IVaccinationRecord } from '../../types';
+import mongoose from "mongoose";
+import { IVaccinationRecord } from "../../types";
 declare const _default: mongoose.Model<IVaccinationRecord, {}, {}, {}, mongoose.Document<unknown, {}, IVaccinationRecord, {}, {}> & IVaccinationRecord & Required<{
     _id: mongoose.Types.ObjectId;
 }> & {
