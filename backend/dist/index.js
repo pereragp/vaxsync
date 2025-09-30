@@ -14,6 +14,8 @@ const healthCardRoutes_1 = __importDefault(require("./routes/healthCard/healthCa
 const scheduleRoutes_1 = __importDefault(require("./routes/scheduleRoutes/scheduleRoutes"));
 const vaccineRoutes_1 = __importDefault(require("./routes/scheduleRoutes/vaccineRoutes"));
 const doctorRoutes_1 = __importDefault(require("./routes/doctorVaccRoutes/doctorRoutes"));
+const geminiRoutes_1 = __importDefault(require("./routes/geminiRoutes"));
+const vaccinationCenterRoutes_1 = __importDefault(require("./routes/doctorVaccRoutes/vaccinationCenterRoutes"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = parseInt(process.env.PORT || "5000", 10);
@@ -42,6 +44,8 @@ app.use("/api/v1/schedule", scheduleRoutes_1.default);
 app.use("/api/users", userRoutes_1.default);
 app.use("/api/vaccines", vaccineRoutes_1.default);
 app.use("/api/doctors", doctorRoutes_1.default);
+app.use("/api/gemini", geminiRoutes_1.default);
+app.use("/api/centers", vaccinationCenterRoutes_1.default);
 app.use(errorHandler_1.notFoundHandler);
 app.use(errorHandler_1.errorHandler);
 const startServer = async () => {

@@ -215,4 +215,20 @@ export interface IDoctor extends Document {
     createdAt: Date;
     updatedAt: Date;
 }
+export interface IVaccinationCenter extends Document {
+    _id: Types.ObjectId;
+    name: string;
+    address: string;
+    district: string;
+    phone: string;
+    location: {
+        type: "Point";
+        coordinates: [number, number];
+    };
+    vaccineTypes: string[];
+    availability: Record<string, number>;
+    openingHours: Record<string, string>;
+    createdAt: Date;
+    updatedAt: Date;
+}
 //# sourceMappingURL=index.d.ts.map

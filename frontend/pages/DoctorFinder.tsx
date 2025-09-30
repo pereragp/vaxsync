@@ -115,6 +115,15 @@ export default function DoctorFinder() {
     }
   };
 
+  // Handle phone call
+  const handlePhoneCall = (phoneNumber: string) => {
+    const phoneUrl = `tel:${phoneNumber}`;
+    Linking.openURL(phoneUrl).catch(err => {
+      console.error("Failed to open phone dialer:", err);
+      alert('Could not open phone dialer.');
+    });
+  };
+
   useEffect(() => {
     fetchDoctors();
   }, []);
@@ -149,33 +158,34 @@ export default function DoctorFinder() {
   // Render search and filters
   const renderSearchHeader = () => (
     <View style={styles.searchSection}>
-      {/* Search Input */}
-      <View style={styles.searchInputWrapper}>
-        <Text style={styles.searchIcon}>🔍</Text>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by name or specialty"
-          placeholderTextColor="#9CA3AF"
-          value={search}
-          onChangeText={setSearch}
-          returnKeyType="search"
-        />
+      {/* Search Input with Filter Button */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchInputWrapper}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search centers, districts..."
+            placeholderTextColor="#9CA3AF"
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+          />
+        </View>
+        
+        <TouchableOpacity
+          style={styles.filterToggle}
+          onPress={() => setShowFilters(!showFilters)}
+        >
+          <Text style={styles.filterIcon}>☰</Text>
+        </TouchableOpacity>
       </View>
-
-      {/* Filter Toggle */}
-      <TouchableOpacity
-        style={styles.filterToggle}
-        onPress={() => setShowFilters(!showFilters)}
-      >
-        <Text style={styles.filterIcon}>⚙️</Text>
-      </TouchableOpacity>
 
       {/* Filters */}
       {showFilters && (
         <View style={styles.filtersContainer}>
           {/* Location Filter */}
           <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>Location</Text>
+            <Text style={styles.filterTitle}>📍 Location</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -196,7 +206,7 @@ export default function DoctorFinder() {
 
           {/* Specialty Filter */}
           <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>Specialty</Text>
+            <Text style={styles.filterTitle}>🩺 Specialty</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -230,7 +240,7 @@ export default function DoctorFinder() {
             }}
             style={styles.clearFilters}
           >
-            <Text style={styles.clearFiltersText}>Clear filters</Text>
+            <Text style={styles.clearFiltersText}>✕ Clear filters</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -293,7 +303,7 @@ export default function DoctorFinder() {
                 </Text>
               </View>
               <View style={styles.infoItem}>
-                <Text style={styles.infoIcon}>🕒</Text>
+                <Text style={styles.infoIcon}>🕐</Text>
                 <Text style={styles.availabilityText} numberOfLines={1}>{item.availability}</Text>
               </View>
             </View>
@@ -361,19 +371,22 @@ export default function DoctorFinder() {
                 </View>
               </View>
               
-              <View style={styles.infoRow}>
+              <TouchableOpacity 
+                style={styles.infoRow}
+                onPress={() => handlePhoneCall(phoneNumber)}
+              >
                 <View style={styles.infoIconContainer}>
                   <Text style={styles.modalInfoIcon}>📞</Text>
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Phone Number</Text>
-                  <Text style={styles.modalInfoText}>{phoneNumber}</Text>
+                  <Text style={styles.modalInfoTextClickable}>{phoneNumber}</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
 
               <View style={styles.infoRow}>
                 <View style={styles.infoIconContainer}>
-                  <Text style={styles.modalInfoIcon}>🕒</Text>
+                  <Text style={styles.modalInfoIcon}>🕐</Text>
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Availability</Text>
@@ -448,7 +461,7 @@ export default function DoctorFinder() {
             >
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Doctor Profile</Text>
+            <Text style={styles.modalTitle}>👨‍⚕️ Doctor Profile</Text>
             <View style={{ width: 32 }} />
           </View>
 
@@ -469,7 +482,7 @@ export default function DoctorFinder() {
       {/* Error Message */}
       {error && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText}>⚠️ {error}</Text>
           <TouchableOpacity
             style={styles.retryButton}
             onPress={() => {
@@ -477,7 +490,7 @@ export default function DoctorFinder() {
               fetchDoctors();
             }}
           >
-            <Text style={styles.retryText}>Retry</Text>
+            <Text style={styles.retryText}>🔄 Retry</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -516,14 +529,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   searchInputWrapper: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F1F5F9',
     borderRadius: 16,
     paddingHorizontal: 16,
     height: 48,
-    marginBottom: 12,
   },
   searchIcon: {
     fontSize: 18,
@@ -535,23 +553,22 @@ const styles = StyleSheet.create({
     color: '#1E293B',
   },
   filterToggle: {
-    position: 'absolute',
-    right: 20,
-    top: 6,
     width: 48,
     height: 48,
-    borderRadius: 24,
+    borderRadius: 16,
     backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   filterIcon: {
-    fontSize: 20,
+    fontSize: 24,
+    color: '#4F46E5',
+    fontWeight: '600',
   },
 
   // Filters
   filtersContainer: {
-    marginTop: 8,
+    marginTop: 16,
   },
   filterSection: {
     marginBottom: 16,
@@ -659,7 +676,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -782,6 +799,7 @@ const styles = StyleSheet.create({
     width: width - 40,
     height: 240,
     borderRadius: 20,
+    backgroundColor: '#2563EB',
   },
   modalHeaderSection: {
     paddingHorizontal: 20,
@@ -844,6 +862,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#1E293B',
     fontWeight: '600',
+  },
+  modalInfoTextClickable: {
+    fontSize: 16,
+    color: '#2563EB',
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   bookButton: {
     backgroundColor: '#4F46E5',
