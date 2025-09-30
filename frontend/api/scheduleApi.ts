@@ -1,15 +1,13 @@
-
-const API_BASE_URL = 'http://192.168.1.32:5000'; //Pramod URL
+const API_BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
 
 //const API_BASE_URL = 'http://192.168.1.32:5000/api/users'; // Mishen URL
-
 
 // Types for Schedule API
 export interface VaccineDose {
   doseNumber: number;
   dateScheduled: Date;
   dateCompleted?: Date;
-  status: 'scheduled' | 'completed' | 'missed' | 'cancelled';
+  status: "scheduled" | "completed" | "missed" | "cancelled";
   notes?: string;
 }
 
@@ -17,21 +15,24 @@ export interface VaccineSchedule {
   _id: string;
   recordId: string;
   userId: string;
-  dependentIds?: (string | {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    dateOfBirth: Date;
-    gender: string;
-    dependentType: string;
-  })[];
+  dependentIds?: (
+    | string
+    | {
+        _id: string;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+        gender: string;
+        dependentType: string;
+      }
+  )[];
   vaccineId?: string;
   vaccineName: string;
   totalDoses: number;
   interval: number;
   doses: VaccineDose[];
-  overallStatus: 'in_progress' | 'completed' | 'cancelled';
-  vaccinationType?: 'routine' | 'travel' | 'occupational' | 'emergency';
+  overallStatus: "in_progress" | "completed" | "cancelled";
+  vaccinationType?: "routine" | "travel" | "occupational" | "emergency";
   healthcareProvider?: {
     name?: string;
   };
@@ -43,7 +44,7 @@ export interface VaccineSchedule {
     _id: string;
     name: string;
     manufacturer?: string;
-    type: 'routine' | 'travel' | 'emergency' | 'seasonal';
+    type: "routine" | "travel" | "emergency" | "seasonal";
   };
   dependents?: {
     _id: string;
@@ -64,11 +65,11 @@ export interface CreateScheduleRequest {
   healthcareProvider?: string;
   notes?: string;
   scheduleDate?: string; // ISO date string for the first dose
-  vaccinationType?: 'routine' | 'travel' | 'occupational' | 'emergency';
+  vaccinationType?: "routine" | "travel" | "occupational" | "emergency";
 }
 
 export interface UpdateDoseRequest {
-  status: 'scheduled' | 'completed' | 'missed' | 'cancelled';
+  status: "scheduled" | "completed" | "missed" | "cancelled";
   dateCompleted?: string;
   notes?: string;
 }
@@ -99,8 +100,8 @@ export interface Vaccine {
   name: string;
   description: string;
   manufacturer?: string;
-  type: 'routine' | 'travel' | 'emergency' | 'seasonal';
-  targetPopulation: 'all' | 'female' | 'male' | 'pregnant';
+  type: "routine" | "travel" | "emergency" | "seasonal";
+  targetPopulation: "all" | "female" | "male" | "pregnant";
   ageGroups?: {
     minAge: number;
     maxAge: number;
@@ -142,38 +143,45 @@ const scheduleAPI = {
     vaccineName?: string;
   }): Promise<{ schedules: VaccineSchedule[]; pagination?: any }> {
     const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.dependentId) queryParams.append('dependentId', params.dependentId);
-    if (params?.overallStatus) queryParams.append('overallStatus', params.overallStatus);
-    if (params?.vaccineName) queryParams.append('vaccineName', params.vaccineName);
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.dependentId)
+      queryParams.append("dependentId", params.dependentId);
+    if (params?.overallStatus)
+      queryParams.append("overallStatus", params.overallStatus);
+    if (params?.vaccineName)
+      queryParams.append("vaccineName", params.vaccineName);
 
-    const url = `${API_BASE_URL}/api/v1/schedule${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const url = `${API_BASE_URL}/api/v1/schedule${
+      queryParams.toString() ? "?" + queryParams.toString() : ""
+    }`;
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch schedules: ${response.statusText}`);
     }
-    
+
     const data: SchedulesResponse = await response.json();
-    
+
     return {
       schedules: data.data,
-      pagination: data.pagination
+      pagination: data.pagination,
     };
   },
 
   // Create new vaccine schedule
-  async createSchedule(scheduleData: CreateScheduleRequest): Promise<VaccineSchedule> {
+  async createSchedule(
+    scheduleData: CreateScheduleRequest
+  ): Promise<VaccineSchedule> {
     try {
       const response = await fetch(`${API_BASE_URL}/api/v1/schedule`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(scheduleData),
       });
-      
+
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}`;
         try {
@@ -184,57 +192,73 @@ const scheduleAPI = {
         }
         throw new Error(`Failed to create schedule: ${errorMessage}`);
       }
-      
+
       const data: ScheduleResponse = await response.json();
       return data.data;
     } catch (error) {
-      console.error('Create schedule API error:', error);
+      console.error("Create schedule API error:", error);
       throw error;
     }
   },
 
   // Update vaccine schedule
-  async updateSchedule(scheduleId: string, updateData: Partial<VaccineSchedule>): Promise<VaccineSchedule> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/schedule/${scheduleId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updateData),
-    });
-    
+  async updateSchedule(
+    scheduleId: string,
+    updateData: Partial<VaccineSchedule>
+  ): Promise<VaccineSchedule> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/schedule/${scheduleId}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updateData),
+      }
+    );
+
     if (!response.ok) {
       throw new Error(`Failed to update schedule: ${response.statusText}`);
     }
-    
+
     const data: ScheduleResponse = await response.json();
     return data.data;
   },
 
   // Update dose status
-  async updateDoseStatus(scheduleId: string, doseNumber: number, doseData: UpdateDoseRequest): Promise<VaccineSchedule> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/schedule/${scheduleId}/doses/${doseNumber}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(doseData),
-    });
-    
+  async updateDoseStatus(
+    scheduleId: string,
+    doseNumber: number,
+    doseData: UpdateDoseRequest
+  ): Promise<VaccineSchedule> {
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/schedule/${scheduleId}/doses/${doseNumber}`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(doseData),
+      }
+    );
+
     if (!response.ok) {
       throw new Error(`Failed to update dose status: ${response.statusText}`);
     }
-    
+
     const data: ScheduleResponse = await response.json();
     return data.data;
   },
 
   // Delete vaccine schedule
   async deleteSchedule(scheduleId: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/v1/schedule/${scheduleId}`, {
-      method: 'DELETE',
-    });
-    
+    const response = await fetch(
+      `${API_BASE_URL}/api/v1/schedule/${scheduleId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
     if (!response.ok) {
       throw new Error(`Failed to delete schedule: ${response.statusText}`);
     }
@@ -243,91 +267,93 @@ const scheduleAPI = {
   // Helper function to get schedule status color
   getStatusColor(status: string): string {
     switch (status) {
-      case 'completed':
-        return '#10b981'; // green
-      case 'in_progress':
-        return '#3b82f6'; // blue
-      case 'cancelled':
-        return '#ef4444'; // red
+      case "completed":
+        return "#10b981"; // green
+      case "in_progress":
+        return "#3b82f6"; // blue
+      case "cancelled":
+        return "#ef4444"; // red
       default:
-        return '#6b7280'; // gray
+        return "#6b7280"; // gray
     }
   },
 
   // Helper function to get dose status color
   getDoseStatusColor(status: string): string {
     switch (status) {
-      case 'completed':
-        return '#10b981'; // green
-      case 'scheduled':
-        return '#3b82f6'; // blue
-      case 'missed':
-        return '#f59e0b'; // yellow
-      case 'cancelled':
-        return '#ef4444'; // red
+      case "completed":
+        return "#10b981"; // green
+      case "scheduled":
+        return "#3b82f6"; // blue
+      case "missed":
+        return "#f59e0b"; // yellow
+      case "cancelled":
+        return "#ef4444"; // red
       default:
-        return '#6b7280'; // gray
+        return "#6b7280"; // gray
     }
   },
 
   // Helper function to get status icon
   getStatusIcon(status: string): string {
     switch (status) {
-      case 'completed':
-        return 'checkmark-circle';
-      case 'in_progress':
-        return 'time';
-      case 'cancelled':
-        return 'close-circle';
+      case "completed":
+        return "checkmark-circle";
+      case "in_progress":
+        return "time";
+      case "cancelled":
+        return "close-circle";
       default:
-        return 'help-circle';
+        return "help-circle";
     }
   },
 
   // Helper function to get dose status icon
   getDoseStatusIcon(status: string): string {
     switch (status) {
-      case 'completed':
-        return 'checkmark-circle';
-      case 'scheduled':
-        return 'calendar';
-      case 'missed':
-        return 'warning';
-      case 'cancelled':
-        return 'close-circle';
+      case "completed":
+        return "checkmark-circle";
+      case "scheduled":
+        return "calendar";
+      case "missed":
+        return "warning";
+      case "cancelled":
+        return "close-circle";
       default:
-        return 'help-circle';
+        return "help-circle";
     }
   },
 
   // Helper function to format date
   formatDate(date: Date | string): string {
     const d = new Date(date);
-    return d.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    return d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   },
 
   // Helper function to format time
   formatTime(date: Date | string): string {
     const d = new Date(date);
-    return d.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
+    return d.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   },
 
   // Helper function to get next due date
   getNextDueDate(schedule: VaccineSchedule): Date | null {
-    const nextDose = schedule.doses.find(dose => dose.status === 'scheduled');
+    const nextDose = schedule.doses.find((dose) => dose.status === "scheduled");
     return nextDose ? new Date(nextDose.dateScheduled) : null;
   },
 
   // Helper function to calculate completion percentage
   getCompletionPercentage(schedule: VaccineSchedule): number {
-    const completedDoses = schedule.doses.filter(dose => dose.status === 'completed').length;
+    const completedDoses = schedule.doses.filter(
+      (dose) => dose.status === "completed"
+    ).length;
     return Math.round((completedDoses / schedule.totalDoses) * 100);
   },
 
@@ -342,7 +368,7 @@ const scheduleAPI = {
   getDaysUntilNextDose(schedule: VaccineSchedule): number | null {
     const nextDue = this.getNextDueDate(schedule);
     if (!nextDue) return null;
-    
+
     const today = new Date();
     const diffTime = nextDue.getTime() - today.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -357,37 +383,42 @@ const scheduleAPI = {
     isActive?: boolean;
   }): Promise<{ vaccines: Vaccine[]; pagination?: any }> {
     const queryParams = new URLSearchParams();
-    if (params?.page) queryParams.append('page', params.page.toString());
-    if (params?.limit) queryParams.append('limit', params.limit.toString());
-    if (params?.type) queryParams.append('type', params.type);
-    if (params?.targetPopulation) queryParams.append('targetPopulation', params.targetPopulation);
-    if (params?.isActive !== undefined) queryParams.append('isActive', params.isActive.toString());
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.type) queryParams.append("type", params.type);
+    if (params?.targetPopulation)
+      queryParams.append("targetPopulation", params.targetPopulation);
+    if (params?.isActive !== undefined)
+      queryParams.append("isActive", params.isActive.toString());
 
-    const url = `${API_BASE_URL}/api/vaccines${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
+    const url = `${API_BASE_URL}/api/vaccines${
+      queryParams.toString() ? "?" + queryParams.toString() : ""
+    }`;
     const response = await fetch(url);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch vaccines: ${response.statusText}`);
     }
-    
+
     const data: VaccinesResponse = await response.json();
     return {
       vaccines: data.data,
-      pagination: data.pagination
+      pagination: data.pagination,
     };
   },
 
   // Get vaccine by ID
   async getVaccineById(vaccineId: string): Promise<Vaccine> {
     const response = await fetch(`${API_BASE_URL}/api/vaccines/${vaccineId}`);
-    
+
     if (!response.ok) {
       throw new Error(`Failed to fetch vaccine: ${response.statusText}`);
     }
-    
-    const data: { success: boolean; message: string; data: Vaccine } = await response.json();
+
+    const data: { success: boolean; message: string; data: Vaccine } =
+      await response.json();
     return data.data;
-  }
+  },
 };
 
 export default scheduleAPI;

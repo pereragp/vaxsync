@@ -1,5 +1,6 @@
 // Base URL configuration
 const BASE_URL = 'http://172.29.6.227:5000'; // Your backend URL
+export const Googele_API_KEY = 'AIzaSyDhfgoyumPBmt0HVYBc8QzFZ6LJDAGI1Uc'; // Google API Key
 
 // Types
 export interface VaccinationCenter {
@@ -10,7 +11,6 @@ export interface VaccinationCenter {
   phone: string;
   location: { coordinates: [number, number] };
   vaccineTypes: string[];
-  availability: Record<string, number>;
   openingHours: Record<string, string>;
   createdAt: string;
   updatedAt: string;

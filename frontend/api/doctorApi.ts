@@ -1,7 +1,5 @@
 
-//const BASE_URL = 'http://192.168.1.32:5000'; //Pramod URL 
-//const BASE_URL = "http://192.168.1.32:5000/api/users"; // Mishen URL
-const BASE_URL = 'http://172.29.6.227:5000'; // biba Url
+const BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
 
 
 // Types
@@ -30,11 +28,7 @@ export interface ApiResponse<T = any> {
 
 // Enhanced error handling
 class ApiError extends Error {
-  constructor(
-    message: string,
-    public status?: number,
-    public code?: string
-  ) {
+  constructor(message: string, public status?: number, public code?: string) {
     super(message);
     this.name = "ApiError";
   }
@@ -71,7 +65,6 @@ const apiRequest = async <T>(
   };
 
   const fullUrl = `${BASE_URL}${endpoint}`;
-  console.log(`Making request to: ${fullUrl}`);
 
   try {
     // Add timeout to prevent hanging requests
@@ -162,9 +155,6 @@ export const doctorApi = {
    */
   getAllDoctors: async (query?: string): Promise<Doctor[]> => {
     try {
-      console.log(
-        `Fetching doctors${query ? ` with query: "${query}"` : ""}...`
-      );
 
       const params = new URLSearchParams();
       if (query && query.trim()) {
@@ -204,15 +194,15 @@ export const doctorApi = {
     }
 
     try {
-      console.log(`Fetching doctor with ID: ${doctorId}`);
 
-      const response = await apiRequest<Doctor>(`/api/doctors/${doctorId.trim()}`);
+      const response = await apiRequest<Doctor>(
+        `/api/doctors/${doctorId.trim()}`
+      );
 
       if (!response.data) {
         throw new ApiError("Doctor not found");
       }
 
-      console.log(`Successfully fetched doctor: ${response.data.name}`);
       return response.data;
     } catch (error) {
       console.error(`Failed to fetch doctor ${doctorId}:`, error);
