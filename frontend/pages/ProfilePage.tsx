@@ -21,10 +21,21 @@ import { router } from "expo-router";
 const { width } = Dimensions.get("window");
 
 export default function ProfilePage() {
+  //State variables
   const [user, setUser] = useState<User | null>(null);
   const [dependents, setDependents] = useState<Dependent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const genderOptions = ["Male", "Female", "Other"];
+  const dependentTypeOptions = [
+    "Child",
+    "Spouse",
+    "Parent",
+    "Sibling",
+    "Other",
+  ];
 
   // Modal states
   const [showEditModal, setShowEditModal] = useState(false);
@@ -80,7 +91,7 @@ export default function ProfilePage() {
         );
       } else if (error.message.includes("Network request failed")) {
         setError(
-          "Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.32:5000"
+          "Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.4:5000"
         );
       } else {
         setError(error.message || "Failed to load user data");
@@ -153,22 +164,54 @@ export default function ProfilePage() {
     }
   };
 
+  // Optional: Refresh dependents from server after adding
+  const refreshDependents = async () => {
+    if (user?._id) {
+      try {
+        const updatedDependents = await userAPI.getDependents(user._id);
+        setDependents(updatedDependents);
+      } catch (error) {
+        console.error("Error refreshing dependents:", error);
+      }
+    }
+  };
+
   const handleAddDependent = async () => {
     try {
       setLoading(true);
 
-      // Mock API call - replace with actual API
-      console.log("Adding dependent:", dependentForm);
+      //Validation
+      if (
+        !dependentForm.firstName.trim() ||
+        !dependentForm.lastName.trim() ||
+        !dependentForm.dateOfBirth.trim() ||
+        !dependentForm.gender.trim() ||
+        !dependentForm.dependentType.trim()
+      ) {
+        Alert.alert("Error", "Please fill in all required fields");
+        return;
+      }
 
-      const newDependent: Dependent = {
-        _id: `dep_${Date.now()}`,
-        ...dependentForm,
-        guardianId: user?._id || "",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      //Ensure user exists
+      if (!user?._id) {
+        Alert.alert("Error", "User information not available");
+        return;
+      }
 
+      //Call the backend API
+      const newDependent = await userAPI.addDependent({
+        firstName: dependentForm.firstName.trim(),
+        lastName: dependentForm.lastName.trim(),
+        dateOfBirth: dependentForm.dateOfBirth,
+        gender: dependentForm.gender.trim(),
+        dependentType: dependentForm.dependentType.trim(),
+        guardianId: user._id,
+      });
+
+      //Update local state with new dependent
       setDependents([...dependents, newDependent]);
+
+      //Close pop-up and reset form
       setShowAddDependentModal(false);
       setDependentForm({
         firstName: "",
@@ -178,9 +221,10 @@ export default function ProfilePage() {
         dependentType: "",
       });
 
-      Alert.alert("Success", "Dependent added successfully!");
+      Alert.alert("Success", "Dependent added successfully.");
+      await refreshDependents();
     } catch (error: any) {
-      console.error("Error adding dependent:", error);
+      console.error("Error adding dependent: ", error);
       Alert.alert("Error", error.message || "Failed to add dependent");
     } finally {
       setLoading(false);
@@ -695,33 +739,65 @@ export default function ProfilePage() {
                   <Text className="text-sm font-medium text-gray-700 mb-2">
                     Gender *
                   </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="Enter gender"
-                    value={dependentForm.gender}
-                    onChangeText={(text) =>
-                      setDependentForm({ ...dependentForm, gender: text })
-                    }
-                    placeholderTextColor="#9ca3af"
-                  />
+                  <View className="flex-row flex-wrap gap-2">
+                    {genderOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option}
+                        onPress={() =>
+                          setDependentForm({ ...dependentForm, gender: option })
+                        }
+                        className={`px-4 py-2 rounded-lg border ${
+                          dependentForm.gender === option
+                            ? "bg-blue-100 border-blue-500"
+                            : "bg-gray-50 border-gray-300"
+                        }`}
+                      >
+                        <Text
+                          className={`${
+                            dependentForm.gender === option
+                              ? "text-blue-700"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
 
                 <View>
                   <Text className="text-sm font-medium text-gray-700 mb-2">
                     Relationship *
                   </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="e.g., Child, Spouse, Parent"
-                    value={dependentForm.dependentType}
-                    onChangeText={(text) =>
-                      setDependentForm({
-                        ...dependentForm,
-                        dependentType: text,
-                      })
-                    }
-                    placeholderTextColor="#9ca3af"
-                  />
+                  <View className="flex-row flex-wrap gap-2">
+                    {dependentTypeOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option}
+                        onPress={() =>
+                          setDependentForm({
+                            ...dependentForm,
+                            dependentType: option,
+                          })
+                        }
+                        className={`px-4 py-2 rounded-lg border ${
+                          dependentForm.dependentType === option
+                            ? "bg-blue-100 border-blue-500"
+                            : "bg-gray-50 border-gray-300"
+                        }`}
+                      >
+                        <Text
+                          className={`${
+                            dependentForm.dependentType === option
+                              ? "text-blue-700"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               </View>
 
