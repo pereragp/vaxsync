@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL = "http://192.168.1.32:5000/api/users"; // Pramod URL
+const API_BASE_URL = "http://192.168.1.4:5000/api/users"; // Pramod URL
 
 export interface User {
   _id: string;
@@ -169,6 +169,30 @@ class UserAPI {
       createdAt: userData.createdAt || new Date().toISOString(),
       updatedAt: userData.updatedAt || new Date().toISOString(),
     };
+  }
+
+  //Add new dependent
+  async addDependent(dependentData: {
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string;
+    gender: string;
+    dependentType: string;
+    guardianId: string;
+  }): Promise<Dependent> {
+    try {
+      const response = await this.makeAuthenticatedRequest<any>(
+        "/new-dependent",
+        {
+          method: "POST",
+          body: JSON.stringify(dependentData),
+        }
+      );
+      return response.dependent;
+    } catch (error) {
+      console.error("Error adding dependent: ", error);
+      throw error;
+    }
   }
 
   // Get dependents by guardian ID
