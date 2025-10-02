@@ -78,6 +78,7 @@ class UserAPI {
     // For React Native with AsyncStorage
     try {
       const AsyncStorage =
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         require("@react-native-async-storage/async-storage").default;
       return await AsyncStorage.getItem("userToken");
     } catch (error) {
@@ -147,6 +148,39 @@ class UserAPI {
       dependents: userData.dependents || [],
       createdAt: userData.createdAt || new Date().toISOString(),
       updatedAt: userData.updatedAt || new Date().toISOString(),
+    };
+  }
+
+  //Update user profile
+  async updateProfile(profileData: {
+    firstName?: string;
+    lastName?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    phone?: string;
+  }): Promise<User> {
+    const response = await this.makeAuthenticatedRequest<any>(
+      "/profile/update",
+      {
+        method: "PUT",
+        body: JSON.stringify(profileData),
+      }
+    );
+
+    //Match backend response to UI
+    return {
+      _id: response.user._id,
+      username: response.user.username || "unknown",
+      firstName: response.user.firstName,
+      lastName: response.user.lastName,
+      email: response.user.email,
+      dateOfBirth: response.user.dateOfBirth,
+      gender: response.user.gender,
+      phone: response.user.phone,
+      avatar: response.user.avatar || "",
+      dependents: response.user.dependents || [],
+      createdAt: response.user.createdAt || new Date().toISOString(),
+      updatedAt: response.user.updatedAt || new Date().toISOString(),
     };
   }
 
