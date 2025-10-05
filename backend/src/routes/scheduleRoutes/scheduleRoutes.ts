@@ -1,6 +1,6 @@
 import express from 'express';
 import { ScheduleController } from '../../controllers/scheduleController/scheduleController';
-//import { authenticateToken } from '../../middleware/auth';
+import protect from '../../middleware/auth';
 import { body, param, query } from 'express-validator';
 import { validateRequest, validatePagination } from '../../middleware/validation';
 
@@ -78,18 +78,18 @@ const scheduleIdValidation = [
 
 // Routes
 // POST /api/v1/schedule - Create new vaccine schedule
-router.post('/', createScheduleValidation, validateRequest, ScheduleController.createVaccineSchedule);
+router.post('/', protect, createScheduleValidation, validateRequest, ScheduleController.createVaccineSchedule);
 
 // GET /api/v1/schedule - Get all vaccine schedules with filtering
-router.get('/', validatePagination, ScheduleController.getAllVaccineSchedules);
+router.get('/', protect, validatePagination, ScheduleController.getAllVaccineSchedules);
 
 // PUT /api/v1/schedule/:scheduleId - Update vaccine schedule
-router.put('/:scheduleId', scheduleIdValidation, validateRequest, ScheduleController.updateVaccineSchedule);
+router.put('/:scheduleId', protect, scheduleIdValidation, validateRequest, ScheduleController.updateVaccineSchedule);
 
 // PUT /api/v1/schedule/:scheduleId/doses/:doseNumber - Update dose status
-router.put('/:scheduleId/doses/:doseNumber', updateDoseValidation, validateRequest, ScheduleController.updateDoseStatus);
+router.put('/:scheduleId/doses/:doseNumber', protect, updateDoseValidation, validateRequest, ScheduleController.updateDoseStatus);
 
 // DELETE /api/v1/schedule/:scheduleId - Delete vaccine schedule
-router.delete('/:scheduleId', scheduleIdValidation, validateRequest, ScheduleController.deleteVaccineSchedule);
+router.delete('/:scheduleId', protect, scheduleIdValidation, validateRequest, ScheduleController.deleteVaccineSchedule);
 
 export default router;

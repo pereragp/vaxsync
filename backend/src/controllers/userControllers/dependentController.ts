@@ -1,6 +1,7 @@
 import Dependent from "../../models/userModels/dependent";
 import User from "../../models/userModels/user";
 import { Request, Response } from "express";
+import HealthCard from "../../models/healthCard/healthcardModel";
 
 // Add a Dependent
 const addDependent = async (req: Request, res: Response) => {
@@ -47,6 +48,41 @@ const addDependent = async (req: Request, res: Response) => {
       { $push: { dependents: savedDependent._id } },
       { new: true }
     );
+
+    // Automatically create health card for the new dependent
+    try {
+      const dependentHealthCard = new HealthCard({
+        fullName: `${savedDependent.firstName} ${savedDependent.lastName}`,
+        gender: savedDependent.gender,
+        dateOfBirth: savedDependent.dateOfBirth,
+        dependentId: savedDependent._id,
+        cardType: "dependent"
+      });
+      
+      await dependentHealthCard.save();
+      console.log(`Health card automatically created for dependent: ${savedDependent._id}`);
+      
+      // Update the guardian's health card to include the new dependent
+      await HealthCard.findOneAndUpdate(
+        { userId: guardianId, cardType: "user" },
+        { 
+          $push: { 
+            dependents: {
+              _id: savedDependent._id,
+              dependentId: savedDependent._id,
+              fullName: `${savedDependent.firstName} ${savedDependent.lastName}`,
+              dateOfBirth: savedDependent.dateOfBirth,
+              gender: savedDependent.gender,
+              dependentType: savedDependent.dependentType
+            }
+          }
+        },
+        { new: true }
+      );
+    } catch (healthCardError) {
+      console.error("Error creating health card for dependent:", healthCardError);
+      // Don't fail the dependent creation if health card creation fails
+    }
 
     return res
       .status(201)
