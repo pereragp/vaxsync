@@ -1,6 +1,4 @@
-
-const BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
-
+const BASE_URL = "http://192.168.1.4:5000"; //Pramod URL
 
 // Types
 export interface Doctor {
@@ -155,7 +153,6 @@ export const doctorApi = {
    */
   getAllDoctors: async (query?: string): Promise<Doctor[]> => {
     try {
-
       const params = new URLSearchParams();
       if (query && query.trim()) {
         params.append("q", query.trim());
@@ -194,7 +191,6 @@ export const doctorApi = {
     }
 
     try {
-
       const response = await apiRequest<Doctor>(
         `/api/doctors/${doctorId.trim()}`
       );

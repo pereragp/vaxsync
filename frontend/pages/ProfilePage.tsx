@@ -17,28 +17,28 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import userAPI, { User, Dependent } from "../api/userApi";
 import { router } from "expo-router";
+import UpdateProfile from "@/components/UpdateProfile";
 
 const { width } = Dimensions.get("window");
 
 export default function ProfilePage() {
+  //State variables
   const [user, setUser] = useState<User | null>(null);
   const [dependents, setDependents] = useState<Dependent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const genderOptions = ["Male", "Female", "Other"];
+  const dependentTypeOptions = [
+    "Child",
+    "Spouse",
+    "Parent",
+    "Sibling",
+    "Other",
+  ];
 
   // Modal states
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [showUpdateProfile, setShowUpdateProfile] = useState(false);
   const [showAddDependentModal, setShowAddDependentModal] = useState(false);
-
-  // Edit form states
-  const [editForm, setEditForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    dateOfBirth: "",
-    gender: "",
-  });
 
   // Add dependent form states
   const [dependentForm, setDependentForm] = useState({
@@ -80,7 +80,7 @@ export default function ProfilePage() {
         );
       } else if (error.message.includes("Network request failed")) {
         setError(
-          "Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.32:5000"
+          "Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.4:5000"
         );
       } else {
         setError(error.message || "Failed to load user data");
@@ -90,18 +90,15 @@ export default function ProfilePage() {
     }
   };
 
+  //Edit profile
   const handleEditProfile = () => {
-    if (!user) return;
+    setShowUpdateProfile(true);
+  };
 
-    setEditForm({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      phone: user.phone,
-      dateOfBirth: user.dateOfBirth,
-      gender: user.gender,
-    });
-    setShowEditModal(true);
+  //Function to handle successful update
+  const handleUpdateSuccess = (updatedUser: User) => {
+    setUser(updatedUser);
+    setShowUpdateProfile(false);
   };
 
   const handleLogout = async () => {
@@ -127,29 +124,15 @@ export default function ProfilePage() {
     }
   };
 
-  const handleEditSubmit = async () => {
-    try {
-      setLoading(true);
-
-      // Mock API call - replace with actual API
-      console.log("Updating user profile:", editForm);
-
-      // Update local state
-      if (user) {
-        setUser({
-          ...user,
-          ...editForm,
-          updatedAt: new Date().toISOString(),
-        });
+  // Optional: Refresh dependents from server after adding
+  const refreshDependents = async () => {
+    if (user?._id) {
+      try {
+        const updatedDependents = await userAPI.getDependents(user._id);
+        setDependents(updatedDependents);
+      } catch (error) {
+        console.error("Error refreshing dependents:", error);
       }
-
-      setShowEditModal(false);
-      Alert.alert("Success", "Profile updated successfully!");
-    } catch (error: any) {
-      console.error("Error updating profile:", error);
-      Alert.alert("Error", error.message || "Failed to update profile");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -157,18 +140,38 @@ export default function ProfilePage() {
     try {
       setLoading(true);
 
-      // Mock API call - replace with actual API
-      console.log("Adding dependent:", dependentForm);
+      //Validation
+      if (
+        !dependentForm.firstName.trim() ||
+        !dependentForm.lastName.trim() ||
+        !dependentForm.dateOfBirth.trim() ||
+        !dependentForm.gender.trim() ||
+        !dependentForm.dependentType.trim()
+      ) {
+        Alert.alert("Error", "Please fill in all required fields");
+        return;
+      }
 
-      const newDependent: Dependent = {
-        _id: `dep_${Date.now()}`,
-        ...dependentForm,
-        guardianId: user?._id || "",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+      //Ensure user exists
+      if (!user?._id) {
+        Alert.alert("Error", "User information not available");
+        return;
+      }
 
+      //Call the backend API
+      const newDependent = await userAPI.addDependent({
+        firstName: dependentForm.firstName.trim(),
+        lastName: dependentForm.lastName.trim(),
+        dateOfBirth: dependentForm.dateOfBirth,
+        gender: dependentForm.gender.trim(),
+        dependentType: dependentForm.dependentType.trim(),
+        guardianId: user._id,
+      });
+
+      //Update local state with new dependent
       setDependents([...dependents, newDependent]);
+
+      //Close pop-up and reset form
       setShowAddDependentModal(false);
       setDependentForm({
         firstName: "",
@@ -178,9 +181,10 @@ export default function ProfilePage() {
         dependentType: "",
       });
 
-      Alert.alert("Success", "Dependent added successfully!");
+      Alert.alert("Success", "Dependent added successfully.");
+      await refreshDependents();
     } catch (error: any) {
-      console.error("Error adding dependent:", error);
+      console.error("Error adding dependent: ", error);
       Alert.alert("Error", error.message || "Failed to add dependent");
     } finally {
       setLoading(false);
@@ -260,7 +264,7 @@ export default function ProfilePage() {
             </View>
             <TouchableOpacity
               onPress={handleEditProfile}
-              className="bg-white/20 rounded-full p-3"
+              className="bg-black/50 rounded-full p-3"
             >
               <Ionicons name="create-outline" size={20} color="white" />
             </TouchableOpacity>
@@ -467,159 +471,15 @@ export default function ProfilePage() {
         </View>
       </ScrollView>
 
-      {/* Edit Profile Modal */}
-      <Modal
-        visible={showEditModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowEditModal(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl max-h-5/6">
-            <View className="p-6 border-b border-gray-100">
-              <View className="flex-row justify-between items-center">
-                <Text className="text-xl font-bold text-gray-800">
-                  Edit Profile
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setShowEditModal(false)}
-                  className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
-                >
-                  <Ionicons name="close" size={24} color="#64748b" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
-              <View className="space-y-4">
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    First Name *
-                  </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="Enter first name"
-                    value={editForm.firstName}
-                    onChangeText={(text) =>
-                      setEditForm({ ...editForm, firstName: text })
-                    }
-                    placeholderTextColor="#9ca3af"
-                  />
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Last Name *
-                  </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="Enter last name"
-                    value={editForm.lastName}
-                    onChangeText={(text) =>
-                      setEditForm({ ...editForm, lastName: text })
-                    }
-                    placeholderTextColor="#9ca3af"
-                  />
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Email *
-                  </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="Enter email"
-                    value={editForm.email}
-                    onChangeText={(text) =>
-                      setEditForm({ ...editForm, email: text })
-                    }
-                    keyboardType="email-address"
-                    placeholderTextColor="#9ca3af"
-                  />
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Phone *
-                  </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="Enter phone number"
-                    value={editForm.phone}
-                    onChangeText={(text) =>
-                      setEditForm({ ...editForm, phone: text })
-                    }
-                    keyboardType="phone-pad"
-                    placeholderTextColor="#9ca3af"
-                  />
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Date of Birth *
-                  </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="YYYY-MM-DD"
-                    value={editForm.dateOfBirth}
-                    onChangeText={(text) =>
-                      setEditForm({ ...editForm, dateOfBirth: text })
-                    }
-                    placeholderTextColor="#9ca3af"
-                  />
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Gender *
-                  </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="Enter gender"
-                    value={editForm.gender}
-                    onChangeText={(text) =>
-                      setEditForm({ ...editForm, gender: text })
-                    }
-                    placeholderTextColor="#9ca3af"
-                  />
-                </View>
-              </View>
-
-              <View className="flex-row space-x-3 mt-6">
-                <TouchableOpacity
-                  onPress={() => setShowEditModal(false)}
-                  className="flex-1 bg-gray-500 rounded-lg py-3 items-center"
-                >
-                  <Text className="text-white font-medium">Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleEditSubmit}
-                  disabled={
-                    loading ||
-                    !editForm.firstName.trim() ||
-                    !editForm.lastName.trim() ||
-                    !editForm.email.trim()
-                  }
-                  className={`flex-1 rounded-lg py-3 items-center ${
-                    loading ||
-                    !editForm.firstName.trim() ||
-                    !editForm.lastName.trim() ||
-                    !editForm.email.trim()
-                      ? "bg-gray-400"
-                      : "bg-blue-500"
-                  }`}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Text className="text-white font-medium">Save Changes</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      {/* Update profile component */}
+      {user && (
+        <UpdateProfile
+          user={user}
+          visible={showUpdateProfile}
+          onClose={() => setShowUpdateProfile(false)}
+          onUpdateSuccess={handleUpdateSuccess}
+        />
+      )}
 
       {/* Add Dependent Modal */}
       <Modal
@@ -695,33 +555,65 @@ export default function ProfilePage() {
                   <Text className="text-sm font-medium text-gray-700 mb-2">
                     Gender *
                   </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="Enter gender"
-                    value={dependentForm.gender}
-                    onChangeText={(text) =>
-                      setDependentForm({ ...dependentForm, gender: text })
-                    }
-                    placeholderTextColor="#9ca3af"
-                  />
+                  <View className="flex-row flex-wrap gap-2">
+                    {genderOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option}
+                        onPress={() =>
+                          setDependentForm({ ...dependentForm, gender: option })
+                        }
+                        className={`px-4 py-2 rounded-lg border ${
+                          dependentForm.gender === option
+                            ? "bg-blue-100 border-blue-500"
+                            : "bg-gray-50 border-gray-300"
+                        }`}
+                      >
+                        <Text
+                          className={`${
+                            dependentForm.gender === option
+                              ? "text-blue-700"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
 
                 <View>
                   <Text className="text-sm font-medium text-gray-700 mb-2">
                     Relationship *
                   </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="e.g., Child, Spouse, Parent"
-                    value={dependentForm.dependentType}
-                    onChangeText={(text) =>
-                      setDependentForm({
-                        ...dependentForm,
-                        dependentType: text,
-                      })
-                    }
-                    placeholderTextColor="#9ca3af"
-                  />
+                  <View className="flex-row flex-wrap gap-2">
+                    {dependentTypeOptions.map((option) => (
+                      <TouchableOpacity
+                        key={option}
+                        onPress={() =>
+                          setDependentForm({
+                            ...dependentForm,
+                            dependentType: option,
+                          })
+                        }
+                        className={`px-4 py-2 rounded-lg border ${
+                          dependentForm.dependentType === option
+                            ? "bg-blue-100 border-blue-500"
+                            : "bg-gray-50 border-gray-300"
+                        }`}
+                      >
+                        <Text
+                          className={`${
+                            dependentForm.dependentType === option
+                              ? "text-blue-700"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {option}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
                 </View>
               </View>
 
