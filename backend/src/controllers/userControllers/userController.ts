@@ -206,4 +206,65 @@ const logoutUser = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export { registerUser, getUserById, loginUser, getMyProfile, logoutUser };
+//Update user details
+const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const userId = req.user._id;
+    const { firstName, lastName, dateOfBirth, gender, phone } = req.body;
+
+    //find the user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    //Update object
+    const updatedData: any = {};
+
+    if (firstName) updatedData.firstName = firstName;
+    if (lastName) updatedData.lastName = lastName;
+    if (dateOfBirth) updatedData.dateOfBirth = dateOfBirth;
+    if (gender) updatedData.gender = gender;
+    if (phone) updatedData.phone = phone;
+
+    //Update the user
+    const updatedUser = await User.findByIdAndUpdate(userId, updatedData, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    return res.status(200).json({
+      message: "Profile updated successfully",
+      user: {
+        _id: updatedUser._id,
+        username: updatedUser.username,
+        firstName: updatedUser.firstName,
+        lastName: updatedUser.lastName,
+        email: updatedUser.email,
+        dateOfBirth: updatedUser.dateOfBirth,
+        gender: updatedUser.gender,
+        phone: updatedUser.phone,
+        avatar: updatedUser.avatar,
+        dependents: updatedUser.dependents,
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating user profile: ", error);
+    return res.status(500).json({ message: "Server error.", error });
+  }
+};
+
+export {
+  registerUser,
+  getUserById,
+  loginUser,
+  getMyProfile,
+  logoutUser,
+  updateProfile,
+};

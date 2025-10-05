@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL = "http://192.168.1.32:5000/api/users"; // Pramod URL
+const API_BASE_URL = "http://192.168.1.4:5000/api/users"; // Pramod URL
 
 export interface User {
   _id: string;
@@ -78,6 +78,7 @@ class UserAPI {
     // For React Native with AsyncStorage
     try {
       const AsyncStorage =
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         require("@react-native-async-storage/async-storage").default;
       return await AsyncStorage.getItem("userToken");
     } catch (error) {
@@ -150,6 +151,39 @@ class UserAPI {
     };
   }
 
+  //Update user profile
+  async updateProfile(profileData: {
+    firstName?: string;
+    lastName?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    phone?: string;
+  }): Promise<User> {
+    const response = await this.makeAuthenticatedRequest<any>(
+      "/profile/update",
+      {
+        method: "PUT",
+        body: JSON.stringify(profileData),
+      }
+    );
+
+    //Match backend response to UI
+    return {
+      _id: response.user._id,
+      username: response.user.username || "unknown",
+      firstName: response.user.firstName,
+      lastName: response.user.lastName,
+      email: response.user.email,
+      dateOfBirth: response.user.dateOfBirth,
+      gender: response.user.gender,
+      phone: response.user.phone,
+      avatar: response.user.avatar || "",
+      dependents: response.user.dependents || [],
+      createdAt: response.user.createdAt || new Date().toISOString(),
+      updatedAt: response.user.updatedAt || new Date().toISOString(),
+    };
+  }
+
   // Get user by ID
   async getUserById(userId: string): Promise<User> {
     const userData = await this.makeRequest<any>(`/${userId}`);
@@ -169,6 +203,30 @@ class UserAPI {
       createdAt: userData.createdAt || new Date().toISOString(),
       updatedAt: userData.updatedAt || new Date().toISOString(),
     };
+  }
+
+  //Add new dependent
+  async addDependent(dependentData: {
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string;
+    gender: string;
+    dependentType: string;
+    guardianId: string;
+  }): Promise<Dependent> {
+    try {
+      const response = await this.makeAuthenticatedRequest<any>(
+        "/new-dependent",
+        {
+          method: "POST",
+          body: JSON.stringify(dependentData),
+        }
+      );
+      return response.dependent;
+    } catch (error) {
+      console.error("Error adding dependent: ", error);
+      throw error;
+    }
   }
 
   // Get dependents by guardian ID
