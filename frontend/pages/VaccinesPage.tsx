@@ -595,7 +595,7 @@ export default function VaxCardScreen() {
       setLoading(true);
 
       // Generate the download URL
-      const downloadUrl = `http://192.168.1.4:5000/api/health-card/download-certificate/${currentProfile.healthCard._id}`;
+      const downloadUrl = `http://192.168.1.3:5000/api/health-card/download-certificate/${currentProfile.healthCard._id}`;
 
       // Open the download URL in the browser
       const supported = await Linking.canOpenURL(downloadUrl);
@@ -653,7 +653,7 @@ export default function VaxCardScreen() {
       setLoading(true);
 
       // Generate the download URL for the PDF
-      const downloadUrl = `http://192.168.1.4:5000/api/health-card/download-certificate/${currentProfile.healthCard._id}`;
+      const downloadUrl = `http://192.168.1.3:5000/api/health-card/download-certificate/${currentProfile.healthCard._id}`;
 
       // Prepare share content
       const shareMessage =

@@ -19,6 +19,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [gender, setGender] = useState("");
+  const [bloodType, setBloodType] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -36,6 +37,7 @@ export default function RegisterPage() {
         !password.trim() ||
         !dateOfBirth.trim() ||
         !gender.trim() ||
+        !bloodType.trim() ||
         !phone.trim()
       ) {
         Alert.alert("Error", "Please fill in all fields");
@@ -50,6 +52,7 @@ export default function RegisterPage() {
         password,
         dateOfBirth,
         gender,
+        bloodType,
         phone,
       };
 
@@ -150,6 +153,30 @@ export default function RegisterPage() {
           <Text style={styles.radioText}>Other</Text>
         </TouchableOpacity>
       </View>
+
+      <Text style={styles.label}>Blood Type</Text>
+      <View style={styles.bloodTypeContainer}>
+        {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((type) => (
+          <TouchableOpacity
+            key={type}
+            style={[
+              styles.bloodTypeButton,
+              bloodType === type && styles.selectedBloodType,
+            ]}
+            onPress={() => setBloodType(type)}
+          >
+            <Text
+              style={[
+                styles.bloodTypeText,
+                bloodType === type && styles.selectedBloodTypeText,
+              ]}
+            >
+              {type}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       <TextInput
         style={styles.input}
         placeholder="Phone"
@@ -235,5 +262,30 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
     fontSize: 16,
+  },
+  bloodTypeContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginBottom: 16,
+    justifyContent: "space-between",
+  },
+  bloodTypeButton: {
+    borderWidth: 1,
+    borderColor: "#175593",
+    borderRadius: 6,
+    padding: 8,
+    margin: 4,
+    minWidth: 50,
+    alignItems: "center",
+  },
+  selectedBloodType: {
+    backgroundColor: "#175593",
+  },
+  bloodTypeText: {
+    fontSize: 14,
+    color: "#175593",
+  },
+  selectedBloodTypeText: {
+    color: "#fff",
   },
 });
