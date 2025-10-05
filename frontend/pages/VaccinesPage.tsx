@@ -26,8 +26,11 @@ import healthCardAPI, {
   HealthCard,
   HealthCardVaccination,
 } from "../api/healthCardApi";
+
+const API_BASE_URL = "http://192.168.1.32:5000";
 import InstructionsPopup from "../components/InstructionsPopup";
 import geminiAPI from "../api/geminiApi";
+import userAPI from "../api/userApi";
 
 // Enable LayoutAnimation for Android
 if (
@@ -83,25 +86,15 @@ const vaccineConfig = {
 export default function VaxCardScreen() {
   const params = useLocalSearchParams();
 
-  // Sample user IDs - using the same ID from backend for testing
-  const [profiles, setProfiles] = useState<Profile[]>([
-    {
-      id: "68cfcf945e1c53a931fa032e", // Real user ID from backend
-      name: "Loading...",
-      dob: "1988-08-12",
-      relation: "User",
-      idNumber: "NIC-19880812",
-      lastUpdated: "2025-08-20",
-      vaccines: [],
-      isDependent: false,
-    },
-  ]);
+  // User state
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedIdx, setSelectedIdx] = useState(0);
-  const profile = profiles[selectedIdx];
+  const profile = profiles[selectedIdx] || null;
   const scrollRef = useRef<ScrollView>(null);
 
   const [expandedVaccines, setExpandedVaccines] = useState<string[]>([]);
@@ -121,6 +114,23 @@ export default function VaxCardScreen() {
   const [generatingInstructions, setGeneratingInstructions] = useState(false);
   const [hasShownAutoPopup, setHasShownAutoPopup] = useState(false);
   const [autoPopupTriggered, setAutoPopupTriggered] = useState(false);
+
+  // Load current user data
+  useEffect(() => {
+    loadCurrentUser();
+  }, []);
+
+  const loadCurrentUser = async () => {
+    try {
+      const userData = await userAPI.getCurrentUser();
+      setCurrentUser(userData);
+      // Load health card data after getting user
+      loadAllHealthCards();
+    } catch (error: any) {
+      console.error('Error loading current user:', error);
+      setError('Failed to load user data. Please log in again.');
+    }
+  };
 
   // Animations
   const cardAnimations = useRef<{ [key: string]: Animated.Value }>({});
@@ -191,7 +201,7 @@ export default function VaxCardScreen() {
             {
               text: "Create Health Card",
               onPress: () =>
-                createHealthCard(userId, profileIndex, isDependent),
+                currentUser && createHealthCard(currentUser._id, profileIndex, isDependent),
             },
           ]
         );
@@ -261,8 +271,7 @@ export default function VaxCardScreen() {
       setLoading(true);
       setError(null);
 
-      const userId = "68cfcf945e1c53a931fa032e"; // Real user ID from backend
-      const allHealthCards = await healthCardAPI.getAllHealthCards(userId);
+      const allHealthCards = await healthCardAPI.getAllHealthCards();
 
       // Convert health cards to profiles
       const newProfiles: Profile[] = allHealthCards.map(
@@ -317,13 +326,18 @@ export default function VaxCardScreen() {
   };
 
   // Create all health cards for user and dependents
-  const createAllHealthCards = async () => {
+  const createAllHealthCards = async (userId?: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const userId = "68cfcf945e1c53a931fa032e"; // Real user ID from backend
-      await healthCardAPI.createAllHealthCards(userId);
+      const userIdToUse = userId || currentUser?._id;
+      if (!userIdToUse) {
+        setError('No user ID available');
+        return;
+      }
+
+      await healthCardAPI.createAllHealthCards(userIdToUse);
 
       // Reload all health cards after creation
       await loadAllHealthCards();
@@ -411,14 +425,16 @@ export default function VaxCardScreen() {
 
   // Initialize animations
   useEffect(() => {
-    profile.vaccines.forEach((vaccine) => {
-      if (!cardAnimations.current[vaccine.id]) {
-        cardAnimations.current[vaccine.id] = new Animated.Value(0);
-      }
-      if (!progressAnimations.current[vaccine.id]) {
-        progressAnimations.current[vaccine.id] = new Animated.Value(0);
-      }
-    });
+    if (profile?.vaccines) {
+      profile.vaccines.forEach((vaccine) => {
+        if (!cardAnimations.current[vaccine.id]) {
+          cardAnimations.current[vaccine.id] = new Animated.Value(0);
+        }
+        if (!progressAnimations.current[vaccine.id]) {
+          progressAnimations.current[vaccine.id] = new Animated.Value(0);
+        }
+      });
+    }
 
     // Start pulse animation for timeline
     Animated.loop(
@@ -437,13 +453,15 @@ export default function VaxCardScreen() {
     ).start();
 
     // Animate progress bars
-    profile.vaccines.forEach((vaccine) => {
-      Animated.timing(progressAnimations.current[vaccine.id], {
-        toValue: vaccine.doses.length / vaccine.totalDoses,
-        duration: 1000,
-        useNativeDriver: false,
-      }).start();
-    });
+    if (profile?.vaccines) {
+      profile.vaccines.forEach((vaccine) => {
+        Animated.timing(progressAnimations.current[vaccine.id], {
+          toValue: vaccine.doses.length / vaccine.totalDoses,
+          duration: 1000,
+          useNativeDriver: false,
+        }).start();
+      });
+    }
   }, [profile, pulseAnim]);
 
   const toggleExpand = (vaccineId: string) => {
@@ -594,8 +612,18 @@ export default function VaxCardScreen() {
     try {
       setLoading(true);
 
-      // Generate the download URL
-      const downloadUrl = `http://192.168.1.4:5000/api/health-card/download-certificate/${currentProfile.healthCard._id}`;
+      // Get auth token for the download URL
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const token = await AsyncStorage.getItem('userToken');
+      
+      if (!token) {
+        Alert.alert('Authentication Error', 'Please login again');
+        setLoading(false);
+        return;
+      }
+
+      // Create authenticated download URL with token in query parameter
+      const downloadUrl = `${API_BASE_URL}/api/health-card/download-certificate/${currentProfile.healthCard._id}?token=${encodeURIComponent(token)}`;
 
       // Open the download URL in the browser
       const supported = await Linking.canOpenURL(downloadUrl);
@@ -652,33 +680,48 @@ export default function VaxCardScreen() {
     try {
       setLoading(true);
 
-      // Generate the download URL for the PDF
-      const downloadUrl = `http://192.168.1.4:5000/api/health-card/download-certificate/${currentProfile.healthCard._id}`;
+      // Use authenticated API call to download the certificate
+      const blob = await healthCardAPI.downloadVaccinationCertificate(currentProfile.healthCard._id);
 
-      // Prepare share content
-      const shareMessage =
-        `📋 Vaccination Certificate for ${currentProfile.name}\n\n` +
-        `This is my digital vaccination certificate generated by VaxSync.\n` +
-        `It contains my complete vaccination history.\n\n` +
-        `Download PDF: ${downloadUrl}\n\n` +
-        `Generated on: ${new Date().toLocaleDateString()}`;
+      // Convert blob to base64 and use Share API
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const base64data = reader.result as string;
+          
+          // Prepare share content
+          const shareMessage =
+            `📋 Vaccination Certificate for ${currentProfile.name}\n\n` +
+            `This is my digital vaccination certificate generated by VaxSync.\n` +
+            `It contains my complete vaccination history.\n\n` +
+            `Generated on: ${new Date().toLocaleDateString()}`;
 
-      // Open native share options
-      const result = await Share.share({
-        message: shareMessage,
-        url: downloadUrl, // This will be available on platforms that support it
-        title: `Vaccination Certificate - ${currentProfile.name}`,
-      });
+          // Open native share options with PDF attachment
+          const result = await Share.share({
+            message: shareMessage,
+            url: base64data, // This will be available on platforms that support it
+            title: `Vaccination Certificate - ${currentProfile.name}`,
+          });
 
-      if (result.action === Share.sharedAction) {
-        Alert.alert(
-          "Shared Successfully",
-          `Vaccination certificate for ${currentProfile.name} has been shared.`,
-          [{ text: "OK" }]
-        );
-      } else if (result.action === Share.dismissedAction) {
-        // User dismissed the share dialog
-      }
+          if (result.action === Share.sharedAction) {
+            Alert.alert(
+              "Shared Successfully",
+              `Vaccination certificate for ${currentProfile.name} has been shared.`,
+              [{ text: "OK" }]
+            );
+          } else if (result.action === Share.dismissedAction) {
+            // User dismissed the share dialog
+          }
+        } catch (shareError) {
+          console.error('Error sharing PDF:', shareError);
+          Alert.alert(
+            "Share Error",
+            "Could not share the PDF. Please try again.",
+            [{ text: "OK" }]
+          );
+        }
+      };
+      reader.readAsDataURL(blob);
     } catch (error: any) {
       console.error("Error sharing certificate:", error);
       Alert.alert(
@@ -774,11 +817,9 @@ export default function VaxCardScreen() {
 
   // Calculate completion stats for progress display
   const completionStats = {
-    total: profile.vaccines.length,
-    completed: profile.vaccines.filter((v) => v.doses.length === v.totalDoses)
-      .length,
-    verified: profile.vaccines.filter((v) => v.doses.every((d) => d.verified))
-      .length,
+    total: profile?.vaccines?.length || 0,
+    completed: profile?.vaccines?.filter((v) => v.doses.length === v.totalDoses).length || 0,
+    verified: profile?.vaccines?.filter((v) => v.doses.every((d) => d.verified)).length || 0,
   };
 
   // Function to add pending doses for incomplete vaccines
@@ -808,19 +849,19 @@ export default function VaxCardScreen() {
   };
 
   // Filter vaccines with pending doses
-  const vaccinesWithPending = addPendingDoses(profile.vaccines);
+  const vaccinesWithPending = addPendingDoses(profile?.vaccines || []);
   const filteredVaccines = vaccinesWithPending.filter((vaccine) => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
-      vaccine.name.toLowerCase().includes(searchLower) ||
+      (typeof vaccine.name === 'string' ? vaccine.name : String(vaccine.name || '')).toLowerCase().includes(searchLower) ||
       vaccine.doses.some(
         (dose) =>
-          dose.date.toLowerCase().includes(searchLower) ||
-          dose.batch.toLowerCase().includes(searchLower) ||
-          dose.provider.toLowerCase().includes(searchLower)
+          (typeof dose.date === 'string' ? dose.date : String(dose.date)).toLowerCase().includes(searchLower) ||
+          (typeof dose.batch === 'string' ? dose.batch : String(dose.batch || '')).toLowerCase().includes(searchLower) ||
+          (typeof dose.provider === 'string' ? dose.provider : String(dose.provider || '')).toLowerCase().includes(searchLower)
       );
 
-    const matchesFilter = filterType === "all" || vaccine.type === filterType;
+    const matchesFilter = filterType === "all" || (typeof vaccine.type === 'string' ? vaccine.type : String(vaccine.type || '')) === filterType;
 
     return matchesSearch && matchesFilter;
   });
@@ -992,9 +1033,9 @@ export default function VaxCardScreen() {
                           createAllHealthCards();
                         } else {
                           const currentProfile = profiles[selectedIdx];
-                          if (currentProfile) {
+                          if (currentProfile && currentUser) {
                             createHealthCard(
-                              currentProfile.id,
+                              currentUser._id,
                               selectedIdx,
                               currentProfile.isDependent
                             );
@@ -1016,11 +1057,30 @@ export default function VaxCardScreen() {
           )}
         </View>
 
+        {/* Loading state */}
+        {loading && (
+          <View className="flex-1 justify-center items-center py-20">
+            <ActivityIndicator size="large" color="#3b82f6" />
+            <Text className="text-gray-600 mt-4">Loading health cards...</Text>
+          </View>
+        )}
+
+        {/* No profiles state */}
+        {!loading && profiles.length === 0 && !error && (
+          <View className="flex-1 justify-center items-center py-20">
+            <Text className="text-gray-600 text-lg mb-4">No profiles found</Text>
+            <Text className="text-gray-500 text-center px-8">
+              Please create a health card to get started
+            </Text>
+          </View>
+        )}
+
         {/* Enhanced Profile Carousel */}
-        <View className="mb-6">
-          <Text className="text-lg font-bold text-gray-800 mb-4 px-4">
-            Profiles
-          </Text>
+        {profiles.length > 0 && (
+          <View className="mb-6">
+            <Text className="text-lg font-bold text-gray-800 mb-4 px-4">
+              Profiles
+            </Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -1028,12 +1088,12 @@ export default function VaxCardScreen() {
           >
             {profiles.map((p, index) => {
               const isSelected = index === selectedIdx;
-              const completedCount = p.vaccines.filter(
+              const completedCount = p.vaccines?.filter(
                 (v) => v.doses.length === v.totalDoses
-              ).length;
+              ).length || 0;
               const hasHealthCard = !!p.healthCard;
               const completionPercentage =
-                p.vaccines.length > 0
+                p.vaccines?.length > 0
                   ? Math.round((completedCount / p.vaccines.length) * 100)
                   : 0;
 
@@ -1139,7 +1199,8 @@ export default function VaxCardScreen() {
               );
             })}
           </ScrollView>
-        </View>
+          </View>
+        )}
 
         {/* Enhanced Search and Filter */}
         <View className="px-4 pb-4">
@@ -1274,7 +1335,8 @@ export default function VaxCardScreen() {
                 const completedDoses = vaccine.doses.filter((d) => d.verified);
                 const latestDose =
                   completedDoses[completedDoses.length - 1] ||
-                  vaccine.doses[vaccine.doses.length - 1];
+                  vaccine.doses[vaccine.doses.length - 1] ||
+                  { provider: 'N/A', date: 'N/A' };
                 const allVerified =
                   completedDoses.length === vaccine.totalDoses;
                 const isExpanded = expandedVaccines.includes(vaccine.id);
@@ -1331,7 +1393,7 @@ export default function VaxCardScreen() {
                             <View className="flex-1">
                               <View className="flex-row items-center mb-2">
                                 <Text className="font-bold text-gray-800 text-xl flex-1">
-                                  {vaccine.name}
+                                  {vaccine.name || 'Unknown Vaccine'}
                                 </Text>
                                 {allVerified && (
                                   <View className="bg-green-500 rounded-full px-4 py-2 ml-2 shadow-sm">
@@ -1355,7 +1417,7 @@ export default function VaxCardScreen() {
                                   color="#6b7280"
                                 />
                                 <Text className="text-sm text-gray-600 ml-1 flex-1">
-                                  {latestDose.provider}
+                                  {latestDose?.provider || 'N/A'}
                                 </Text>
                               </View>
                               <View className="flex-row items-center">
@@ -1365,11 +1427,11 @@ export default function VaxCardScreen() {
                                   color="#6b7280"
                                 />
                                 <Text className="text-sm text-gray-600 ml-1">
-                                  {latestDose.date}
+                                  {latestDose?.date || 'N/A'}
                                 </Text>
                                 <View className="ml-3 bg-gray-100 rounded-full px-2 py-1">
                                   <Text className="text-xs font-medium text-gray-600 capitalize">
-                                    {vaccine.type}
+                                    {vaccine.type || 'Unknown'}
                                   </Text>
                                 </View>
                               </View>
@@ -1392,14 +1454,14 @@ export default function VaxCardScreen() {
                                     COMPLETED
                                   </Text>
                                   <Text className="text-xs text-green-600 text-center mt-1">
-                                    {latestDose.date}
+                                    {latestDose?.date || 'N/A'}
                                   </Text>
-                                  {latestDose.date !== "Pending" &&
-                                    latestDose.date !== "TBD" && (
+                                  {latestDose?.date !== "Pending" &&
+                                    latestDose?.date !== "TBD" && latestDose?.date && (
                                       <Text className="text-xs text-green-500 text-center mt-1">
                                         {(() => {
                                           const completionDate = new Date(
-                                            latestDose.date
+                                            latestDose?.date || new Date()
                                           );
                                           const today = new Date();
                                           const diffTime =
@@ -1770,19 +1832,22 @@ export default function VaxCardScreen() {
                 </View>
                 <View className="bg-blue-50 rounded-2xl px-4 py-2">
                   <Text className="text-sm font-bold text-blue-700">
-                    {profile.vaccines.flatMap((v) => v.doses).length} doses
+                    {profile?.vaccines?.flatMap((v) => v?.doses || []).length || 0} doses
                   </Text>
                 </View>
               </View>
 
-              {profile.vaccines
-                .flatMap((v) => v.doses.map((dose) => ({ vaccine: v, dose })))
-                .sort(
-                  (a, b) =>
-                    new Date(b.dose.date).getTime() -
-                    new Date(a.dose.date).getTime()
+              {(profile?.vaccines
+                ?.flatMap((v) => v?.doses?.map((dose) => ({ vaccine: v, dose })) || [])
+                ?.filter((item) => item && item.vaccine && item.dose)
+                ?.sort(
+                  (a, b) => {
+                    const dateA = new Date(a.dose.date).getTime();
+                    const dateB = new Date(b.dose.date).getTime();
+                    return dateB - dateA;
+                  }
                 )
-                .slice(0, 5) // Show only recent 5
+                ?.slice(0, 5) || []) // Show only recent 5
                 .map((item, i, arr) => {
                   const config = vaccineConfig[item.vaccine.type];
                   const isLatest = i === 0;
@@ -1852,7 +1917,7 @@ export default function VaxCardScreen() {
                         <View className="flex-row items-center mb-2">
                           <Ionicons name="calendar" size={16} color="#6b7280" />
                           <Text className="text-gray-600 font-medium ml-2">
-                            {item.dose.date}
+                            {typeof item.dose.date === 'string' ? item.dose.date : new Date(item.dose.date).toLocaleDateString()}
                           </Text>
                         </View>
 
