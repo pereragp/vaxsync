@@ -22,6 +22,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import scheduleAPI, { VaccineSchedule, CreateScheduleRequest, Vaccine } from '../api/scheduleApi';
 import healthCardAPI, { HealthCard } from '../api/healthCardApi';
+import userAPI from '../api/userApi';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -69,18 +70,9 @@ const doseConfig = {
 export default function SchedulePage() {
   const router = useRouter();
   
-  // Sample user IDs - using the same ID from backend for testing
-  const [profiles, setProfiles] = useState<Profile[]>([
-    {
-      id: "68cfcf945e1c53a931fa032e", // Real user ID from backend
-      name: "Loading...",
-      dob: "1988-08-12",
-      relation: "User",
-      idNumber: "NIC-19880812",
-      lastUpdated: "2025-08-20",
-      isDependent: false,
-    },
-  ]);
+  // User state
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
 
   const [schedules, setSchedules] = useState<VaccineSchedule[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -131,14 +123,30 @@ export default function SchedulePage() {
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
+  // Load current user data
+  useEffect(() => {
+    loadCurrentUser();
+  }, []);
+
+  const loadCurrentUser = async () => {
+    try {
+      const userData = await userAPI.getCurrentUser();
+      setCurrentUser(userData);
+      // Load health card data after getting user
+      loadHealthCardData();
+    } catch (error: any) {
+      console.error('Error loading current user:', error);
+      setError('Failed to load user data. Please log in again.');
+    }
+  };
+
   // Load health card data to get user profiles
   const loadHealthCardData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const userId = "68cfcf945e1c53a931fa032e"; // Real user ID from backend
-      const allHealthCards = await healthCardAPI.getAllHealthCards(userId);
+      const allHealthCards = await healthCardAPI.getAllHealthCards();
       
       // Convert health cards to profiles
       const newProfiles: Profile[] = allHealthCards.map((healthCard) => ({
@@ -170,7 +178,7 @@ export default function SchedulePage() {
             },
             { 
               text: 'Create Health Cards', 
-              onPress: () => createAllHealthCards()
+              onPress: () => currentUser && createAllHealthCards(currentUser._id)
             }
           ]
         );
@@ -183,12 +191,11 @@ export default function SchedulePage() {
   };
 
   // Create all health cards for user and dependents
-  const createAllHealthCards = async () => {
+  const createAllHealthCards = async (userId: string) => {
     try {
       setLoading(true);
       setError(null);
 
-      const userId = "68cfcf945e1c53a931fa032e"; // Real user ID from backend
       await healthCardAPI.createAllHealthCards(userId);
       
       // Reload all health cards after creation
@@ -379,6 +386,16 @@ export default function SchedulePage() {
   const handleCreateScheduleSubmit = async () => {
     try {
       setLoading(true);
+
+      // Check authentication token
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const token = await AsyncStorage.getItem('userToken');
+      if (!token) {
+        Alert.alert('Authentication Error', 'Please login again');
+        setLoading(false);
+        return;
+      }
+      console.log('Auth token exists:', !!token);
 
       // Validate form
       const vaccineName = selectedVaccine?.name || vaccineSearchQuery.trim();
@@ -845,9 +862,9 @@ export default function SchedulePage() {
                     Something went wrong
                   </Text>
                   <Text className="text-red-600 text-sm mb-3">{error}</Text>
-                  {error.includes('No health cards found') && (
+                  {error.includes('No health cards found') && currentUser && (
                     <TouchableOpacity
-                      onPress={createAllHealthCards}
+                      onPress={() => createAllHealthCards(currentUser._id)}
                       className="bg-red-500 rounded-xl px-4 py-3 self-start"
                     >
                       <Text className="text-white text-sm font-semibold">
@@ -1459,7 +1476,7 @@ export default function SchedulePage() {
 
         {/* Enhanced Create Schedule Modal */}
         <Modal
-          visible={showCreateModal}
+          visible={showCreateModal && !!profile}
           transparent
           animationType="slide"
           onRequestClose={() => {
@@ -1494,7 +1511,12 @@ export default function SchedulePage() {
                 </View>
               </View>
             
-            <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              className="p-6" 
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
+            >
               {/* Vaccine Selection */}
               <View className="mb-6">
                 <Text className="text-lg font-semibold text-gray-800 mb-3">Vaccine Selection</Text>
@@ -1872,49 +1894,133 @@ export default function SchedulePage() {
                     </View>
                   )}
 
-                  {/* Enhanced Vaccination Type */}
+                  {/* Simple Vaccination Type Selection */}
                   <View>
-                    <Text className="text-sm font-medium text-gray-700 mb-2">Vaccination Type *</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-2">
-                      {[
-                        { value: 'routine', label: 'Routine', icon: 'shield-checkmark', desc: 'Regular vaccines' },
-                        { value: 'travel', label: 'Travel', icon: 'airplane', desc: 'Travel vaccines' },
-                        { value: 'occupational', label: 'Work', icon: 'briefcase', desc: 'Work related' },
-                        { value: 'emergency', label: 'Emergency', icon: 'medical', desc: 'Emergency vaccines' }
-                      ].map((type) => (
+                    <Text className="text-sm font-medium text-gray-700 mb-3">Vaccination Type *</Text>
+                    
+                    {/* Simple Button Row */}
+                    <View style={{ marginBottom: 12 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
                         <TouchableOpacity
-                          key={type.value}
-                          onPress={() => setVaccinationType(type.value as any)}
-                          className={`mr-3 px-4 py-3 rounded-xl border-2 min-w-24 ${
-                            vaccinationType === type.value
-                              ? 'border-blue-500 bg-blue-50 shadow-sm'
-                              : 'border-gray-200 bg-white'
-                          }`}
+                          style={{
+                            flex: 1,
+                            marginRight: 4,
+                            padding: 12,
+                            borderRadius: 8,
+                            borderWidth: 2,
+                            borderColor: vaccinationType === 'routine' ? '#3b82f6' : '#e5e7eb',
+                            backgroundColor: vaccinationType === 'routine' ? '#eff6ff' : '#ffffff',
+                            alignItems: 'center'
+                          }}
+                          onPress={() => setVaccinationType('routine')}
+                          activeOpacity={0.7}
                         >
-                          <View className="items-center">
-                            <View className={`w-8 h-8 rounded-full items-center justify-center mb-2 ${
-                              vaccinationType === type.value ? 'bg-blue-100' : 'bg-gray-100'
-                            }`}>
-                              <Ionicons 
-                                name={type.icon as any} 
-                                size={16} 
-                                color={vaccinationType === type.value ? '#3b82f6' : '#6b7280'} 
-                              />
-                            </View>
-                            <Text className={`text-sm font-medium text-center ${
-                              vaccinationType === type.value ? 'text-blue-700' : 'text-gray-600'
-                            }`}>
-                              {type.label}
-                            </Text>
-                            <Text className={`text-xs text-center mt-1 ${
-                              vaccinationType === type.value ? 'text-blue-600' : 'text-gray-500'
-                            }`}>
-                              {type.desc}
-                            </Text>
-                          </View>
+                          <Ionicons 
+                            name="shield-checkmark" 
+                            size={20} 
+                            color={vaccinationType === 'routine' ? '#3b82f6' : '#6b7280'} 
+                          />
+                          <Text style={{ 
+                            marginTop: 4, 
+                            fontSize: 12, 
+                            fontWeight: '600',
+                            color: vaccinationType === 'routine' ? '#3b82f6' : '#6b7280'
+                          }}>
+                            Routine
+                          </Text>
                         </TouchableOpacity>
-                      ))}
-                    </ScrollView>
+                        
+                        <TouchableOpacity
+                          style={{
+                            flex: 1,
+                            marginLeft: 4,
+                            padding: 12,
+                            borderRadius: 8,
+                            borderWidth: 2,
+                            borderColor: vaccinationType === 'travel' ? '#3b82f6' : '#e5e7eb',
+                            backgroundColor: vaccinationType === 'travel' ? '#eff6ff' : '#ffffff',
+                            alignItems: 'center'
+                          }}
+                          onPress={() => setVaccinationType('travel')}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons 
+                            name="airplane" 
+                            size={20} 
+                            color={vaccinationType === 'travel' ? '#3b82f6' : '#6b7280'} 
+                          />
+                          <Text style={{ 
+                            marginTop: 4, 
+                            fontSize: 12, 
+                            fontWeight: '600',
+                            color: vaccinationType === 'travel' ? '#3b82f6' : '#6b7280'
+                          }}>
+                            Travel
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                      
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <TouchableOpacity
+                          style={{
+                            flex: 1,
+                            marginRight: 4,
+                            padding: 12,
+                            borderRadius: 8,
+                            borderWidth: 2,
+                            borderColor: vaccinationType === 'occupational' ? '#3b82f6' : '#e5e7eb',
+                            backgroundColor: vaccinationType === 'occupational' ? '#eff6ff' : '#ffffff',
+                            alignItems: 'center'
+                          }}
+                          onPress={() => setVaccinationType('occupational')}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons 
+                            name="briefcase" 
+                            size={20} 
+                            color={vaccinationType === 'occupational' ? '#3b82f6' : '#6b7280'} 
+                          />
+                          <Text style={{ 
+                            marginTop: 4, 
+                            fontSize: 12, 
+                            fontWeight: '600',
+                            color: vaccinationType === 'occupational' ? '#3b82f6' : '#6b7280'
+                          }}>
+                            Work
+                          </Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                          style={{
+                            flex: 1,
+                            marginLeft: 4,
+                            padding: 12,
+                            borderRadius: 8,
+                            borderWidth: 2,
+                            borderColor: vaccinationType === 'emergency' ? '#3b82f6' : '#e5e7eb',
+                            backgroundColor: vaccinationType === 'emergency' ? '#eff6ff' : '#ffffff',
+                            alignItems: 'center'
+                          }}
+                          onPress={() => setVaccinationType('emergency')}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons 
+                            name="medical" 
+                            size={20} 
+                            color={vaccinationType === 'emergency' ? '#3b82f6' : '#6b7280'} 
+                          />
+                          <Text style={{ 
+                            marginTop: 4, 
+                            fontSize: 12, 
+                            fontWeight: '600',
+                            color: vaccinationType === 'emergency' ? '#3b82f6' : '#6b7280'
+                          }}>
+                            Emergency
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    
                     <Text className="text-xs text-gray-500">
                       Select the category of vaccination
                     </Text>
@@ -1998,7 +2104,7 @@ export default function SchedulePage() {
             </ScrollView>
           </View>
         </View>
-      </Modal>
+        </Modal>
 
         {/* Enhanced Dose Management Modal */}
         <Modal

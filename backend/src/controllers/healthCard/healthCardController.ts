@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { AuthRequest } from "../../types";
 import HealthCard from "../../models/healthCard/healthcardModel";
 import User from "../../models/userModels/user";
 import Dependent from "../../models/userModels/dependent";
@@ -323,9 +324,13 @@ const getHealthCardByDependentId = async (req: Request, res: Response) => {
 };
 
 // Get all health cards for a user and their dependents
-const getAllHealthCardsByUserId = async (req: Request, res: Response) => {
+const getAllHealthCardsByUserId = async (req: AuthRequest, res: Response) => {
   try {
-    const { userId } = req.params;
+    // Get user ID from authenticated user instead of URL parameter
+    const userId = req.user?._id;
+    if (!userId) {
+      return res.status(401).json({ message: "User not authenticated" });
+    }
 
     // Get user
     const user = await User.findById(userId);
@@ -580,9 +585,26 @@ const deleteVaccinationFromHealthCard = async (req: Request, res: Response) => {
 };
 
 // Download vaccination certificate as PDF
-const downloadVaccinationCertificate = async (req: Request, res: Response) => {
+const downloadVaccinationCertificate = async (req: AuthRequest, res: Response) => {
   try {
     const { cardId } = req.params;
+    const { token } = req.query;
+
+    // If token is provided in query, verify it
+    if (token && typeof token === 'string') {
+      const jwt = require('jsonwebtoken');
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // Token is valid, continue with download
+      } catch (tokenError) {
+        return res.status(401).json({ message: "Invalid or expired token" });
+      }
+    } else if (req.user) {
+      // JWT middleware has already verified the user
+      // Continue with download
+    } else {
+      return res.status(401).json({ message: "Authentication required" });
+    }
 
     // Find the health card
     const healthCard = await HealthCard.findById(cardId);

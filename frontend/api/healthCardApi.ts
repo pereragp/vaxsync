@@ -1,5 +1,35 @@
-const API_BASE_URL = "http://192.168.1.4:5000"; //Pramod URL
-//const API_BASE_URL = 'http://192.168.1.4:5000/api/users'; // Mishen URL
+const API_BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
+//const API_BASE_URL = 'http://192.168.1.32:5000/api/users'; // Mishen URL
+
+// Helper function to get authentication token
+const getAuthToken = async (): Promise<string | null> => {
+  try {
+    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+    return await AsyncStorage.getItem('userToken');
+  } catch (error) {
+    console.error('Error getting auth token:', error);
+    return null;
+  }
+};
+
+// Helper function to make authenticated requests
+const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const token = await getAuthToken();
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+};
 
 // Types for Health Card API
 export interface HealthCardVaccination {
@@ -51,7 +81,7 @@ export interface AllHealthCardsResponse {
 const healthCardAPI = {
   // Get health card by user ID
   async getHealthCard(userId: string): Promise<HealthCard> {
-    const response = await fetch(
+    const response = await makeAuthenticatedRequest(
       `${API_BASE_URL}/api/health-card/user/${userId}`
     );
     if (!response.ok) {
@@ -63,7 +93,7 @@ const healthCardAPI = {
 
   // Get health card by dependent ID
   async getDependentHealthCard(dependentId: string): Promise<HealthCard> {
-    const response = await fetch(
+    const response = await makeAuthenticatedRequest(
       `${API_BASE_URL}/api/health-card/dependent/${dependentId}`
     );
     if (!response.ok) {
@@ -76,9 +106,9 @@ const healthCardAPI = {
   },
 
   // Get all health cards for a user and their dependents
-  async getAllHealthCards(userId: string): Promise<HealthCard[]> {
-    const response = await fetch(
-      `${API_BASE_URL}/api/health-card/all/${userId}`
+  async getAllHealthCards(): Promise<HealthCard[]> {
+    const response = await makeAuthenticatedRequest(
+      `${API_BASE_URL}/api/health-card/all`
     );
     if (!response.ok) {
       throw new Error(
@@ -91,13 +121,10 @@ const healthCardAPI = {
 
   // Sync completed vaccines from schedule to health cards
   async syncVaccines(userId: string): Promise<any> {
-    const response = await fetch(
+    const response = await makeAuthenticatedRequest(
       `${API_BASE_URL}/api/health-card/sync-vaccines/${userId}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
       }
     );
     if (!response.ok) {
@@ -108,13 +135,10 @@ const healthCardAPI = {
 
   // Create health card for user
   async createUserHealthCard(userId: string): Promise<HealthCard> {
-    const response = await fetch(
+    const response = await makeAuthenticatedRequest(
       `${API_BASE_URL}/api/health-card/create/user/${userId}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
       }
     );
     if (!response.ok) {
@@ -128,13 +152,10 @@ const healthCardAPI = {
 
   // Create health card for dependent
   async createDependentHealthCard(dependentId: string): Promise<HealthCard> {
-    const response = await fetch(
+    const response = await makeAuthenticatedRequest(
       `${API_BASE_URL}/api/health-card/create/dependent/${dependentId}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
       }
     );
     if (!response.ok) {
@@ -148,13 +169,10 @@ const healthCardAPI = {
 
   // Create all health cards for user and dependents
   async createAllHealthCards(userId: string): Promise<any> {
-    const response = await fetch(
+    const response = await makeAuthenticatedRequest(
       `${API_BASE_URL}/api/health-card/create/all/${userId}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
       }
     );
     if (!response.ok) {
@@ -171,15 +189,12 @@ const healthCardAPI = {
     vaccineName: string,
     doseNumber: number
   ): Promise<any> {
-    const response = await fetch(
+    const response = await makeAuthenticatedRequest(
       `${API_BASE_URL}/api/health-card/delete-vaccination/${cardId}/${encodeURIComponent(
         vaccineName
       )}/${doseNumber}`,
       {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
       }
     );
 
@@ -199,7 +214,7 @@ const healthCardAPI = {
 
   // Download vaccination certificate as PDF
   async downloadVaccinationCertificate(cardId: string): Promise<Blob> {
-    const response = await fetch(
+    const response = await makeAuthenticatedRequest(
       `${API_BASE_URL}/api/health-card/download-certificate/${cardId}`,
       {
         method: "GET",

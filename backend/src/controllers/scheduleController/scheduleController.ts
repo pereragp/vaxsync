@@ -10,7 +10,7 @@ import { syncVaccinesToHealthCard } from '../healthCard/healthCardController';
 
 export class ScheduleController {
   // Create new vaccine schedule for parent users (for themselves or their dependents)
-  static async createVaccineSchedule(req: Request, res: Response): Promise<void> {
+  static async createVaccineSchedule(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { 
         vaccineId, 
@@ -23,17 +23,14 @@ export class ScheduleController {
         scheduleDate 
       } = req.body;
 
-      // const userId = req.user?._id;
-      // if (!userId) {
-      //   res.status(401).json({
-      //     success: false,
-      //     message: "User not authenticated"
-      //   } as ApiResponse);
-      //   return;
-      // }
-      
-      // Temporary hardcoded user ID for testing
-      const userId = new Types.ObjectId("68cfcf945e1c53a931fa032e");
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated"
+        } as ApiResponse);
+        return;
+      }
 
       // If vaccineId is provided, get vaccine details from database
       let vaccineData = null;
@@ -103,19 +100,16 @@ export class ScheduleController {
   }
 
   // Get all vaccine schedules for parent users (their own and their dependents')
-  static async getAllVaccineSchedules(req: Request, res: Response): Promise<void> {
+  static async getAllVaccineSchedules(req: AuthRequest, res: Response): Promise<void> {
     try {
-      // const userId = req.user?._id;
-      // if (!userId) {
-      //   res.status(401).json({
-      //     success: false,
-      //     message: "User not authenticated"
-      //   } as ApiResponse);
-      //   return;
-      // }
-      
-      // Temporary hardcoded user ID for testing
-      const userId = new Types.ObjectId("68cfcf945e1c53a931fa032e");
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated"
+        } as ApiResponse);
+        return;
+      }
 
       const { 
         page = 1, 
@@ -176,22 +170,19 @@ export class ScheduleController {
   }
 
   // Update vaccine schedule for parent users
-  static async updateVaccineSchedule(req: Request, res: Response): Promise<void> {
+  static async updateVaccineSchedule(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { scheduleId } = req.params;
       const { vaccineName, healthcareProvider, notes, scheduleDate, interval } = req.body;
 
-      // const userId = req.user?._id;
-      // if (!userId) {
-      //   res.status(401).json({
-      //     success: false,
-      //     message: "User not authenticated"
-      //   } as ApiResponse);
-      //   return;
-      // }
-      
-      // Temporary hardcoded user ID for testing
-      const userId = new Types.ObjectId("68cfcf945e1c53a931fa032e");
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated"
+        } as ApiResponse);
+        return;
+      }
 
       // Validate ObjectId
       if (!Types.ObjectId.isValid(scheduleId)) {
@@ -269,22 +260,19 @@ export class ScheduleController {
   }
 
   // Update each dose status and overall status for parent users
-  static async updateDoseStatus(req: Request, res: Response): Promise<void> {
+  static async updateDoseStatus(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { scheduleId, doseNumber } = req.params;
       const { status, dateCompleted, notes } = req.body;
 
-      // const userId = req.user?._id;
-      // if (!userId) {
-      //   res.status(401).json({
-      //     success: false,
-      //     message: "User not authenticated"
-      //   } as ApiResponse);
-      //   return;
-      // }
-      
-      // Temporary hardcoded user ID for testing
-      const userId = new Types.ObjectId("68cfcf945e1c53a931fa032e");
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated"
+        } as ApiResponse);
+        return;
+      }
 
       // Validate ObjectId
       if (!Types.ObjectId.isValid(scheduleId)) {
@@ -364,21 +352,18 @@ export class ScheduleController {
   }
 
   // Delete vaccine schedule for parent users
-  static async deleteVaccineSchedule(req: Request, res: Response): Promise<void> {
+  static async deleteVaccineSchedule(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { scheduleId } = req.params;
 
-      // const userId = req.user?._id;
-      // if (!userId) {
-      //   res.status(401).json({
-      //     success: false,
-      //     message: "User not authenticated"
-      //   } as ApiResponse);
-      //   return;
-      // }
-      
-      // Temporary hardcoded user ID for testing
-      const userId = new Types.ObjectId("68cfcf945e1c53a931fa032e");
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated"
+        } as ApiResponse);
+        return;
+      }
 
       // Validate ObjectId
       if (!Types.ObjectId.isValid(scheduleId)) {
