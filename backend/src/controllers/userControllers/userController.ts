@@ -18,6 +18,7 @@ const registerUser = async (req: Request, res: Response) => {
       password,
       dateOfBirth,
       gender,
+      bloodType,
       phone,
       avatar,
     } = req.body;
@@ -29,11 +30,21 @@ const registerUser = async (req: Request, res: Response) => {
       !lastName ||
       !email ||
       !gender ||
+      !bloodType ||
       !password ||
       !dateOfBirth ||
       !phone
     ) {
       return res.status(400).json({ message: "All fields are required" });
+    }
+
+    // Validate blood type
+    const validBloodTypes = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+    if (!validBloodTypes.includes(bloodType)) {
+      return res.status(400).json({
+        message:
+          "Invalid blood type. Must be one of: A+, A-, B+, B-, AB+, AB-, O+, O-",
+      });
     }
 
     //username validation
@@ -56,6 +67,7 @@ const registerUser = async (req: Request, res: Response) => {
       password: hashedPassword,
       dateOfBirth,
       gender,
+      bloodType,
       phone,
       avatar,
     });
@@ -72,6 +84,7 @@ const registerUser = async (req: Request, res: Response) => {
       email: savedUser.email,
       dateOfBirth: savedUser.dateOfBirth,
       gender: savedUser.gender,
+      bloodType: savedUser.bloodType,
       phone: savedUser.phone,
     });
   } catch (error) {
@@ -96,6 +109,7 @@ const getUserById = async (req: Request, res: Response) => {
     email: user.email,
     dateOfBirth: user.dateOfBirth,
     gender: user.gender,
+    bloodType: user.bloodType,
     phone: user.phone,
     avatar: user.avatar,
     dependents: user.dependents,
@@ -179,6 +193,7 @@ const getMyProfile = async (req: AuthenticatedRequest, res: Response) => {
       email: user.email,
       dateOfBirth: user.dateOfBirth,
       gender: user.gender,
+      bloodType: user.bloodType,
       phone: user.phone,
       avatar: user.avatar,
       dependents: user.dependents,
@@ -210,7 +225,8 @@ const logoutUser = async (req: AuthenticatedRequest, res: Response) => {
 const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user._id;
-    const { firstName, lastName, dateOfBirth, gender, phone } = req.body;
+    const { firstName, lastName, dateOfBirth, gender, bloodType, phone } =
+      req.body;
 
     //find the user
     const user = await User.findById(userId);
@@ -225,6 +241,26 @@ const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
     if (lastName) updatedData.lastName = lastName;
     if (dateOfBirth) updatedData.dateOfBirth = dateOfBirth;
     if (gender) updatedData.gender = gender;
+    if (bloodType) {
+      // Validate blood type if provided
+      const validBloodTypes = [
+        "A+",
+        "A-",
+        "B+",
+        "B-",
+        "AB+",
+        "AB-",
+        "O+",
+        "O-",
+      ];
+      if (!validBloodTypes.includes(bloodType)) {
+        return res.status(400).json({
+          message:
+            "Invalid blood type. Must be one of: A+, A-, B+, B-, AB+, AB-, O+, O-",
+        });
+      }
+      updatedData.bloodType = bloodType;
+    }
     if (phone) updatedData.phone = phone;
 
     //Update the user
@@ -247,6 +283,7 @@ const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
         email: updatedUser.email,
         dateOfBirth: updatedUser.dateOfBirth,
         gender: updatedUser.gender,
+        bloodType: updatedUser.bloodType,
         phone: updatedUser.phone,
         avatar: updatedUser.avatar,
         dependents: updatedUser.dependents,
