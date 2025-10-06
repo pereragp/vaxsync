@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,12 +13,15 @@ import {
   TextInput,
   StatusBar,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Circle } from 'react-native-svg';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import scheduleAPI, { VaccineSchedule, CreateScheduleRequest, Vaccine } from '../api/scheduleApi';
 import healthCardAPI, { HealthCard } from '../api/healthCardApi';
 import userAPI from '../api/userApi';
@@ -89,6 +92,9 @@ export default function SchedulePage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDoseModal, setShowDoseModal] = useState(false);
   const [showUpdateScheduleModal, setShowUpdateScheduleModal] = useState(false);
+  const [showAddDependentModal, setShowAddDependentModal] = useState(false);
+  const [showDependentDatePicker, setShowDependentDatePicker] = useState(false);
+  const [dependentSelectedDate, setDependentSelectedDate] = useState(new Date());
   const [selectedSchedule, setSelectedSchedule] = useState<VaccineSchedule | null>(null);
   const [selectedDose, setSelectedDose] = useState<{ schedule: VaccineSchedule; doseNumber: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -118,6 +124,18 @@ export default function SchedulePage() {
   const [showUpdateDatePicker, setShowUpdateDatePicker] = useState(false);
   const [newDoseInterval, setNewDoseInterval] = useState("");
   const [doseIntervals, setDoseIntervals] = useState<{[key: number]: string}>({});
+
+  // Add dependent form state
+  const [dependentForm, setDependentForm] = useState({
+    firstName: "",
+    lastName: "",
+    dateOfBirth: "",
+    gender: "Male",
+    dependentType: "",
+  });
+  const [showRelationshipDropdown, setShowRelationshipDropdown] = useState(false);
+  const genderOptions = ["Male", "Female", "Other"];
+  const dependentTypeOptions = ["Child", "Spouse", "Parent", "Sibling", "Other"];
 
   // Animations
   const cardAnimations = useRef<{[key: string]: Animated.Value}>({});
@@ -319,6 +337,13 @@ export default function SchedulePage() {
     loadHealthCardData();
   }, []);
 
+  // Reload profiles when page comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadHealthCardData();
+    }, [])
+  );
+
   // Load schedules when profile changes
   useEffect(() => {
     if (profiles.length > 0) {
@@ -424,6 +449,70 @@ export default function SchedulePage() {
   const handleCreateSchedule = () => {
     setShowCreateModal(true);
     loadAvailableVaccines();
+  };
+
+  const handleAddDependent = async () => {
+    try {
+      setLoading(true);
+
+      // Validation
+      if (!dependentForm.firstName.trim() || !dependentForm.lastName.trim() || !dependentForm.dateOfBirth) {
+        showAlert('Validation Error', 'Please fill in all required fields', [{ text: 'OK' }], 'warning');
+        setLoading(false);
+        return;
+      }
+
+      if (!dependentForm.gender) {
+        showAlert('Validation Error', 'Please select a gender', [{ text: 'OK' }], 'warning');
+        setLoading(false);
+        return;
+      }
+
+      if (!dependentForm.dependentType) {
+        showAlert('Validation Error', 'Please select a relationship', [{ text: 'OK' }], 'warning');
+        setLoading(false);
+        return;
+      }
+
+      // Get current user for guardianId
+      if (!currentUser || !currentUser._id) {
+        showAlert('Error', 'User information not found', [{ text: 'OK' }], 'error');
+        setLoading(false);
+        return;
+      }
+
+      const dependentData = {
+        firstName: dependentForm.firstName.trim(),
+        lastName: dependentForm.lastName.trim(),
+        dateOfBirth: dependentForm.dateOfBirth,
+        gender: dependentForm.gender,
+        dependentType: dependentForm.dependentType,
+        guardianId: currentUser._id,
+      };
+
+      await userAPI.addDependent(dependentData);
+
+      // Reset form
+      setDependentForm({
+        firstName: "",
+        lastName: "",
+        dateOfBirth: "",
+        gender: "Male",
+        dependentType: "",
+      });
+      setShowRelationshipDropdown(false);
+      setShowAddDependentModal(false);
+
+      // Reload profiles
+      await loadHealthCardData();
+
+      showAlert('Success', 'Family member added successfully!', [{ text: 'OK' }], 'success');
+    } catch (error: any) {
+      console.error('Error adding dependent:', error);
+      showAlert('Error', error.message || 'Failed to add family member', [{ text: 'OK' }], 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreateScheduleSubmit = async () => {
@@ -1085,9 +1174,25 @@ export default function SchedulePage() {
 
         {/* Enhanced Profile Carousel */}
         <View className="mb-6">
-          <Text className="text-lg font-bold text-gray-800 mb-4 px-4">
-            Profiles
-          </Text>
+          <View className="flex-row items-center justify-between mb-4 px-4">
+            <Text className="text-lg font-bold text-gray-800">
+              Profiles
+            </Text>
+            <TouchableOpacity
+              onPress={handleCreateSchedule}
+              className="bg-blue-500 rounded-xl px-4 py-2 flex-row items-center shadow-md"
+              style={{
+                elevation: 4,
+                shadowColor: "#3b82f6",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 4,
+              }}
+            >
+              <Ionicons name="add-circle" size={20} color="white" />
+              <Text className="text-white font-bold ml-2">Add Schedule</Text>
+            </TouchableOpacity>
+          </View>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -1193,6 +1298,40 @@ export default function SchedulePage() {
                 </TouchableOpacity>
               );
             })}
+            
+            {/* Add Dependent Card */}
+            <TouchableOpacity
+              onPress={() => setShowAddDependentModal(true)}
+              className="mr-4 p-4 rounded-2xl min-w-36 shadow-sm border-2 border-dashed border-blue-300 bg-blue-50"
+              style={{
+                elevation: 2,
+              }}
+            >
+              <View className="items-center">
+                <View className="w-14 h-14 rounded-full items-center justify-center bg-blue-100 mb-3">
+                  <Ionicons name="person-add" size={28} color="#3b82f6" />
+                </View>
+                
+                <Text className="font-bold text-center text-base mb-1 text-blue-700">
+                  Add Member
+                </Text>
+                
+                <Text className="text-sm text-center mb-2 text-blue-600">
+                  Family
+                </Text>
+
+                {/* Placeholder Progress */}
+                <View className="w-full h-2 rounded-full mb-2 bg-blue-200">
+                  <View className="h-full rounded-full bg-blue-400" style={{ width: '0%' }} />
+                </View>
+                
+                <View className="px-3 py-1 rounded-full bg-blue-100">
+                  <Text className="text-xs font-semibold text-blue-700">
+                    Tap to add
+                  </Text>
+                </View>
+              </View>
+            </TouchableOpacity>
           </ScrollView>
         </View>
 
@@ -1700,24 +1839,6 @@ export default function SchedulePage() {
         </ScrollView>
       </Animated.View>
 
-        {/* Enhanced Floating Action Buttons - Float in View */}
-        <View className="absolute right-4 z-50" style={{ bottom: 120 }}>
-          <View className="bg-white rounded-3xl p-2 shadow-xl border border-gray-100">
-            <TouchableOpacity
-              onPress={handleCreateSchedule}
-              className="w-16 h-16 bg-blue-600 rounded-2xl shadow-lg items-center justify-center"
-              style={{
-                elevation: 8,
-                shadowColor: "#3b82f6",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-              }}
-            >
-              <Ionicons name="add" size={28} color="white" />
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* Enhanced Create Schedule Modal */}
         <Modal
@@ -2868,6 +2989,418 @@ export default function SchedulePage() {
             </ScrollView>
           </View>
         </View>
+        </Modal>
+
+        {/* Add Dependent Modal */}
+        <Modal
+          visible={showAddDependentModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowAddDependentModal(false)}
+        >
+          <KeyboardAvoidingView
+            style={{ flex: 1 }}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+          >
+            <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+              <View className="flex-1 bg-black/50 justify-end">
+                <View className="bg-white rounded-t-3xl max-h-4/5 overflow-hidden">
+                  {/* Gradient Header */}
+                  <LinearGradient
+                    colors={['#1e40af', '#3b82f6', '#60a5fa']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    className="px-6 py-8"
+                  >
+                    <View className="flex-row justify-between items-start">
+                      <View className="flex-1">
+                        <View className="flex-row items-center mb-3">
+                          <View className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-lg items-center justify-center mr-4 shadow-lg">
+                            <Ionicons name="person-add" size={28} color="white" />
+                          </View>
+                          <View className="flex-1">
+                            <Text className="text-2xl font-bold text-white">
+                              Add Family Member
+                            </Text>
+                            <Text className="text-blue-100 text-sm mt-1">
+                              Add a new dependent to your profile
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => setShowAddDependentModal(false)}
+                        className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-lg items-center justify-center shadow-lg"
+                      >
+                        <Ionicons name="close" size={24} color="white" />
+                      </TouchableOpacity>
+                    </View>
+                  </LinearGradient>
+
+                  <ScrollView
+                    className="p-6 bg-gray-50"
+                    showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    contentContainerStyle={{ paddingBottom: 20 }}
+                  >
+                    <View className="space-y-6">
+                      {/* Personal Details Section */}
+                      <View>
+                        <View className="flex-row items-center mb-4">
+                          <View className="w-10 h-10 rounded-xl bg-blue-100 items-center justify-center mr-3">
+                            <Ionicons name="person" size={20} color="#3b82f6" />
+                          </View>
+                          <View className="flex-1">
+                            <Text className="text-lg font-bold text-gray-800">
+                              Personal Details
+                            </Text>
+                            <Text className="text-xs text-gray-500">
+                              Basic information about the dependent
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* First Name */}
+                        <View className="mb-4">
+                          <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                            FIRST NAME *
+                          </Text>
+                          <View className="flex-row items-center bg-white rounded-xl p-4 border-2 border-blue-100 shadow-sm">
+                            <View className="w-10 h-10 rounded-lg bg-blue-100 items-center justify-center mr-3">
+                              <Ionicons name="person" size={20} color="#3b82f6" />
+                            </View>
+                            <TextInput
+                              className="flex-1 text-gray-800 font-medium text-base"
+                              placeholder="Enter first name"
+                              value={dependentForm.firstName}
+                              onChangeText={(text) =>
+                                setDependentForm({
+                                  ...dependentForm,
+                                  firstName: text,
+                                })
+                              }
+                              placeholderTextColor="#9ca3af"
+                              returnKeyType="next"
+                              blurOnSubmit={false}
+                            />
+                          </View>
+                        </View>
+
+                        {/* Last Name */}
+                        <View className="mb-4">
+                          <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                            LAST NAME *
+                          </Text>
+                          <View className="flex-row items-center bg-white rounded-xl p-4 border-2 border-blue-100 shadow-sm">
+                            <View className="w-10 h-10 rounded-lg bg-blue-100 items-center justify-center mr-3">
+                              <Ionicons name="person-outline" size={20} color="#3b82f6" />
+                            </View>
+                            <TextInput
+                              className="flex-1 text-gray-800 font-medium text-base"
+                              placeholder="Enter last name"
+                              value={dependentForm.lastName}
+                              onChangeText={(text) =>
+                                setDependentForm({ ...dependentForm, lastName: text })
+                              }
+                              placeholderTextColor="#9ca3af"
+                              returnKeyType="next"
+                              blurOnSubmit={false}
+                            />
+                          </View>
+                        </View>
+
+                        {/* Date of Birth */}
+                        <View className="mb-4">
+                          <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                            DATE OF BIRTH *
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() => setShowDependentDatePicker(true)}
+                            className="bg-white rounded-xl p-4 flex-row items-center justify-between border-2 border-blue-100 shadow-sm"
+                          >
+                            <View className="flex-row items-center flex-1">
+                              <View className="w-10 h-10 rounded-lg bg-purple-100 items-center justify-center mr-3">
+                                <Ionicons name="calendar" size={20} color="#8b5cf6" />
+                              </View>
+                              <Text className={`font-medium text-base ${dependentForm.dateOfBirth ? 'text-gray-800' : 'text-gray-400'}`}>
+                                {dependentForm.dateOfBirth 
+                                  ? new Date(dependentForm.dateOfBirth).toLocaleDateString('en-US', { 
+                                      year: 'numeric', 
+                                      month: 'long', 
+                                      day: 'numeric' 
+                                    })
+                                  : 'Tap to select date'}
+                              </Text>
+                            </View>
+                            <Ionicons name="chevron-forward" size={20} color="#3b82f6" />
+                          </TouchableOpacity>
+
+                          {/* Native Date Picker */}
+                          {showDependentDatePicker && Platform.OS === 'ios' && (
+                            <Modal
+                              transparent
+                              animationType="slide"
+                              visible={showDependentDatePicker}
+                              onRequestClose={() => setShowDependentDatePicker(false)}
+                            >
+                              <View className="flex-1 bg-black/50 justify-end">
+                                <View className="bg-white rounded-t-3xl p-4">
+                                  <View className="flex-row justify-between items-center mb-4">
+                                    <TouchableOpacity onPress={() => setShowDependentDatePicker(false)}>
+                                      <Text className="text-blue-500 text-lg">Cancel</Text>
+                                    </TouchableOpacity>
+                                    <Text className="text-lg font-semibold text-gray-800">Select Date</Text>
+                                    <TouchableOpacity onPress={() => setShowDependentDatePicker(false)}>
+                                      <Text className="text-blue-500 text-lg font-semibold">Done</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                  <DateTimePicker
+                                    value={dependentSelectedDate}
+                                    mode="date"
+                                    display="spinner"
+                                    onChange={(_event: any, date?: Date) => {
+                                      if (date) {
+                                        setDependentSelectedDate(date);
+                                        setDependentForm({
+                                          ...dependentForm,
+                                          dateOfBirth: date.toISOString().split('T')[0],
+                                        });
+                                      }
+                                    }}
+                                    maximumDate={new Date()}
+                                  />
+                                </View>
+                              </View>
+                            </Modal>
+                          )}
+                          {showDependentDatePicker && Platform.OS === 'android' && (
+                            <DateTimePicker
+                              value={dependentSelectedDate}
+                              mode="date"
+                              display="default"
+                              onChange={(_event: any, date?: Date) => {
+                                setShowDependentDatePicker(false);
+                                if (date) {
+                                  setDependentSelectedDate(date);
+                                  setDependentForm({
+                                    ...dependentForm,
+                                    dateOfBirth: date.toISOString().split('T')[0],
+                                  });
+                                }
+                              }}
+                              maximumDate={new Date()}
+                            />
+                          )}
+                        </View>
+
+                        {/* Gender */}
+                        <View className="mb-4">
+                          <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                            GENDER *
+                          </Text>
+                          <View className="flex-row justify-between">
+                            {genderOptions.map((option) => {
+                              const isSelected = dependentForm.gender === option;
+                              const iconMap: any = { 'Male': 'male', 'Female': 'female', 'Other': 'transgender' };
+                              return (
+                                <TouchableOpacity
+                                  key={option}
+                                  onPress={() =>
+                                    setDependentForm({
+                                      ...dependentForm,
+                                      gender: option,
+                                    })
+                                  }
+                                  className="flex-1 mx-1"
+                                >
+                                  {isSelected ? (
+                                    <LinearGradient
+                                      colors={['#3b82f6', '#2563eb']}
+                                      start={{ x: 0, y: 0 }}
+                                      end={{ x: 0, y: 1 }}
+                                      style={{
+                                        padding: 16,
+                                        borderRadius: 12,
+                                        borderWidth: 2,
+                                        borderColor: '#3b82f6',
+                                      }}
+                                    >
+                                      <View className="items-center">
+                                        <Ionicons 
+                                          name={iconMap[option]} 
+                                          size={24} 
+                                          color="white"
+                                        />
+                                        <Text className="text-center font-bold mt-2 text-white">
+                                          {option}
+                                        </Text>
+                                      </View>
+                                    </LinearGradient>
+                                  ) : (
+                                    <View className="p-4 rounded-xl border-2 border-gray-200 bg-white shadow-sm">
+                                      <View className="items-center">
+                                        <Ionicons 
+                                          name={iconMap[option]} 
+                                          size={24} 
+                                          color="#6b7280"
+                                        />
+                                        <Text className="text-center font-bold mt-2 text-gray-700">
+                                          {option}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                  )}
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Relationship Section */}
+                      <View>
+                        <View className="flex-row items-center mb-4">
+                          <View className="w-10 h-10 rounded-xl bg-green-100 items-center justify-center mr-3">
+                            <Ionicons name="people" size={20} color="#10b981" />
+                          </View>
+                          <View className="flex-1">
+                            <Text className="text-lg font-bold text-gray-800">
+                              Relationship
+                            </Text>
+                            <Text className="text-xs text-gray-500">
+                              How they are related to you
+                            </Text>
+                          </View>
+                        </View>
+
+                        <View>
+                          <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                            RELATIONSHIP *
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() =>
+                              setShowRelationshipDropdown(
+                                !showRelationshipDropdown
+                              )
+                            }
+                            className="bg-white rounded-xl p-4 border-2 border-blue-100 shadow-sm flex-row justify-between items-center"
+                          >
+                            <View className="flex-row items-center flex-1">
+                              <View className="w-10 h-10 rounded-lg bg-green-100 items-center justify-center mr-3">
+                                <Ionicons name="people" size={20} color="#10b981" />
+                              </View>
+                              <Text
+                                className={`font-medium text-base ${
+                                  dependentForm.dependentType
+                                    ? "text-gray-800"
+                                    : "text-gray-400"
+                                }`}
+                              >
+                                {dependentForm.dependentType ||
+                                  "Select relationship"}
+                              </Text>
+                            </View>
+                            <Ionicons
+                              name={
+                                showRelationshipDropdown
+                                  ? "chevron-up"
+                                  : "chevron-down"
+                              }
+                              size={20}
+                              color="#3b82f6"
+                            />
+                          </TouchableOpacity>
+
+                          {showRelationshipDropdown && (
+                            <View className="bg-white border-2 border-blue-200 rounded-xl mt-2 shadow-lg overflow-hidden">
+                              {dependentTypeOptions.map((option, index) => (
+                                <TouchableOpacity
+                                  key={option}
+                                  onPress={() => {
+                                    setDependentForm({
+                                      ...dependentForm,
+                                      dependentType: option,
+                                    });
+                                    setShowRelationshipDropdown(false);
+                                  }}
+                                  className={`px-4 py-3 flex-row items-center ${
+                                    index < dependentTypeOptions.length - 1
+                                      ? "border-b border-gray-100"
+                                      : ""
+                                  } ${
+                                    dependentForm.dependentType === option
+                                      ? "bg-blue-50"
+                                      : "bg-white"
+                                  }`}
+                                >
+                                  {dependentForm.dependentType === option && (
+                                    <Ionicons name="checkmark-circle" size={20} color="#3b82f6" className="mr-2" />
+                                  )}
+                                  <Text className={`font-medium ${
+                                    dependentForm.dependentType === option
+                                      ? "text-blue-600"
+                                      : "text-gray-700"
+                                  }`}>{option}</Text>
+                                </TouchableOpacity>
+                              ))}
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Action Buttons */}
+                    <View className="mt-8 mb-4">
+                      <TouchableOpacity
+                        onPress={handleAddDependent}
+                        disabled={
+                          loading ||
+                          !dependentForm.firstName.trim() ||
+                          !dependentForm.lastName.trim() ||
+                          !dependentForm.dateOfBirth.trim()
+                        }
+                        className={`rounded-2xl py-5 items-center shadow-xl mb-3 ${
+                          loading ||
+                          !dependentForm.firstName.trim() ||
+                          !dependentForm.lastName.trim() ||
+                          !dependentForm.dateOfBirth.trim()
+                            ? "bg-gray-300"
+                            : "bg-blue-500"
+                        }`}
+                        style={{
+                          shadowColor: loading || !dependentForm.firstName.trim() || !dependentForm.lastName.trim() || !dependentForm.dateOfBirth.trim() ? '#9ca3af' : '#3b82f6',
+                          shadowOffset: { width: 0, height: 4 },
+                          shadowOpacity: 0.3,
+                          shadowRadius: 8,
+                          elevation: 8,
+                        }}
+                      >
+                        {loading ? (
+                          <ActivityIndicator size="small" color="white" />
+                        ) : (
+                          <View className="flex-row items-center">
+                            <Ionicons name="person-add" size={24} color="white" />
+                            <Text className="text-white font-bold text-lg ml-2">Add Family Member</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        onPress={() => setShowAddDependentModal(false)}
+                        className="bg-white rounded-2xl py-4 items-center border-2 border-gray-200"
+                      >
+                        <View className="flex-row items-center">
+                          <Ionicons name="close-circle-outline" size={22} color="#6b7280" />
+                          <Text className="text-gray-700 font-semibold text-base ml-2">Cancel</Text>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                  </ScrollView>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </KeyboardAvoidingView>
         </Modal>
 
         {/* Custom Alert */}
