@@ -10,6 +10,7 @@ import {
 import {
   addDependent,
   getDependentsByGuardian,
+  updateDependent,
   removeDependent,
 } from "../../controllers/userControllers/dependentController";
 import protect from "../../middleware/auth";
@@ -31,6 +32,7 @@ router.put("/profile/update", protect, updateProfile);
 // Protected dependent routes
 router.post("/new-dependent", protect, addDependent);
 router.get("/dependents/:guardianId", protect, getDependentsByGuardian);
+router.put("/dependents/:guardianId/:dependentId", protect, updateDependent);
 router.delete("/dependents/:guardianId/:dependentId", protect, removeDependent);
 
 export default router;

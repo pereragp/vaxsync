@@ -256,6 +256,33 @@ class UserAPI {
     }
   }
 
+  // Update dependent
+  async updateDependent(
+    guardianId: string,
+    dependentId: string,
+    updateData: {
+      firstName?: string;
+      lastName?: string;
+      dateOfBirth?: string;
+      gender?: string;
+      dependentType?: string;
+    }
+  ): Promise<Dependent> {
+    try {
+      const response = await this.makeAuthenticatedRequest<any>(
+        `/dependents/${guardianId}/${dependentId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(updateData),
+        }
+      );
+      return response.dependent;
+    } catch (error) {
+      console.error("Error updating dependent: ", error);
+      throw error;
+    }
+  }
+
   // Remove dependent
   async removeDependent(
     guardianId: string,
