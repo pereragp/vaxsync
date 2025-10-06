@@ -13,7 +13,14 @@ class ScheduleController {
     static async createVaccineSchedule(req, res) {
         try {
             const { vaccineId, vaccineName, totalDoses, interval, dependentId, healthcareProvider, notes, scheduleDate } = req.body;
-            const userId = new mongoose_1.Types.ObjectId("68cfcf945e1c53a931fa032e");
+            const userId = req.user?._id;
+            if (!userId) {
+                res.status(401).json({
+                    success: false,
+                    message: "User not authenticated"
+                });
+                return;
+            }
             let vaccineData = null;
             if (vaccineId) {
                 vaccineData = await vaccinesModel_1.default.findById(vaccineId);
@@ -74,7 +81,14 @@ class ScheduleController {
     }
     static async getAllVaccineSchedules(req, res) {
         try {
-            const userId = new mongoose_1.Types.ObjectId("68cfcf945e1c53a931fa032e");
+            const userId = req.user?._id;
+            if (!userId) {
+                res.status(401).json({
+                    success: false,
+                    message: "User not authenticated"
+                });
+                return;
+            }
             const { page = 1, limit = 10, dependentId, overallStatus, vaccineName } = req.query;
             const filter = { userId };
             if (dependentId) {
@@ -123,8 +137,15 @@ class ScheduleController {
     static async updateVaccineSchedule(req, res) {
         try {
             const { scheduleId } = req.params;
-            const { vaccineName, healthcareProvider, notes, scheduleDate, interval } = req.body;
-            const userId = new mongoose_1.Types.ObjectId("68cfcf945e1c53a931fa032e");
+            const { vaccineName, healthcareProvider, notes, scheduleDate, interval, doses } = req.body;
+            const userId = req.user?._id;
+            if (!userId) {
+                res.status(401).json({
+                    success: false,
+                    message: "User not authenticated"
+                });
+                return;
+            }
             if (!mongoose_1.Types.ObjectId.isValid(scheduleId)) {
                 res.status(400).json({
                     success: false,
@@ -154,7 +175,10 @@ class ScheduleController {
                 updateData.notes = notes;
             if (interval !== undefined)
                 updateData.interval = interval;
-            if (scheduleDate || interval !== undefined) {
+            if (doses && Array.isArray(doses)) {
+                updateData.doses = doses;
+            }
+            else if (scheduleDate || interval !== undefined) {
                 const startDate = scheduleDate ? new Date(scheduleDate) : new Date(existingSchedule.doses[0].dateScheduled);
                 const intervalDays = interval !== undefined ? interval : existingSchedule.interval;
                 updateData.doses = existingSchedule.doses.map((dose, index) => ({
@@ -187,7 +211,14 @@ class ScheduleController {
         try {
             const { scheduleId, doseNumber } = req.params;
             const { status, dateCompleted, notes } = req.body;
-            const userId = new mongoose_1.Types.ObjectId("68cfcf945e1c53a931fa032e");
+            const userId = req.user?._id;
+            if (!userId) {
+                res.status(401).json({
+                    success: false,
+                    message: "User not authenticated"
+                });
+                return;
+            }
             if (!mongoose_1.Types.ObjectId.isValid(scheduleId)) {
                 res.status(400).json({
                     success: false,
@@ -222,11 +253,12 @@ class ScheduleController {
                 schedule.doses[doseIndex].notes = notes;
             }
             const allCompleted = schedule.doses.every(dose => dose.status === 'completed');
-            const anyCancelled = schedule.doses.some(dose => dose.status === 'cancelled');
+            const allCancelled = schedule.doses.every(dose => dose.status === 'cancelled');
+            const hasActiveOrCompletedDose = schedule.doses.some(dose => dose.status === 'completed' || dose.status === 'scheduled' || dose.status === 'missed');
             if (allCompleted) {
                 schedule.overallStatus = 'completed';
             }
-            else if (anyCancelled) {
+            else if (allCancelled) {
                 schedule.overallStatus = 'cancelled';
             }
             else {
@@ -252,10 +284,76 @@ class ScheduleController {
             });
         }
     }
+    static async addDoseToSchedule(req, res) {
+        try {
+            const { scheduleId } = req.params;
+            const { intervalDays, notes } = req.body;
+            const userId = req.user?._id;
+            if (!userId) {
+                res.status(401).json({
+                    success: false,
+                    message: "User not authenticated"
+                });
+                return;
+            }
+            if (!mongoose_1.Types.ObjectId.isValid(scheduleId)) {
+                res.status(400).json({
+                    success: false,
+                    message: "Invalid schedule ID format"
+                });
+                return;
+            }
+            const schedule = await vaccineScheduleModel_1.default.findOne({
+                _id: scheduleId,
+                userId
+            });
+            if (!schedule) {
+                res.status(404).json({
+                    success: false,
+                    message: "Schedule not found or not authorized"
+                });
+                return;
+            }
+            const lastDose = schedule.doses[schedule.doses.length - 1];
+            const lastDoseDate = new Date(lastDose.dateScheduled);
+            const newDoseDate = new Date(lastDoseDate);
+            newDoseDate.setDate(newDoseDate.getDate() + intervalDays);
+            const newDoseNumber = schedule.doses.length + 1;
+            const newDose = {
+                doseNumber: newDoseNumber,
+                dateScheduled: newDoseDate,
+                status: 'scheduled',
+                notes: notes || undefined
+            };
+            schedule.doses.push(newDose);
+            schedule.totalDoses = schedule.doses.length;
+            const updatedSchedule = await schedule.save();
+            res.status(200).json({
+                success: true,
+                message: `Dose ${newDoseNumber} added successfully`,
+                data: updatedSchedule
+            });
+        }
+        catch (error) {
+            console.error("Error adding dose to schedule:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to add dose to schedule",
+                error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+            });
+        }
+    }
     static async deleteVaccineSchedule(req, res) {
         try {
             const { scheduleId } = req.params;
-            const userId = new mongoose_1.Types.ObjectId("68cfcf945e1c53a931fa032e");
+            const userId = req.user?._id;
+            if (!userId) {
+                res.status(401).json({
+                    success: false,
+                    message: "User not authenticated"
+                });
+                return;
+            }
             if (!mongoose_1.Types.ObjectId.isValid(scheduleId)) {
                 res.status(400).json({
                     success: false,
