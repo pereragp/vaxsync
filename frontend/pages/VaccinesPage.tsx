@@ -1617,218 +1617,79 @@ export default function VaxCardScreen() {
                           </View>
                         </View>
 
-                        {/* Enhanced Expanded dose details */}
+                        {/* Enhanced Expanded dose details - Compact Timeline */}
                         {isExpanded && (
                           <View className="mt-4">
-                            <Text className="text-lg font-bold text-gray-800 mb-4">
-                              Dose Details
+                            <Text className="text-base font-bold text-gray-800 mb-3">
+                              Dose Timeline
                             </Text>
-                            <View className="space-y-3">
+                            
+                            {/* Compact Timeline View */}
+                            <View>
                               {vaccine.doses.map((dose, doseIndex) => (
-                                <Animated.View
+                                <View
                                   key={`${vaccine.id}-dose-${dose.doseNumber}`}
-                                  className={`p-4 rounded-2xl border-2 ${
-                                    dose.status === 'cancelled'
-                                      ? "bg-red-50 border-red-200 shadow-sm"
-                                      : dose.status === 'completed' || dose.verified
-                                      ? "bg-white border-green-100 shadow-sm"
-                                      : "bg-yellow-50 border-yellow-200 shadow-sm"
-                                  }`}
-                                  style={{
-                                    opacity:
-                                      cardAnimations.current[
-                                        vaccine.id
-                                      ]?.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [0, 1],
-                                      }) || 1,
-                                    transform: [
-                                      {
-                                        translateY:
-                                          cardAnimations.current[
-                                            vaccine.id
-                                          ]?.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [20, 0],
-                                          }) || 0,
-                                      },
-                                    ],
-                                  }}
+                                  className="flex-row mb-3"
                                 >
-                                  <View className="flex-row justify-between items-start mb-4">
-                                    <View className="flex-row items-center">
-                                      <View
-                                        className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
-                                          dose.status === 'cancelled'
-                                            ? "bg-red-100"
-                                            : dose.status === 'completed' || dose.verified
-                                            ? "bg-green-100"
-                                            : "bg-yellow-100"
-                                        }`}
-                                      >
-                                        <Ionicons
-                                          name={
-                                            dose.status === 'cancelled'
-                                              ? "close-circle"
-                                              : dose.status === 'completed' || dose.verified
-                                              ? "checkmark"
-                                              : "time"
-                                          }
-                                          size={20}
-                                          color={
-                                            dose.status === 'cancelled'
-                                              ? "#ef4444"
-                                              : dose.status === 'completed' || dose.verified
-                                              ? "#16a34a"
-                                              : "#f59e0b"
-                                          }
-                                        />
-                                      </View>
-                                      <View>
-                                        <Text
-                                          className={`text-lg font-bold ${
-                                            dose.status === 'cancelled'
-                                              ? "text-red-800"
-                                              : dose.status === 'completed' || dose.verified
-                                              ? "text-gray-800"
-                                              : "text-yellow-800"
-                                          }`}
-                                        >
-                                          Dose {dose.doseNumber}
-                                        </Text>
-                                        <Text
-                                          className={`text-sm ${
-                                            dose.status === 'cancelled'
-                                              ? "text-red-600"
-                                              : dose.status === 'completed' || dose.verified
-                                              ? "text-green-600"
-                                              : "text-yellow-600"
-                                          }`}
-                                        >
-                                          {dose.status === 'cancelled'
-                                            ? "Cancelled"
-                                            : dose.status === 'completed' || dose.verified
-                                            ? "Completed"
-                                            : "Pending"}
-                                        </Text>
-                                      </View>
+                                  {/* Timeline Indicator */}
+                                  <View className="mr-3" style={{ width: 36 }}>
+                                    <View
+                                      className={`w-9 h-9 rounded-full items-center justify-center shadow-sm ${
+                                        dose.status === 'cancelled'
+                                          ? "bg-red-100 border-2 border-red-300"
+                                          : dose.verified
+                                          ? "bg-green-100 border-2 border-green-300"
+                                          : "bg-yellow-100 border-2 border-yellow-300"
+                                      }`}
+                                    >
+                                      <Text className={`font-bold text-sm ${
+                                        dose.status === 'cancelled'
+                                          ? "text-red-600"
+                                          : dose.verified
+                                          ? "text-green-600"
+                                          : "text-yellow-600"
+                                      }`}>
+                                        {dose.doseNumber}
+                                      </Text>
                                     </View>
+                                    {doseIndex < vaccine.doses.length - 1 && (
+                                      <View 
+                                        className="bg-gray-200 ml-4 mt-1" 
+                                        style={{ width: 2, height: 30 }} 
+                                      />
+                                    )}
+                                  </View>
 
-                                    <View className="flex-row items-center">
-                                      {(dose.status === 'completed' || dose.verified) && dose.status !== 'cancelled' ? (
-                                        <>
-                                          <TouchableOpacity
-                                            onPress={() => {
-                                              // Only allow for completed doses with valid dates
-                                              if (
-                                                dose.verified &&
-                                                dose.date !== "Pending" &&
-                                                dose.date !== "TBD"
-                                              ) {
-                                                const vaccination = {
-                                                  vaccineName: vaccine.name,
-                                                  doseNumber: dose.doseNumber,
-                                                  totalDoses:
-                                                    vaccine.totalDoses,
-                                                  dateCompleted: new Date(
-                                                    dose.date
-                                                  ),
-                                                };
-                                                generateInstructionsAndShowPopup(
-                                                  vaccination as HealthCardVaccination
-                                                );
-                                              } else {
-                                                showAlert(
-                                                  "Unable to Generate Instructions",
-                                                  "This dose doesn't have a valid completion date yet. Please ensure the vaccination is properly recorded with a completion date.",
-                                                  [
-                                                    {
-                                                      text: "OK",
-                                                      style: "default",
-                                                    },
-                                                  ],
-                                                  'warning'
-                                                );
-                                              }
-                                            }}
-                                            className="bg-blue-100 rounded-xl p-2 mr-2"
-                                          >
-                                            <Ionicons
-                                              name="medical"
-                                              size={18}
-                                              color="#3b82f6"
-                                            />
-                                          </TouchableOpacity>
-                                          <TouchableOpacity
-                                            onPress={() =>
-                                              handleDeleteVaccination(
-                                                vaccine.name,
-                                                dose.doseNumber
-                                              )
-                                            }
-                                            className="bg-red-100 rounded-xl p-2"
-                                          >
-                                            <Ionicons
-                                              name="trash"
-                                              size={18}
-                                              color="#ef4444"
-                                            />
-                                          </TouchableOpacity>
-                                        </>
-                                      ) : dose.status === 'cancelled' ? (
-                                        <View className="flex-row items-center">
-                                          <View className="bg-red-100 rounded-xl px-3 py-2 mr-2">
-                                            <Text className="text-sm font-semibold text-red-700">
-                                              ❌ Cancelled
+                                  {/* Dose Content Card */}
+                                  <View className="flex-1 bg-white rounded-xl p-3 shadow-sm border border-gray-100">
+                                    {/* Dose Header */}
+                                    <View className="flex-row items-center justify-between mb-2">
+                                      <View className="flex-1">
+                                        <View className="flex-row items-center mb-1">
+                                          <Text className="text-sm font-bold text-gray-800">
+                                            Dose {dose.doseNumber}
+                                          </Text>
+                                          <View className={`ml-2 px-2 py-0.5 rounded-full ${
+                                            dose.status === 'cancelled'
+                                              ? "bg-red-100"
+                                              : dose.verified
+                                              ? "bg-green-100"
+                                              : "bg-yellow-100"
+                                          }`}>
+                                            <Text className={`text-xs font-semibold ${
+                                              dose.status === 'cancelled'
+                                                ? "text-red-600"
+                                                : dose.verified
+                                                ? "text-green-600"
+                                                : "text-yellow-600"
+                                            }`}>
+                                              {dose.status === 'cancelled' ? "Cancelled" : dose.verified ? "✓ Done" : "Pending"}
                                             </Text>
                                           </View>
-                                          <TouchableOpacity
-                                            onPress={() =>
-                                              handleDeleteVaccination(
-                                                vaccine.name,
-                                                dose.doseNumber
-                                              )
-                                            }
-                                            className="bg-red-100 rounded-xl p-2"
-                                          >
-                                            <Ionicons
-                                              name="trash"
-                                              size={18}
-                                              color="#ef4444"
-                                            />
-                                          </TouchableOpacity>
                                         </View>
-                                      ) : (
-                                        <View className="bg-yellow-100 rounded-xl px-3 py-2">
-                                          <Text className="text-sm font-semibold text-yellow-700">
-                                            ⏳ Pending
-                                          </Text>
-                                        </View>
-                                      )}
-                                    </View>
-                                  </View>
-                                  {/* Enhanced Dose Information Grid */}
-                                  <View className="bg-gray-50 rounded-2xl p-4">
-                                    <View className="grid grid-cols-2 gap-4">
-                                      <View className="flex-row items-center mb-3">
-                                        <View className="bg-white rounded-full p-2 mr-3">
-                                          <Ionicons
-                                            name="calendar"
-                                            size={16}
-                                            color="#6b7280"
-                                          />
-                                        </View>
-                                        <View>
-                                          <Text className="text-xs text-gray-500 mb-1">
-                                            Date
-                                          </Text>
-                                          <Text
-                                            className={`text-sm font-semibold ${
-                                              dose.verified
-                                                ? "text-gray-800"
-                                                : "text-yellow-700"
-                                            }`}
-                                          >
+                                        <View className="flex-row items-center">
+                                          <Ionicons name="calendar-outline" size={11} color="#6b7280" />
+                                          <Text className="text-xs text-gray-600 ml-1">
                                             {dose.date 
                                               ? (typeof dose.date === 'string' 
                                                   ? (dose.date === 'Pending' || dose.date === 'TBD' ? dose.date : new Date(dose.date).toLocaleDateString('en-US', { 
@@ -1846,111 +1707,81 @@ export default function VaxCardScreen() {
                                         </View>
                                       </View>
 
-                                      <View className="flex-row items-center mb-3">
-                                        <View className="bg-white rounded-full p-2 mr-3">
-                                          <Ionicons
-                                            name="barcode"
-                                            size={16}
-                                            color="#6b7280"
-                                          />
-                                        </View>
-                                        <View>
-                                          <Text className="text-xs text-gray-500 mb-1">
-                                            Batch
-                                          </Text>
-                                          <Text
-                                            className={`text-sm font-mono font-semibold ${
-                                              dose.verified
-                                                ? "text-gray-800"
-                                                : "text-yellow-700"
-                                            }`}
+                                      {/* Action Buttons */}
+                                      <View className="flex-row items-center">
+                                        {(dose.verified || dose.status === 'completed') && dose.status !== 'cancelled' && (
+                                          <TouchableOpacity
+                                            onPress={() => {
+                                              if (
+                                                dose.verified &&
+                                                dose.date !== "Pending" &&
+                                                dose.date !== "TBD"
+                                              ) {
+                                                const vaccination = {
+                                                  vaccineName: vaccine.name,
+                                                  doseNumber: dose.doseNumber,
+                                                  totalDoses: vaccine.totalDoses,
+                                                  dateCompleted: new Date(dose.date),
+                                                };
+                                                generateInstructionsAndShowPopup(
+                                                  vaccination as HealthCardVaccination
+                                                );
+                                              }
+                                            }}
+                                            className="bg-blue-50 rounded-lg p-2 mr-1"
                                           >
-                                            {dose.batch}
-                                          </Text>
-                                        </View>
-                                      </View>
-
-                                      <View className="flex-row items-center mb-3">
-                                        <View className="bg-white rounded-full p-2 mr-3">
-                                          <Ionicons
-                                            name="medical"
-                                            size={16}
-                                            color="#6b7280"
-                                          />
-                                        </View>
-                                        <View>
-                                          <Text className="text-xs text-gray-500 mb-1">
-                                            Provider
-                                          </Text>
-                                          <Text
-                                            className={`text-sm font-semibold ${
-                                              dose.verified
-                                                ? "text-gray-800"
-                                                : "text-yellow-700"
-                                            }`}
-                                          >
-                                            {dose.provider}
-                                          </Text>
-                                        </View>
-                                      </View>
-
-                                      {dose.facility &&
-                                        dose.facility !== "TBD" && (
-                                          <View className="flex-row items-center mb-3">
-                                            <View className="bg-white rounded-full p-2 mr-3">
-                                              <Ionicons
-                                                name="location"
-                                                size={16}
-                                                color="#6b7280"
-                                              />
-                                            </View>
-                                            <View>
-                                              <Text className="text-xs text-gray-500 mb-1">
-                                                Facility
-                                              </Text>
-                                              <Text
-                                                className={`text-sm font-semibold ${
-                                                  dose.verified
-                                                    ? "text-gray-800"
-                                                    : "text-yellow-700"
-                                                }`}
-                                              >
-                                                {dose.facility}
-                                              </Text>
-                                            </View>
-                                          </View>
+                                            <Ionicons name="medical" size={16} color="#3b82f6" />
+                                          </TouchableOpacity>
                                         )}
+                                        {(dose.verified || dose.status === 'cancelled') && (
+                                          <TouchableOpacity
+                                            onPress={() =>
+                                              handleDeleteVaccination(
+                                                vaccine.name,
+                                                dose.doseNumber
+                                              )
+                                            }
+                                            className="bg-red-50 rounded-lg p-2"
+                                          >
+                                            <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                                          </TouchableOpacity>
+                                        )}
+                                      </View>
                                     </View>
 
-                                    {dose.notes && (
-                                      <View className="mt-3 pt-3 border-t border-gray-200">
-                                        <View className="flex-row items-start">
-                                          <View className="bg-white rounded-full p-2 mr-3 mt-1">
-                                            <Ionicons
-                                              name="document-text"
-                                              size={16}
-                                              color="#6b7280"
-                                            />
-                                          </View>
-                                          <View className="flex-1">
-                                            <Text className="text-xs text-gray-500 mb-1">
-                                              Notes
-                                            </Text>
-                                            <Text
-                                              className={`text-sm ${
-                                                dose.verified
-                                                  ? "text-gray-700"
-                                                  : "text-yellow-700"
-                                              }`}
-                                            >
-                                              {dose.notes}
-                                            </Text>
-                                          </View>
-                                        </View>
+                                    {/* Compact Details - Inline */}
+                                    <View className="flex-row flex-wrap">
+                                      <View className="flex-row items-center mr-3 mb-1">
+                                        <Ionicons name="medkit" size={12} color="#3b82f6" />
+                                        <Text className="text-xs text-gray-700 ml-1 font-medium">
+                                          {dose.provider}
+                                        </Text>
                                       </View>
-                                    )}
+                                      <View className="flex-row items-center mr-3 mb-1">
+                                        <Ionicons name="barcode-outline" size={12} color="#6b7280" />
+                                        <Text className="text-xs text-gray-600 ml-1 font-mono">
+                                          {dose.batch}
+                                        </Text>
+                                      </View>
+                                      {dose.facility && dose.facility !== "TBD" && (
+                                        <View className="flex-row items-center mr-3 mb-1">
+                                          <Ionicons name="business" size={12} color="#6b7280" />
+                                          <Text className="text-xs text-gray-600 ml-1 font-medium">
+                                            {dose.facility}
+                                          </Text>
+                                        </View>
+                                      )}
+                                      {dose.notes && (
+                                        <View className="flex-row items-center mb-1 w-full mt-1">
+                                          <Ionicons name="document-text" size={12} color="#6b7280" />
+                                          <Text className="text-xs text-gray-600 ml-1 italic flex-1" numberOfLines={1}>
+                                            {dose.notes}
+                                          </Text>
+                                        </View>
+                                      )}
+                                    </View>
                                   </View>
-                                </Animated.View>
+                                </View>
                               ))}
                             </View>
                           </View>
