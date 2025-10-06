@@ -48,6 +48,7 @@ interface VaccineDose {
   verified: boolean;
   facility?: string;
   notes?: string;
+  status?: "completed" | "cancelled" | "pending";
 }
 
 interface Vaccine {
@@ -266,7 +267,7 @@ export default function VaxCardScreen() {
   };
 
   // Load all health cards for user and dependents
-  const loadAllHealthCards = async () => {
+  const loadAllHealthCards = async (skipErrorAlerts: boolean = false) => {
     try {
       setLoading(true);
       setError(null);
@@ -297,6 +298,11 @@ export default function VaxCardScreen() {
       setProfiles(newProfiles);
     } catch (error: any) {
       console.error("Error loading all health cards:", error);
+
+      // Skip alerts if called from delete handler
+      if (skipErrorAlerts) {
+        throw error; // Re-throw to be caught by caller
+      }
 
       if (
         error.message.includes("404") ||
@@ -769,36 +775,33 @@ export default function VaxCardScreen() {
                 doseNumber
               );
 
-              // Update the local state to remove the deleted vaccination
-              setProfiles((prevProfiles) => {
-                const updatedProfiles = [...prevProfiles];
-                const currentProfile = updatedProfiles[selectedIdx];
+              // Clear instructions popup state if visible
+              setShowInstructionsPopup(false);
+              setInstructionsData(null);
+              setGeneratingInstructions(false);
 
-                if (currentProfile?.healthCard?.completedVaccinations) {
-                  // Remove the deleted vaccination from the health card
-                  currentProfile.healthCard.completedVaccinations =
-                    currentProfile.healthCard.completedVaccinations.filter(
-                      (vaccination) =>
-                        !(
-                          vaccination.vaccineName === vaccineName &&
-                          vaccination.doseNumber === doseNumber
-                        )
-                    );
+              // Reload all health card data (skip error alerts to prevent navigation issues)
+              try {
+                await loadAllHealthCards(true);
+                
+                // Ensure selectedIdx is still valid after reload
+                setSelectedIdx(prev => {
+                  // Get the new profiles length after reload
+                  return prev; // Keep current if still valid
+                });
+              } catch (reloadError: any) {
+                console.error("Error reloading health cards after delete:", reloadError);
+                // Continue anyway - the delete was successful
+                // The data will reload when user navigates away and comes back
+              }
 
-                  // Regroup the vaccinations for UI display
-                  currentProfile.vaccines =
-                    healthCardAPI.groupVaccinationsByName(
-                      currentProfile.healthCard.completedVaccinations
-                    );
-                }
-
-                return updatedProfiles;
-              });
-
-              Alert.alert(
-                "Success",
-                `${vaccineName} dose ${doseNumber} has been deleted successfully.`
-              );
+              // Small delay before showing success alert to allow state to settle
+              setTimeout(() => {
+                Alert.alert(
+                  "Success",
+                  `${vaccineName} dose ${doseNumber} has been deleted successfully.`
+                );
+              }, 100);
             } catch (error: any) {
               console.error("Error deleting vaccination:", error);
               Alert.alert(
@@ -818,18 +821,30 @@ export default function VaxCardScreen() {
   // Calculate completion stats for progress display
   const completionStats = {
     total: profile?.vaccines?.length || 0,
-    completed: profile?.vaccines?.filter((v) => v.doses.length === v.totalDoses).length || 0,
-    verified: profile?.vaccines?.filter((v) => v.doses.every((d) => d.verified)).length || 0,
+    completed: profile?.vaccines?.filter((v) => {
+      const completedDoses = v.doses.filter(d => d.status === 'completed' || d.verified);
+      const cancelledDoses = v.doses.filter(d => d.status === 'cancelled');
+      const activeDoses = v.totalDoses - cancelledDoses.length;
+      return completedDoses.length === activeDoses;
+    }).length || 0,
+    verified: profile?.vaccines?.filter((v) => v.doses.every((d) => d.verified || d.status === 'completed')).length || 0,
   };
 
   // Function to add pending doses for incomplete vaccines
   const addPendingDoses = (vaccines: Vaccine[]): Vaccine[] => {
     return vaccines.map((vaccine) => {
-      const completedDoses = vaccine.doses.length;
+      // Get all existing dose numbers
+      const existingDoseNumbers = vaccine.doses.map(d => d.doseNumber);
       const pendingDoses: VaccineDose[] = [];
 
-      // Add pending doses for missing ones
-      for (let i = completedDoses + 1; i <= vaccine.totalDoses; i++) {
+      // Find the highest dose number that exists (completed or cancelled)
+      const maxExistingDose = existingDoseNumbers.length > 0 
+        ? Math.max(...existingDoseNumbers) 
+        : 0;
+
+      // Only add pending doses AFTER the last existing dose
+      // This prevents deleted doses from reappearing as pending
+      for (let i = maxExistingDose + 1; i <= vaccine.totalDoses; i++) {
         pendingDoses.push({
           doseNumber: i,
           date: "Pending",
@@ -838,12 +853,13 @@ export default function VaxCardScreen() {
           verified: false,
           facility: "TBD",
           notes: "Dose not yet administered",
+          status: "pending",
         });
       }
 
       return {
         ...vaccine,
-        doses: [...vaccine.doses, ...pendingDoses],
+        doses: [...vaccine.doses, ...pendingDoses].sort((a, b) => a.doseNumber - b.doseNumber),
       };
     });
   };
@@ -1332,16 +1348,18 @@ export default function VaxCardScreen() {
               </View>
             ) : (
               filteredVaccines.map((vaccine, index) => {
-                const completedDoses = vaccine.doses.filter((d) => d.verified);
+                const completedDoses = vaccine.doses.filter((d) => d.status === 'completed' || d.verified);
+                const cancelledDoses = vaccine.doses.filter((d) => d.status === 'cancelled');
+                const activeDoses = vaccine.totalDoses - cancelledDoses.length;
                 const latestDose =
                   completedDoses[completedDoses.length - 1] ||
                   vaccine.doses[vaccine.doses.length - 1] ||
                   { provider: 'N/A', date: 'N/A' };
                 const allVerified =
-                  completedDoses.length === vaccine.totalDoses;
+                  completedDoses.length === activeDoses;
                 const isExpanded = expandedVaccines.includes(vaccine.id);
                 const completionPercentage =
-                  (completedDoses.length / vaccine.totalDoses) * 100;
+                  activeDoses > 0 ? (completedDoses.length / activeDoses) * 100 : 0;
                 const config = vaccineConfig[vaccine.type];
 
                 return (
@@ -1427,7 +1445,19 @@ export default function VaxCardScreen() {
                                   color="#6b7280"
                                 />
                                 <Text className="text-sm text-gray-600 ml-1">
-                                  {latestDose?.date || 'N/A'}
+                                  {latestDose?.date 
+                                    ? (typeof latestDose.date === 'string' 
+                                        ? new Date(latestDose.date).toLocaleDateString('en-US', { 
+                                            year: 'numeric', 
+                                            month: 'short', 
+                                            day: 'numeric' 
+                                          })
+                                        : new Date(latestDose.date).toLocaleDateString('en-US', { 
+                                            year: 'numeric', 
+                                            month: 'short', 
+                                            day: 'numeric' 
+                                          }))
+                                    : 'N/A'}
                                 </Text>
                                 <View className="ml-3 bg-gray-100 rounded-full px-2 py-1">
                                   <Text className="text-xs font-medium text-gray-600 capitalize">
@@ -1453,43 +1483,55 @@ export default function VaxCardScreen() {
                                   <Text className="text-xs font-bold text-green-700 text-center">
                                     COMPLETED
                                   </Text>
-                                  <Text className="text-xs text-green-600 text-center mt-1">
-                                    {latestDose?.date || 'N/A'}
-                                  </Text>
                                   {latestDose?.date !== "Pending" &&
-                                    latestDose?.date !== "TBD" && latestDose?.date && (
-                                      <Text className="text-xs text-green-500 text-center mt-1">
+                                    latestDose?.date !== "TBD" && 
+                                    latestDose?.date !== "N/A" && 
+                                    latestDose?.date && (
+                                      <Text className="text-xs text-green-600 text-center mt-1">
                                         {(() => {
-                                          const completionDate = new Date(
-                                            latestDose?.date || new Date()
-                                          );
-                                          const today = new Date();
-                                          const diffTime =
-                                            today.getTime() -
-                                            completionDate.getTime();
-                                          const diffDays = Math.floor(
-                                            diffTime / (1000 * 60 * 60 * 24)
-                                          );
-
-                                          if (diffDays === 0) return "Today";
-                                          if (diffDays === 1)
-                                            return "1 day ago";
-                                          if (diffDays < 30)
-                                            return `${diffDays} days ago`;
-                                          if (diffDays < 365) {
-                                            const months = Math.floor(
-                                              diffDays / 30
+                                          try {
+                                            // Try to parse the date string
+                                            const completionDate = new Date(latestDose.date);
+                                            
+                                            // Check if date is valid
+                                            if (isNaN(completionDate.getTime())) {
+                                              return null; // Don't show if date is invalid
+                                            }
+                                            
+                                            const today = new Date();
+                                            const diffTime =
+                                              today.getTime() -
+                                              completionDate.getTime();
+                                            const diffDays = Math.floor(
+                                              diffTime / (1000 * 60 * 60 * 24)
                                             );
-                                            return `${months} month${
-                                              months > 1 ? "s" : ""
-                                            } ago`;
+
+                                            if (diffDays === 0) return "Today";
+                                            if (diffDays === 1)
+                                              return "1 day ago";
+                                            if (diffDays > 1 && diffDays < 30)
+                                              return `${diffDays} days ago`;
+                                            if (diffDays >= 30 && diffDays < 365) {
+                                              const months = Math.floor(
+                                                diffDays / 30
+                                              );
+                                              return `${months} month${
+                                                months > 1 ? "s" : ""
+                                              } ago`;
+                                            }
+                                            if (diffDays >= 365) {
+                                              const years = Math.floor(
+                                                diffDays / 365
+                                              );
+                                              return `${years} year${
+                                                years > 1 ? "s" : ""
+                                              } ago`;
+                                            }
+                                            return null;
+                                          } catch (error) {
+                                            // If date parsing fails, don't show anything
+                                            return null;
                                           }
-                                          const years = Math.floor(
-                                            diffDays / 365
-                                          );
-                                          return `${years} year${
-                                            years > 1 ? "s" : ""
-                                          } ago`;
                                         })()}
                                       </Text>
                                     )}
@@ -1504,7 +1546,7 @@ export default function VaxCardScreen() {
                                   size={60}
                                 />
                                 <Text className="text-xs text-gray-500 mt-1 text-center">
-                                  {completedDoses.length}/{vaccine.totalDoses}{" "}
+                                  {completedDoses.length}/{activeDoses}{" "}
                                   doses
                                 </Text>
                               </View>
@@ -1530,9 +1572,11 @@ export default function VaxCardScreen() {
                             <View className="space-y-3">
                               {vaccine.doses.map((dose, doseIndex) => (
                                 <Animated.View
-                                  key={dose.doseNumber}
+                                  key={`${vaccine.id}-dose-${dose.doseNumber}`}
                                   className={`p-4 rounded-2xl border-2 ${
-                                    dose.verified
+                                    dose.status === 'cancelled'
+                                      ? "bg-red-50 border-red-200 shadow-sm"
+                                      : dose.status === 'completed' || dose.verified
                                       ? "bg-white border-green-100 shadow-sm"
                                       : "bg-yellow-50 border-yellow-200 shadow-sm"
                                   }`}
@@ -1561,18 +1605,26 @@ export default function VaxCardScreen() {
                                     <View className="flex-row items-center">
                                       <View
                                         className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
-                                          dose.verified
+                                          dose.status === 'cancelled'
+                                            ? "bg-red-100"
+                                            : dose.status === 'completed' || dose.verified
                                             ? "bg-green-100"
                                             : "bg-yellow-100"
                                         }`}
                                       >
                                         <Ionicons
                                           name={
-                                            dose.verified ? "checkmark" : "time"
+                                            dose.status === 'cancelled'
+                                              ? "close-circle"
+                                              : dose.status === 'completed' || dose.verified
+                                              ? "checkmark"
+                                              : "time"
                                           }
                                           size={20}
                                           color={
-                                            dose.verified
+                                            dose.status === 'cancelled'
+                                              ? "#ef4444"
+                                              : dose.status === 'completed' || dose.verified
                                               ? "#16a34a"
                                               : "#f59e0b"
                                           }
@@ -1581,7 +1633,9 @@ export default function VaxCardScreen() {
                                       <View>
                                         <Text
                                           className={`text-lg font-bold ${
-                                            dose.verified
+                                            dose.status === 'cancelled'
+                                              ? "text-red-800"
+                                              : dose.status === 'completed' || dose.verified
                                               ? "text-gray-800"
                                               : "text-yellow-800"
                                           }`}
@@ -1590,12 +1644,16 @@ export default function VaxCardScreen() {
                                         </Text>
                                         <Text
                                           className={`text-sm ${
-                                            dose.verified
+                                            dose.status === 'cancelled'
+                                              ? "text-red-600"
+                                              : dose.status === 'completed' || dose.verified
                                               ? "text-green-600"
                                               : "text-yellow-600"
                                           }`}
                                         >
-                                          {dose.verified
+                                          {dose.status === 'cancelled'
+                                            ? "Cancelled"
+                                            : dose.status === 'completed' || dose.verified
                                             ? "Completed"
                                             : "Pending"}
                                         </Text>
@@ -1603,7 +1661,7 @@ export default function VaxCardScreen() {
                                     </View>
 
                                     <View className="flex-row items-center">
-                                      {dose.verified ? (
+                                      {(dose.status === 'completed' || dose.verified) && dose.status !== 'cancelled' ? (
                                         <>
                                           <TouchableOpacity
                                             onPress={() => {
@@ -1662,6 +1720,29 @@ export default function VaxCardScreen() {
                                             />
                                           </TouchableOpacity>
                                         </>
+                                      ) : dose.status === 'cancelled' ? (
+                                        <View className="flex-row items-center">
+                                          <View className="bg-red-100 rounded-xl px-3 py-2 mr-2">
+                                            <Text className="text-sm font-semibold text-red-700">
+                                              ❌ Cancelled
+                                            </Text>
+                                          </View>
+                                          <TouchableOpacity
+                                            onPress={() =>
+                                              handleDeleteVaccination(
+                                                vaccine.name,
+                                                dose.doseNumber
+                                              )
+                                            }
+                                            className="bg-red-100 rounded-xl p-2"
+                                          >
+                                            <Ionicons
+                                              name="trash"
+                                              size={18}
+                                              color="#ef4444"
+                                            />
+                                          </TouchableOpacity>
+                                        </View>
                                       ) : (
                                         <View className="bg-yellow-100 rounded-xl px-3 py-2">
                                           <Text className="text-sm font-semibold text-yellow-700">
@@ -1693,7 +1774,19 @@ export default function VaxCardScreen() {
                                                 : "text-yellow-700"
                                             }`}
                                           >
-                                            {dose.date}
+                                            {dose.date 
+                                              ? (typeof dose.date === 'string' 
+                                                  ? (dose.date === 'Pending' || dose.date === 'TBD' ? dose.date : new Date(dose.date).toLocaleDateString('en-US', { 
+                                                      year: 'numeric', 
+                                                      month: 'short', 
+                                                      day: 'numeric' 
+                                                    }))
+                                                  : new Date(dose.date).toLocaleDateString('en-US', { 
+                                                      year: 'numeric', 
+                                                      month: 'short', 
+                                                      day: 'numeric' 
+                                                    }))
+                                              : 'N/A'}
                                           </Text>
                                         </View>
                                       </View>
@@ -1854,7 +1947,7 @@ export default function VaxCardScreen() {
 
                   return (
                     <View
-                      key={`${item.vaccine.id}-${item.dose.doseNumber}`}
+                      key={`timeline-${item.vaccine.id}-dose-${item.dose.doseNumber}-${i}`}
                       className="flex-row items-start mb-6 last:mb-0"
                     >
                       <View className="items-center mr-4">
@@ -1863,7 +1956,7 @@ export default function VaxCardScreen() {
                             isLatest ? "shadow-lg" : ""
                           }`}
                           style={{
-                            backgroundColor: config.color,
+                            backgroundColor: item.dose.status === 'cancelled' ? '#ef4444' : config.color,
                             transform:
                               i === 0
                                 ? [
@@ -1877,7 +1970,11 @@ export default function VaxCardScreen() {
                                 : [],
                           }}
                         >
-                          <Ionicons name="checkmark" size={12} color="white" />
+                          <Ionicons 
+                            name={item.dose.status === 'cancelled' ? "close" : "checkmark"} 
+                            size={12} 
+                            color="white" 
+                          />
                         </Animated.View>
                         {i < arr.length - 1 && (
                           <View
@@ -1889,7 +1986,7 @@ export default function VaxCardScreen() {
 
                       <View className="flex-1 bg-gray-50 rounded-2xl p-4">
                         <View className="flex-row items-center justify-between mb-3">
-                          <View className="flex-row items-center">
+                          <View className="flex-row items-center flex-wrap">
                             <Text className="font-bold text-gray-800 text-lg">
                               {item.vaccine.name}
                             </Text>
@@ -1904,6 +2001,13 @@ export default function VaxCardScreen() {
                                 Dose {item.dose.doseNumber}
                               </Text>
                             </View>
+                            {item.dose.status === 'cancelled' && (
+                              <View className="ml-2 px-3 py-1 rounded-full bg-red-100">
+                                <Text className="text-xs font-semibold text-red-700">
+                                  Cancelled
+                                </Text>
+                              </View>
+                            )}
                           </View>
                           {isLatest && (
                             <View className="bg-green-100 rounded-full px-3 py-1">
@@ -1917,7 +2021,19 @@ export default function VaxCardScreen() {
                         <View className="flex-row items-center mb-2">
                           <Ionicons name="calendar" size={16} color="#6b7280" />
                           <Text className="text-gray-600 font-medium ml-2">
-                            {typeof item.dose.date === 'string' ? item.dose.date : new Date(item.dose.date).toLocaleDateString()}
+                            {typeof item.dose.date === 'string' 
+                              ? (item.dose.date === 'Pending' || item.dose.date === 'TBD' 
+                                  ? item.dose.date 
+                                  : new Date(item.dose.date).toLocaleDateString('en-US', { 
+                                      year: 'numeric', 
+                                      month: 'short', 
+                                      day: 'numeric' 
+                                    }))
+                              : new Date(item.dose.date).toLocaleDateString('en-US', { 
+                                  year: 'numeric', 
+                                  month: 'short', 
+                                  day: 'numeric' 
+                                })}
                           </Text>
                         </View>
 
@@ -2052,7 +2168,7 @@ export default function VaxCardScreen() {
                     <View className="space-y-4">
                       {selectedVaccine.doses.map((dose, index) => (
                         <View
-                          key={dose.doseNumber}
+                          key={`${selectedVaccine.id}-dose-${dose.doseNumber}-${index}`}
                           className="bg-white p-5 rounded-2xl border-2 border-gray-100 shadow-sm"
                         >
                           <View className="flex-row justify-between items-center mb-4">
@@ -2076,18 +2192,43 @@ export default function VaxCardScreen() {
                                 </Text>
                                 <Text
                                   className={`text-sm font-medium ${
-                                    dose.verified
+                                    dose.status === 'cancelled'
+                                      ? "text-red-600"
+                                      : dose.verified
                                       ? "text-green-600"
                                       : "text-yellow-600"
                                   }`}
                                 >
-                                  {dose.verified ? "Completed" : "Pending"}
+                                  {dose.status === 'cancelled' ? "Cancelled" : dose.verified ? "Completed" : "Pending"}
                                 </Text>
                               </View>
                             </View>
 
                             <View className="flex-row items-center">
-                              {dose.verified ? (
+                              {dose.status === 'cancelled' ? (
+                                <View className="flex-row items-center">
+                                  <View className="bg-red-100 rounded-xl px-4 py-3 mr-2">
+                                    <Text className="text-sm font-semibold text-red-700">
+                                      ❌ Cancelled
+                                    </Text>
+                                  </View>
+                                  <TouchableOpacity
+                                    onPress={() =>
+                                      handleDeleteVaccination(
+                                        selectedVaccine.name,
+                                        dose.doseNumber
+                                      )
+                                    }
+                                    className="bg-red-100 rounded-xl p-3"
+                                  >
+                                    <Ionicons
+                                      name="trash"
+                                      size={20}
+                                      color="#ef4444"
+                                    />
+                                  </TouchableOpacity>
+                                </View>
+                              ) : dose.verified ? (
                                 <TouchableOpacity
                                   onPress={() =>
                                     handleDeleteVaccination(
@@ -2128,7 +2269,19 @@ export default function VaxCardScreen() {
                                     Date
                                   </Text>
                                   <Text className="text-sm font-semibold text-gray-800">
-                                    {dose.date}
+                                    {dose.date 
+                                      ? (typeof dose.date === 'string' 
+                                          ? (dose.date === 'Pending' || dose.date === 'TBD' ? dose.date : new Date(dose.date).toLocaleDateString('en-US', { 
+                                              year: 'numeric', 
+                                              month: 'short', 
+                                              day: 'numeric' 
+                                            }))
+                                          : new Date(dose.date).toLocaleDateString('en-US', { 
+                                              year: 'numeric', 
+                                              month: 'short', 
+                                              day: 'numeric' 
+                                            }))
+                                      : 'N/A'}
                                   </Text>
                                 </View>
                               </View>
@@ -2201,19 +2354,22 @@ export default function VaxCardScreen() {
         </Modal>
 
         {/* Instructions Popup */}
-        <InstructionsPopup
-          visible={showInstructionsPopup}
-          onClose={() => {
-            setShowInstructionsPopup(false);
-            setInstructionsData(null);
-            // Don't reset autoPopupTriggered - this prevents the loop
-          }}
-          instructions={instructionsData?.instructions || ""}
-          vaccineName={instructionsData?.vaccineName || ""}
-          completedDoseNo={instructionsData?.completedDoseNo || 0}
-          totalDoses={instructionsData?.totalDoses || 0}
-          loading={generatingInstructions}
-        />
+        {showInstructionsPopup && (
+          <InstructionsPopup
+            visible={showInstructionsPopup}
+            onClose={() => {
+              setShowInstructionsPopup(false);
+              setInstructionsData(null);
+              setGeneratingInstructions(false);
+              // Don't reset autoPopupTriggered - this prevents the loop
+            }}
+            instructions={instructionsData?.instructions || ""}
+            vaccineName={instructionsData?.vaccineName || ""}
+            completedDoseNo={instructionsData?.completedDoseNo || 0}
+            totalDoses={instructionsData?.totalDoses || 0}
+            loading={generatingInstructions}
+          />
+        )}
       </View>
     </SafeAreaView>
   );

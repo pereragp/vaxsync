@@ -1,5 +1,3 @@
-/// <reference types="node" />
-/// <reference types="node" />
 import { IHealthCard } from '../types';
 export interface VaccinationCertificateData {
     healthCard: IHealthCard;

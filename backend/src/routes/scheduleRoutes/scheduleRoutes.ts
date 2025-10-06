@@ -69,6 +69,21 @@ const updateDoseValidation = [
     .trim()
 ];
 
+// Validation rules for adding a new dose
+const addDoseValidation = [
+  param('scheduleId')
+    .isMongoId()
+    .withMessage('Invalid schedule ID format'),
+  body('intervalDays')
+    .isInt({ min: 1 })
+    .withMessage('Interval days must be a positive integer'),
+  body('notes')
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage('Dose notes cannot exceed 500 characters')
+    .trim()
+];
+
 // Validation for ID parameters
 const scheduleIdValidation = [
   param('scheduleId')
@@ -88,6 +103,9 @@ router.put('/:scheduleId', protect, scheduleIdValidation, validateRequest, Sched
 
 // PUT /api/v1/schedule/:scheduleId/doses/:doseNumber - Update dose status
 router.put('/:scheduleId/doses/:doseNumber', protect, updateDoseValidation, validateRequest, ScheduleController.updateDoseStatus);
+
+// POST /api/v1/schedule/:scheduleId/doses - Add a new dose to existing schedule
+router.post('/:scheduleId/doses', protect, addDoseValidation, validateRequest, ScheduleController.addDoseToSchedule);
 
 // DELETE /api/v1/schedule/:scheduleId - Delete vaccine schedule
 router.delete('/:scheduleId', protect, scheduleIdValidation, validateRequest, ScheduleController.deleteVaccineSchedule);

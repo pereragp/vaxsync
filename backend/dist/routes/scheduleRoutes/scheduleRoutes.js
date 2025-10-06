@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const scheduleController_1 = require("../../controllers/scheduleController/scheduleController");
+const auth_1 = __importDefault(require("../../middleware/auth"));
 const express_validator_1 = require("express-validator");
 const validation_1 = require("../../middleware/validation");
 const router = express_1.default.Router();
@@ -67,15 +68,29 @@ const updateDoseValidation = [
         .withMessage('Dose notes cannot exceed 500 characters')
         .trim()
 ];
+const addDoseValidation = [
+    (0, express_validator_1.param)('scheduleId')
+        .isMongoId()
+        .withMessage('Invalid schedule ID format'),
+    (0, express_validator_1.body)('intervalDays')
+        .isInt({ min: 1 })
+        .withMessage('Interval days must be a positive integer'),
+    (0, express_validator_1.body)('notes')
+        .optional()
+        .isLength({ max: 500 })
+        .withMessage('Dose notes cannot exceed 500 characters')
+        .trim()
+];
 const scheduleIdValidation = [
     (0, express_validator_1.param)('scheduleId')
         .isMongoId()
         .withMessage('Invalid schedule ID format')
 ];
-router.post('/', createScheduleValidation, validation_1.validateRequest, scheduleController_1.ScheduleController.createVaccineSchedule);
-router.get('/', validation_1.validatePagination, scheduleController_1.ScheduleController.getAllVaccineSchedules);
-router.put('/:scheduleId', scheduleIdValidation, validation_1.validateRequest, scheduleController_1.ScheduleController.updateVaccineSchedule);
-router.put('/:scheduleId/doses/:doseNumber', updateDoseValidation, validation_1.validateRequest, scheduleController_1.ScheduleController.updateDoseStatus);
-router.delete('/:scheduleId', scheduleIdValidation, validation_1.validateRequest, scheduleController_1.ScheduleController.deleteVaccineSchedule);
+router.post('/', auth_1.default, createScheduleValidation, validation_1.validateRequest, scheduleController_1.ScheduleController.createVaccineSchedule);
+router.get('/', auth_1.default, validation_1.validatePagination, scheduleController_1.ScheduleController.getAllVaccineSchedules);
+router.put('/:scheduleId', auth_1.default, scheduleIdValidation, validation_1.validateRequest, scheduleController_1.ScheduleController.updateVaccineSchedule);
+router.put('/:scheduleId/doses/:doseNumber', auth_1.default, updateDoseValidation, validation_1.validateRequest, scheduleController_1.ScheduleController.updateDoseStatus);
+router.post('/:scheduleId/doses', auth_1.default, addDoseValidation, validation_1.validateRequest, scheduleController_1.ScheduleController.addDoseToSchedule);
+router.delete('/:scheduleId', auth_1.default, scheduleIdValidation, validation_1.validateRequest, scheduleController_1.ScheduleController.deleteVaccineSchedule);
 exports.default = router;
 //# sourceMappingURL=scheduleRoutes.js.map
