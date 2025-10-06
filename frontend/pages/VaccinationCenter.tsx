@@ -228,12 +228,6 @@ const VaccinationCentersScreen = () => {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Vaccination Centers</Text>
-        <Text style={styles.headerSubtitle}>{filteredCenters.length} centers found</Text>
-      </View>
-
       {/* Search and Filter Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>

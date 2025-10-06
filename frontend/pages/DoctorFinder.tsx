@@ -11,7 +11,6 @@ import {
   Modal,
   Image,
   Dimensions,
-  StatusBar,
   Animated,
   Linking,
   Platform,
@@ -412,15 +411,7 @@ export default function DoctorFinder() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Find Your Doctor</Text>
-        <Text style={styles.subtitle}>Discover healthcare professionals near you</Text>
-      </View>
-
+    <View style={styles.container}>
       {/* Search and Filters */}
       {renderSearchHeader()}
 
@@ -502,7 +493,7 @@ export default function DoctorFinder() {
           </TouchableOpacity>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 

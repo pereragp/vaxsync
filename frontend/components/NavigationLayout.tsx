@@ -87,7 +87,7 @@ export default function NavigationLayout({ children }: NavigationLayoutProps) {
     return !noNavRoutes.includes(pathname);
   };
 
-  const useScrollView = !['/vaccination-center'].includes(pathname);
+  const useScrollView = !['/vaccination-center', '/health-services'].includes(pathname);
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.white }} edges={['top']}>
       <View style={{ flex: 1, backgroundColor: colors.white }}>
