@@ -73,6 +73,14 @@ const userSchema = new mongoose_1.Schema({
         type: String,
         required: true,
     },
+    bloodType: {
+        type: String,
+        required: [true, "Blood type is required"],
+        enum: {
+            values: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+            message: "Blood type must be one of: A+, A-, B+, B-, AB+, AB-, O+, O-",
+        },
+    },
     phone: {
         type: String,
         required: [true, "Phone number is required"],

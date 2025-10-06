@@ -11,6 +11,7 @@ export interface IUser extends Document {
   password: string;
   dateOfBirth: Date;
   gender: string;
+  bloodType: string;
   phone: string;
   avatar?: string;
   dependents: Types.ObjectId[];
@@ -220,7 +221,6 @@ export interface PaginationInfo {
   hasNextPage: boolean;
   hasPreviousPage: boolean;
 }
-
 
 export interface IDoctor extends Document {
   name: string;
