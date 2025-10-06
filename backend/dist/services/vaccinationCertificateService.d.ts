@@ -12,6 +12,7 @@ export declare class VaccinationCertificateService {
     private static addPersonalInfo;
     private static addVaccinationHistory;
     private static addFooter;
+    private static renderFooterContent;
     private static groupVaccinationsByName;
     static generateCertificateId(healthCardId: string): string;
 }
