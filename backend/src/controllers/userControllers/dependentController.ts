@@ -57,10 +57,6 @@ const addDependent = async (req: AuthenticatedRequest, res: Response) => {
       { new: true }
     );
 
-    return res.status(201).json({
-      message: "Dependent added successfully",
-      dependent: savedDependent,
-    });
     // Automatically create health card for the new dependent
     try {
       const dependentHealthCard = new HealthCard({

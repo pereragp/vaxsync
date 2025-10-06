@@ -9,6 +9,7 @@ export interface IUser extends Document {
     password: string;
     dateOfBirth: Date;
     gender: string;
+    bloodType: string;
     phone: string;
     avatar?: string;
     dependents: Types.ObjectId[];
