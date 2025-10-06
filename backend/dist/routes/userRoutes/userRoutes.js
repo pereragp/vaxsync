@@ -11,10 +11,11 @@ const router = express_1.default.Router();
 router.post("/register", userController_1.registerUser);
 router.post("/login", userController_1.loginUser);
 router.post("/logout", auth_1.default, userController_1.logoutUser);
-router.post("/new-dependent", dependentController_1.addDependent);
 router.get("/profile", auth_1.default, userController_1.getMyProfile);
 router.get("/:id", userController_1.getUserById);
-router.get("/dependents/:guardianId", dependentController_1.getDependentsByGuardian);
 router.put("/profile/update", auth_1.default, userController_1.updateProfile);
+router.post("/new-dependent", auth_1.default, dependentController_1.addDependent);
+router.get("/dependents/:guardianId", auth_1.default, dependentController_1.getDependentsByGuardian);
+router.delete("/dependents/:guardianId/:dependentId", auth_1.default, dependentController_1.removeDependent);
 exports.default = router;
 //# sourceMappingURL=userRoutes.js.map
