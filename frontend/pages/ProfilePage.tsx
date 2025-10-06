@@ -227,11 +227,11 @@ export default function ProfilePage() {
       "Are you sure you want to sign out?",
       [
         {
-          text: "Cancel",
+          text: "No",
           style: "cancel",
         },
         {
-          text: "Sign Out",
+          text: "Yes",
           style: "destructive",
           onPress: async () => {
             try {
