@@ -45,13 +45,18 @@ class UserAPI {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const error: any = new Error(`HTTP error! status: ${response.status}`);
+        error.status = response.status;
+        throw error;
       }
 
       const data = await response.json();
       return data;
-    } catch (error) {
-      console.error(`API request failed for ${endpoint}:`, error);
+    } catch (error: any) {
+      // Only log unexpected errors (not 401/403 authentication errors)
+      if (error.status !== 401 && error.status !== 403) {
+        console.error(`API request failed for ${endpoint}:`, error);
+      }
       throw error;
     }
   }

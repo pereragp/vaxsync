@@ -4,11 +4,15 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   ScrollView,
+  StatusBar,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from "react-native-safe-area-context";
 import userAPI from "../api/userApi";
+import CustomAlert from "./CustomAlert";
 
 interface Dependent {
   _id: string;
@@ -36,6 +40,37 @@ const DependentModal: React.FC<DependentModalProps> = ({
   onDependentDeleted,
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Custom alert state
+  const [customAlert, setCustomAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    buttons: any[];
+    icon: 'success' | 'error' | 'warning' | 'info' | 'question';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+    icon: 'info'
+  });
+
+  // Helper function to show custom alert
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: any[] = [{ text: 'OK' }],
+    icon: 'success' | 'error' | 'warning' | 'info' | 'question' = 'info'
+  ) => {
+    setCustomAlert({
+      visible: true,
+      title,
+      message,
+      buttons,
+      icon
+    });
+  };
 
   if (!dependent) return null;
 
@@ -65,9 +100,9 @@ const DependentModal: React.FC<DependentModalProps> = ({
   };
 
   const handleDeleteDependent = () => {
-    Alert.alert(
-      "Remove Dependent",
-      `Are you sure you want to remove ${dependent.firstName} ${dependent.lastName} from your dependents list? This action cannot be undone.`,
+    showAlert(
+      "Remove Family Member",
+      `Are you sure you want to remove ${dependent.firstName} ${dependent.lastName} from your family members? This action cannot be undone.`,
       [
         {
           text: "Cancel",
@@ -75,10 +110,10 @@ const DependentModal: React.FC<DependentModalProps> = ({
         },
         {
           text: "Remove",
-          style: "destructive",
           onPress: confirmDeleteDependent,
         },
-      ]
+      ],
+      'warning'
     );
   };
 
@@ -87,20 +122,28 @@ const DependentModal: React.FC<DependentModalProps> = ({
       setIsDeleting(true);
       await userAPI.removeDependent(dependent.guardianId, dependent._id);
 
-      Alert.alert("Success", "Dependent has been removed successfully.", [
-        {
-          text: "OK",
-          onPress: () => {
-            onClose();
-            onDependentDeleted();
+      showAlert(
+        "Success", 
+        "Family member has been removed successfully.", 
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              onClose();
+              onDependentDeleted();
+            },
           },
-        },
-      ]);
+        ],
+        'success'
+      );
     } catch (error) {
       console.error("Error removing dependent:", error);
-      Alert.alert("Error", "Failed to remove dependent. Please try again.", [
-        { text: "OK" },
-      ]);
+      showAlert(
+        "Error", 
+        "Failed to remove family member. Please try again.", 
+        [{ text: "OK" }],
+        'error'
+      );
     } finally {
       setIsDeleting(false);
     }
@@ -113,124 +156,216 @@ const DependentModal: React.FC<DependentModalProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-gray-50">
-        {/* Header */}
-        <View className="bg-white px-6 py-4 border-b border-gray-200">
-          <View className="flex-row justify-between items-center">
-            <Text className="text-xl font-bold text-gray-800">
-              Dependent Details
-            </Text>
-            <TouchableOpacity
-              onPress={onClose}
-              className="p-2 -mr-2"
-              disabled={isDeleting}
-            >
-              <Text className="text-blue-500 font-medium text-lg">Done</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      <SafeAreaView className="flex-1" edges={['top']}>
+        <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
+        <View className="flex-1 bg-gray-50">
+          {/* Gradient Header */}
+          <LinearGradient
+            colors={['#1e40af', '#3b82f6', '#60a5fa']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            className="px-6 pb-4 pt-3"
+          >
+            <View className="flex-row justify-between items-center mb-3">
+              <Text className="text-white text-base font-semibold">Family Member</Text>
+              <TouchableOpacity
+                onPress={onClose}
+                disabled={isDeleting}
+                className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-lg items-center justify-center"
+              >
+                <Ionicons name="close" size={20} color="white" />
+              </TouchableOpacity>
+            </View>
 
-        <ScrollView className="flex-1 px-6 py-6">
-          {/* Main Info Card */}
-          <View className="bg-white rounded-lg p-6 mb-6 shadow-sm">
-            <View className="items-center mb-6">
-              <View className="w-20 h-20 bg-blue-100 rounded-full items-center justify-center mb-4">
-                <Text className="text-2xl font-bold text-blue-600">
+            {/* Profile Section - Horizontal Layout */}
+            <View className="flex-row items-center">
+              <View className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-lg items-center justify-center border-3 border-white/30 mr-4">
+                <Text className="text-2xl font-bold text-white">
                   {dependent.firstName.charAt(0)}
                   {dependent.lastName.charAt(0)}
                 </Text>
               </View>
-              <Text className="text-2xl font-bold text-gray-800 text-center">
-                {dependent.firstName} {dependent.lastName}
-              </Text>
-              <Text className="text-lg text-gray-600 mt-1">
-                {dependent.dependentType}
+              <View className="flex-1">
+                <Text className="text-lg font-bold text-white">
+                  {dependent.firstName} {dependent.lastName}
+                </Text>
+                <View className="mt-1 self-start px-3 py-1 bg-white/20 backdrop-blur-lg rounded-full">
+                  <Text className="text-white font-medium text-xs">
+                    {dependent.dependentType}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </LinearGradient>
+
+        <ScrollView className="flex-1 px-6 py-4" showsVerticalScrollIndicator={false}>
+          {/* Personal Information Card */}
+          <View className="bg-white rounded-2xl p-6 mb-4 shadow-lg">
+            <View className="flex-row items-center mb-4">
+              <View className="w-10 h-10 rounded-xl bg-blue-100 items-center justify-center mr-3">
+                <Ionicons name="person" size={20} color="#3b82f6" />
+              </View>
+              <Text className="text-lg font-bold text-gray-800">
+                Personal Information
               </Text>
             </View>
 
             {/* Details Grid */}
-            <View className="space-y-4">
-              <View className="flex-row justify-between py-3 border-b border-gray-100">
-                <Text className="text-gray-600 font-medium">Age</Text>
-                <Text className="text-gray-800 font-semibold">
-                  {getAge(dependent.dateOfBirth)} years old
-                </Text>
+            <View className="space-y-3">
+              <View className="flex-row items-center p-3 bg-gray-50 rounded-xl">
+                <View className="w-10 h-10 rounded-lg bg-purple-100 items-center justify-center mr-3">
+                  <Ionicons name="calendar" size={20} color="#8b5cf6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs text-gray-500 font-semibold mb-1">AGE</Text>
+                  <Text className="text-gray-800 font-bold">
+                    {getAge(dependent.dateOfBirth)} years old
+                  </Text>
+                </View>
               </View>
 
-              <View className="flex-row justify-between py-3 border-b border-gray-100">
-                <Text className="text-gray-600 font-medium">Gender</Text>
-                <Text className="text-gray-800 font-semibold">
-                  {dependent.gender}
-                </Text>
+              <View className="flex-row items-center p-3 bg-gray-50 rounded-xl">
+                <View className="w-10 h-10 rounded-lg bg-blue-100 items-center justify-center mr-3">
+                  <Ionicons 
+                    name={dependent.gender === 'Male' ? 'male' : dependent.gender === 'Female' ? 'female' : 'transgender'} 
+                    size={20} 
+                    color="#3b82f6" 
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs text-gray-500 font-semibold mb-1">GENDER</Text>
+                  <Text className="text-gray-800 font-bold">
+                    {dependent.gender}
+                  </Text>
+                </View>
               </View>
 
-              <View className="flex-row justify-between py-3 border-b border-gray-100">
-                <Text className="text-gray-600 font-medium">Date of Birth</Text>
-                <Text className="text-gray-800 font-semibold">
-                  {formatDate(dependent.dateOfBirth)}
-                </Text>
+              <View className="flex-row items-center p-3 bg-gray-50 rounded-xl">
+                <View className="w-10 h-10 rounded-lg bg-purple-100 items-center justify-center mr-3">
+                  <Ionicons name="gift" size={20} color="#8b5cf6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs text-gray-500 font-semibold mb-1">DATE OF BIRTH</Text>
+                  <Text className="text-gray-800 font-bold">
+                    {formatDate(dependent.dateOfBirth)}
+                  </Text>
+                </View>
               </View>
 
-              <View className="flex-row justify-between py-3 border-b border-gray-100">
-                <Text className="text-gray-600 font-medium">Relationship</Text>
-                <Text className="text-gray-800 font-semibold">
-                  {dependent.dependentType}
-                </Text>
+              <View className="flex-row items-center p-3 bg-gray-50 rounded-xl">
+                <View className="w-10 h-10 rounded-lg bg-green-100 items-center justify-center mr-3">
+                  <Ionicons name="people" size={20} color="#10b981" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs text-gray-500 font-semibold mb-1">RELATIONSHIP</Text>
+                  <Text className="text-gray-800 font-bold">
+                    {dependent.dependentType}
+                  </Text>
+                </View>
               </View>
 
-              <View className="flex-row justify-between py-3">
-                <Text className="text-gray-600 font-medium">Added on</Text>
-                <Text className="text-gray-800 font-semibold">
-                  {formatDate(dependent.createdAt)}
-                </Text>
+              <View className="flex-row items-center p-3 bg-gray-50 rounded-xl">
+                <View className="w-10 h-10 rounded-lg bg-gray-200 items-center justify-center mr-3">
+                  <Ionicons name="time" size={20} color="#6b7280" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs text-gray-500 font-semibold mb-1">ADDED ON</Text>
+                  <Text className="text-gray-800 font-bold">
+                    {formatDate(dependent.createdAt)}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
 
-          {/* Actions */}
-          <View className="space-y-3">
-            {/* Edit Button (for future implementation) */}
-            <TouchableOpacity
-              className="bg-blue-500 py-4 rounded-lg"
-              disabled={isDeleting}
-            >
-              <Text className="text-white text-center font-semibold text-lg">
-                Edit Information
-              </Text>
-            </TouchableOpacity>
+          {/* Quick Actions Card */}
+          <View className="bg-white rounded-2xl p-5 mb-4 shadow-lg">
+            <Text className="text-base font-bold text-gray-800 mb-4">
+              Quick Actions
+            </Text>
 
-            {/* Delete Button */}
-            <TouchableOpacity
-              onPress={handleDeleteDependent}
-              disabled={isDeleting}
-              className={`py-4 rounded-lg ${
-                isDeleting ? "bg-gray-300" : "bg-red-500"
-              }`}
-            >
-              {isDeleting ? (
-                <View className="flex-row items-center justify-center">
-                  <ActivityIndicator size="small" color="white" />
-                  <Text className="text-white font-semibold text-lg ml-2">
-                    Removing...
-                  </Text>
+            <View className="flex-row space-x-3">
+              {/* Edit Button */}
+              <TouchableOpacity
+                disabled={isDeleting}
+                className="flex-1"
+              >
+                <View className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+                  <View className="items-center">
+                    <View className="w-12 h-12 rounded-full bg-blue-500 items-center justify-center mb-2 shadow-md">
+                      <Ionicons name="create-outline" size={24} color="white" />
+                    </View>
+                    <Text className="text-blue-700 font-bold text-sm">
+                      Edit
+                    </Text>
+                    <Text className="text-blue-600 text-xs mt-1">
+                      Information
+                    </Text>
+                  </View>
                 </View>
-              ) : (
-                <Text className="text-white text-center font-semibold text-lg">
-                  Remove Dependent
-                </Text>
-              )}
-            </TouchableOpacity>
+              </TouchableOpacity>
+
+              {/* Delete Button */}
+              <TouchableOpacity
+                onPress={handleDeleteDependent}
+                disabled={isDeleting}
+                className="flex-1"
+              >
+                {isDeleting ? (
+                  <View className="bg-gray-100 rounded-xl p-4 border-2 border-gray-200">
+                    <View className="items-center py-2">
+                      <ActivityIndicator size="small" color="#6b7280" />
+                      <Text className="text-gray-600 font-bold text-xs mt-2">
+                        Removing...
+                      </Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View className="bg-red-50 rounded-xl p-4 border-2 border-red-200">
+                    <View className="items-center">
+                      <View className="w-12 h-12 rounded-full bg-red-500 items-center justify-center mb-2 shadow-md">
+                        <Ionicons name="trash-outline" size={24} color="white" />
+                      </View>
+                      <Text className="text-red-700 font-bold text-sm">
+                        Remove
+                      </Text>
+                      <Text className="text-red-600 text-xs mt-1">
+                        Member
+                      </Text>
+                    </View>
+                  </View>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Warning Note */}
-          <View className="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-            <Text className="text-yellow-800 text-sm text-center">
-              ⚠️ Removing a dependent will permanently delete all associated
-              records and cannot be undone.
-            </Text>
+          <View className="p-4 bg-amber-50 rounded-2xl border-2 border-amber-200 mb-6">
+            <View className="flex-row items-start">
+              <Ionicons name="warning" size={24} color="#f59e0b" />
+              <View className="flex-1 ml-3">
+                <Text className="text-amber-800 font-bold text-sm mb-1">
+                  Important Notice
+                </Text>
+                <Text className="text-amber-700 text-xs leading-5">
+                  Removing a family member will permanently delete all associated health records and vaccination history. This action cannot be undone.
+                </Text>
+              </View>
+            </View>
           </View>
         </ScrollView>
       </View>
+      </SafeAreaView>
+
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={customAlert.visible}
+        title={customAlert.title}
+        message={customAlert.message}
+        buttons={customAlert.buttons}
+        icon={customAlert.icon}
+        onClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
+      />
     </Modal>
   );
 };
