@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Modal,
   LayoutAnimation,
   UIManager,
@@ -26,6 +25,7 @@ import userAPI from '../api/userApi';
 import { GestureHandlerRootView, Swipeable, GestureDetector, Gesture } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import CustomAlert from '../components/CustomAlert';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -132,6 +132,37 @@ export default function SchedulePage() {
   // Track if any swipeable is open to disable scroll
   const [isSwipeableOpen, setIsSwipeableOpen] = useState(false);
 
+  // Custom alert state
+  const [customAlert, setCustomAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    buttons: any[];
+    icon: 'success' | 'error' | 'warning' | 'info' | 'question';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+    icon: 'info'
+  });
+
+  // Helper function to show custom alert
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: any[] = [{ text: 'OK' }],
+    icon: 'success' | 'error' | 'warning' | 'info' | 'question' = 'info'
+  ) => {
+    setCustomAlert({
+      visible: true,
+      title,
+      message,
+      buttons,
+      icon
+    });
+  };
+
   // Load current user data
   useEffect(() => {
     loadCurrentUser();
@@ -177,7 +208,7 @@ export default function SchedulePage() {
       
       if (error.message.includes('404') || error.message.includes('Not Found')) {
         setError('No health cards found. Would you like to create them?');
-        Alert.alert(
+        showAlert(
           'No Health Cards Found',
           'No health cards exist for this user. Would you like to create them?',
           [
@@ -189,7 +220,8 @@ export default function SchedulePage() {
               text: 'Create Health Cards', 
               onPress: () => currentUser && createAllHealthCards(currentUser._id)
             }
-          ]
+          ],
+          'question'
         );
       } else {
         setError(error.message || 'Failed to load health cards');
@@ -210,19 +242,21 @@ export default function SchedulePage() {
       // Reload all health cards after creation
       await loadHealthCardData();
 
-      Alert.alert(
+      showAlert(
         'Success',
         'Health cards created successfully for user and dependents.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
+        'success'
       );
 
     } catch (error: any) {
       console.error('Error creating all health cards:', error);
       setError(error.message || 'Failed to create health cards');
-      Alert.alert(
+      showAlert(
         'Error Creating Health Cards',
         error.message || 'Failed to create health cards. Please try again.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
+        'error'
       );
     } finally {
       setLoading(false);
@@ -383,7 +417,7 @@ export default function SchedulePage() {
       setAvailableVaccines(vaccines);
     } catch (error: any) {
       console.error('Error loading vaccines:', error);
-      Alert.alert('Error', 'Failed to load available vaccines');
+      showAlert('Error', 'Failed to load available vaccines', [{ text: 'OK' }], 'error');
     }
   };
 
@@ -400,7 +434,7 @@ export default function SchedulePage() {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const token = await AsyncStorage.getItem('userToken');
       if (!token) {
-        Alert.alert('Authentication Error', 'Please login again');
+        showAlert('Authentication Error', 'Please login again', [{ text: 'OK' }], 'error');
         setLoading(false);
         return;
       }
@@ -409,12 +443,12 @@ export default function SchedulePage() {
       // Validate form
       const vaccineName = selectedVaccine?.name || vaccineSearchQuery.trim();
       if (!vaccineName) {
-        Alert.alert('Error', 'Please select a vaccine or enter a vaccine name');
+        showAlert('Error', 'Please select a vaccine or enter a vaccine name', [{ text: 'OK' }], 'warning');
         return;
       }
 
       if (!scheduleDate) {
-        Alert.alert('Error', 'Please select a schedule date');
+        showAlert('Error', 'Please select a schedule date', [{ text: 'OK' }], 'warning');
         return;
       }
 
@@ -422,12 +456,12 @@ export default function SchedulePage() {
       const intervalNum = parseInt(interval);
 
       if (totalDosesNum < 1) {
-        Alert.alert('Error', 'Total doses must be at least 1');
+        showAlert('Error', 'Total doses must be at least 1', [{ text: 'OK' }], 'warning');
         return;
       }
 
       if (totalDosesNum > 1 && intervalNum < 0) {
-        Alert.alert('Error', 'Interval must be non-negative for multiple doses');
+        showAlert('Error', 'Interval must be non-negative for multiple doses', [{ text: 'OK' }], 'warning');
         return;
       }
 
@@ -456,11 +490,11 @@ export default function SchedulePage() {
       // Close modal
       setShowCreateModal(false);
 
-      Alert.alert('Success', 'Vaccine schedule created successfully!');
+      showAlert('Success', 'Vaccine schedule created successfully!', [{ text: 'OK' }], 'success');
 
     } catch (error: any) {
       console.error('Error creating schedule:', error);
-      Alert.alert('Error', error.message || 'Failed to create schedule');
+      showAlert('Error', error.message || 'Failed to create schedule', [{ text: 'OK' }], 'error');
     } finally {
       setLoading(false);
     }
@@ -518,8 +552,8 @@ export default function SchedulePage() {
         };
         
         if (completedDoses === totalDoses) {
-          Alert.alert(
-            'Schedule Completed! 🎉', 
+          showAlert(
+            'Schedule Completed!', 
             `All doses completed! Would you like to view post-vaccination instructions?`,
             [
               { 
@@ -546,11 +580,12 @@ export default function SchedulePage() {
                 });
               }
               }
-            ]
+            ],
+            'success'
           );
         } else {
-          Alert.alert(
-            'Dose Completed! ✅', 
+          showAlert(
+            'Dose Completed!', 
             `Dose ${doseNumber} marked as completed! Would you like to view post-vaccination instructions?`,
             [
               { 
@@ -577,11 +612,12 @@ export default function SchedulePage() {
                 });
               }
               }
-            ]
+            ],
+            'success'
           );
         }
       } else {
-        Alert.alert('Success', `Dose ${doseNumber} marked as ${newStatus} successfully!`);
+        showAlert('Success', `Dose ${doseNumber} marked as ${newStatus} successfully!`, [{ text: 'OK' }], 'success');
       }
       
       setShowDoseModal(false);
@@ -589,7 +625,7 @@ export default function SchedulePage() {
 
     } catch (error: any) {
       console.error('Error updating dose status:', error);
-      Alert.alert('Error', error.message || 'Failed to update dose status');
+      showAlert('Error', error.message || 'Failed to update dose status', [{ text: 'OK' }], 'error');
     } finally {
       setLoading(false);
     }
@@ -685,18 +721,18 @@ export default function SchedulePage() {
       // Close modal
       setShowUpdateScheduleModal(false);
 
-      Alert.alert('Success', 'Schedule updated successfully!');
+      showAlert('Success', 'Schedule updated successfully!', [{ text: 'OK' }], 'success');
 
     } catch (error: any) {
       console.error('Error updating schedule:', error);
-      Alert.alert('Error', error.message || 'Failed to update schedule');
+      showAlert('Error', error.message || 'Failed to update schedule', [{ text: 'OK' }], 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteSchedule = async (scheduleId: string, vaccineName: string) => {
-    Alert.alert(
+    showAlert(
       'Delete Schedule',
       `Are you sure you want to delete the schedule for ${vaccineName}?`,
       [
@@ -709,16 +745,17 @@ export default function SchedulePage() {
               setLoading(true);
               await scheduleAPI.deleteSchedule(scheduleId);
               await loadSchedules();
-              Alert.alert('Success', 'Schedule deleted successfully!');
+              showAlert('Success', 'Schedule deleted successfully!', [{ text: 'OK' }], 'success');
             } catch (error: any) {
               console.error('Error deleting schedule:', error);
-              Alert.alert('Error', error.message || 'Failed to delete schedule');
+              showAlert('Error', error.message || 'Failed to delete schedule', [{ text: 'OK' }], 'error');
             } finally {
               setLoading(false);
             }
           }
         }
-      ]
+      ],
+      'warning'
     );
   };
 
@@ -2722,7 +2759,7 @@ export default function SchedulePage() {
                                 const newDoseDate = new Date(lastDoseDate);
                                 newDoseDate.setDate(newDoseDate.getDate() + customInterval);
                                 
-                                Alert.alert(
+                                showAlert(
                                   'Add New Dose',
                                   `This will add Dose ${newDoseNumber} scheduled for ${newDoseDate.toLocaleDateString()}\n\n${customInterval} days after last dose`,
                                   [
@@ -2745,19 +2782,20 @@ export default function SchedulePage() {
                                           setShowUpdateScheduleModal(false);
                                           setSelectedSchedule(null);
                                           
-                                          Alert.alert('Success', `Dose ${newDoseNumber} added successfully!`);
+                                          showAlert('Success', `Dose ${newDoseNumber} added successfully!`, [{ text: 'OK' }], 'success');
                                         } catch (error: any) {
                                           console.error('Error adding dose:', error);
-                                          Alert.alert('Error', error.message || 'Failed to add dose. Please try again.');
+                                          showAlert('Error', error.message || 'Failed to add dose. Please try again.', [{ text: 'OK' }], 'error');
                                         } finally {
                                           setLoading(false);
                                         }
                                       }
                                     }
-                                  ]
+                                  ],
+                                  'question'
                                 );
                               } else {
-                                Alert.alert('Error', 'Please enter a valid number of days');
+                                showAlert('Error', 'Please enter a valid number of days', [{ text: 'OK' }], 'warning');
                               }
                             }}
                             className="bg-blue-500 rounded-lg px-4 py-3"
@@ -2831,6 +2869,16 @@ export default function SchedulePage() {
           </View>
         </View>
         </Modal>
+
+        {/* Custom Alert */}
+        <CustomAlert
+          visible={customAlert.visible}
+          title={customAlert.title}
+          message={customAlert.message}
+          buttons={customAlert.buttons}
+          icon={customAlert.icon}
+          onClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
+        />
       </View>
     </SafeAreaView>
     </GestureHandlerRootView>
