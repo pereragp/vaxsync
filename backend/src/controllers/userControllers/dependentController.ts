@@ -144,6 +144,74 @@ const getDependentsByGuardian = async (
   }
 };
 
+// Update a Dependent
+const updateDependent = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { dependentId, guardianId } = req.params;
+    const updateData = req.body;
+
+    // Basic validation
+    if (!dependentId || !guardianId) {
+      return res.status(400).json({
+        message: "Both dependent ID and guardian ID are required",
+      });
+    }
+
+    // Ensure user can only update their own dependents
+    if (req.user._id.toString() !== guardianId) {
+      return res.status(403).json({
+        message: "You can only update your own dependents",
+      });
+    }
+
+    // Check if dependent exists
+    const dependent = await Dependent.findById(dependentId);
+    if (!dependent) {
+      return res.status(404).json({ message: "Dependent not found" });
+    }
+
+    // Verify that the dependent belongs to the specified guardian
+    if (dependent.guardianId.toString() !== guardianId) {
+      return res.status(403).json({
+        message: "Not authorized to update this dependent",
+      });
+    }
+
+    // Update the dependent
+    const updatedDependent = await Dependent.findByIdAndUpdate(
+      dependentId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedDependent) {
+      return res.status(404).json({ message: "Failed to update dependent" });
+    }
+
+    // Update health card if name or other details changed
+    if (updateData.firstName || updateData.lastName) {
+      const fullName = `${updatedDependent.firstName} ${updatedDependent.lastName}`;
+      await HealthCard.findOneAndUpdate(
+        { dependentId: dependentId },
+        { 
+          fullName: fullName,
+          gender: updatedDependent.gender,
+          dateOfBirth: updatedDependent.dateOfBirth
+        },
+        { new: true }
+      );
+    }
+
+    return res.status(200).json({
+      message: "Dependent updated successfully",
+      dependent: updatedDependent,
+    });
+  } catch (error) {
+    console.error("Error updating dependent:", error);
+    return res.status(500).json({ message: "Server error", error });
+  }
+};
+
 // Remove a Dependent
 const removeDependent = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -202,4 +270,4 @@ const removeDependent = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
-export { addDependent, getDependentsByGuardian, removeDependent };
+export { addDependent, getDependentsByGuardian, updateDependent, removeDependent };
