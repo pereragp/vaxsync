@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from 'expo-linear-gradient';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useFocusEffect } from 'expo-router';
 import userAPI, { User, Dependent } from "../api/userApi";
 import { router } from "expo-router";
 import UpdateProfile from "@/components/UpdateProfile";
@@ -101,6 +102,13 @@ export default function ProfilePage() {
   useEffect(() => {
     loadUserData();
   }, []);
+
+  // Reload data when page comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadUserData();
+    }, [])
+  );
 
   const loadUserData = async () => {
     try {
