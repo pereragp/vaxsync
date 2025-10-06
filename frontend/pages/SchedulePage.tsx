@@ -29,6 +29,7 @@ import { GestureHandlerRootView, Swipeable, GestureDetector, Gesture } from 'rea
 import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import CustomAlert from '../components/CustomAlert';
+import AddSchedule from '../components/AddSchedule';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -95,6 +96,7 @@ export default function SchedulePage() {
   const [showAddDependentModal, setShowAddDependentModal] = useState(false);
   const [showDependentDatePicker, setShowDependentDatePicker] = useState(false);
   const [dependentSelectedDate, setDependentSelectedDate] = useState(new Date());
+  const [currentDependentStep, setCurrentDependentStep] = useState(1);
   const [selectedSchedule, setSelectedSchedule] = useState<VaccineSchedule | null>(null);
   const [selectedDose, setSelectedDose] = useState<{ schedule: VaccineSchedule; doseNumber: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -451,28 +453,58 @@ export default function SchedulePage() {
     loadAvailableVaccines();
   };
 
+  // Dependent form step validation
+  const validateDependentStep = (step: number): boolean => {
+    switch (step) {
+      case 1:
+        // Step 1: Personal Details
+        if (!dependentForm.firstName.trim() || !dependentForm.lastName.trim()) {
+          showAlert('Validation Error', 'Please enter first and last name', [{ text: 'OK' }], 'warning');
+          return false;
+        }
+        if (!dependentForm.dateOfBirth) {
+          showAlert('Validation Error', 'Please select date of birth', [{ text: 'OK' }], 'warning');
+          return false;
+        }
+        if (!dependentForm.gender) {
+          showAlert('Validation Error', 'Please select a gender', [{ text: 'OK' }], 'warning');
+          return false;
+        }
+        return true;
+      case 2:
+        // Step 2: Relationship
+        if (!dependentForm.dependentType) {
+          showAlert('Validation Error', 'Please select a relationship', [{ text: 'OK' }], 'warning');
+          return false;
+        }
+        return true;
+      default:
+        return false;
+    }
+  };
+
+  const handleDependentNext = () => {
+    if (validateDependentStep(currentDependentStep)) {
+      if (currentDependentStep < 2) {
+        setCurrentDependentStep(currentDependentStep + 1);
+      } else {
+        handleAddDependent();
+      }
+    }
+  };
+
+  const handleDependentBack = () => {
+    if (currentDependentStep > 1) {
+      setCurrentDependentStep(currentDependentStep - 1);
+    } else {
+      setShowAddDependentModal(false);
+      setCurrentDependentStep(1);
+    }
+  };
+
   const handleAddDependent = async () => {
     try {
       setLoading(true);
-
-      // Validation
-      if (!dependentForm.firstName.trim() || !dependentForm.lastName.trim() || !dependentForm.dateOfBirth) {
-        showAlert('Validation Error', 'Please fill in all required fields', [{ text: 'OK' }], 'warning');
-        setLoading(false);
-        return;
-      }
-
-      if (!dependentForm.gender) {
-        showAlert('Validation Error', 'Please select a gender', [{ text: 'OK' }], 'warning');
-        setLoading(false);
-        return;
-      }
-
-      if (!dependentForm.dependentType) {
-        showAlert('Validation Error', 'Please select a relationship', [{ text: 'OK' }], 'warning');
-        setLoading(false);
-        return;
-      }
 
       // Get current user for guardianId
       if (!currentUser || !currentUser._id) {
@@ -502,6 +534,7 @@ export default function SchedulePage() {
       });
       setShowRelationshipDropdown(false);
       setShowAddDependentModal(false);
+      setCurrentDependentStep(1);
 
       // Reload profiles
       await loadHealthCardData();
@@ -1176,8 +1209,8 @@ export default function SchedulePage() {
         <View className="mb-6">
           <View className="flex-row items-center justify-between mb-4 px-4">
             <Text className="text-lg font-bold text-gray-800">
-              Profiles
-            </Text>
+            Profiles
+          </Text>
             <TouchableOpacity
               onPress={handleCreateSchedule}
               className="bg-blue-500 rounded-xl px-4 py-2 flex-row items-center shadow-md"
@@ -1301,7 +1334,10 @@ export default function SchedulePage() {
             
             {/* Add Dependent Card */}
             <TouchableOpacity
-              onPress={() => setShowAddDependentModal(true)}
+              onPress={() => {
+                setShowAddDependentModal(true);
+                setCurrentDependentStep(1);
+              }}
               className="mr-4 p-4 rounded-2xl min-w-36 shadow-sm border-2 border-dashed border-blue-300 bg-blue-50"
               style={{
                 elevation: 2,
@@ -1841,599 +1877,38 @@ export default function SchedulePage() {
 
 
         {/* Enhanced Create Schedule Modal */}
-        <Modal
-          visible={showCreateModal && !!profile}
-          transparent
-          animationType="slide"
-          onRequestClose={() => {
+        <AddSchedule
+          visible={showCreateModal}
+          profile={profile}
+          onClose={() => {
             setShowCreateModal(false);
             resetCreateForm();
           }}
-        >
-          <View className="flex-1 bg-black/50 justify-end">
-            <View className="bg-white rounded-t-3xl max-h-5/6">
-              <View className="p-6 border-b border-gray-100">
-                <View className="flex-row justify-between items-center">
-                  <View className="flex-row items-center">
-                    <View className="w-12 h-12 rounded-2xl bg-blue-100 items-center justify-center mr-4">
-                      <Ionicons name="calendar" size={24} color="#3b82f6" />
-                    </View>
-                    <View>
-                      <Text className="text-xl font-bold text-gray-800">Create Vaccine Schedule</Text>
-                      <Text className="text-gray-600 text-sm">
-                        New schedule for {profile?.name || 'selected user'}
-                      </Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity 
-                    onPress={() => {
-                      setShowCreateModal(false);
-                      resetCreateForm();
-                    }}
-                    className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center"
-                  >
-                    <Ionicons name="close" size={24} color="#64748b" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            
-            <ScrollView 
-              className="p-6" 
-              showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              nestedScrollEnabled={true}
-            >
-              {/* Vaccine Selection */}
-              <View className="mb-6">
-                <Text className="text-lg font-semibold text-gray-800 mb-3">Vaccine Selection</Text>
-                
-                {/* Search Input */}
-                <View className="mb-4">
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="Search vaccines or type custom vaccine name..."
-                    value={vaccineSearchQuery}
-                    onChangeText={(text) => {
-                      setVaccineSearchQuery(text);
-                      // Clear selected vaccine if user is typing
-                      if (text && selectedVaccine) {
-                        setSelectedVaccine(null);
-                      }
-                    }}
-                    placeholderTextColor="#9ca3af"
-                  />
-                </View>
-
-                {/* Vaccine List */}
-                {(vaccineSearchQuery || availableVaccines.length > 0) && (
-                  <ScrollView 
-                    className="max-h-40 bg-gray-50 rounded-lg"
-                    nestedScrollEnabled={true}
-                    showsVerticalScrollIndicator={true}
-                  >
-                    {availableVaccines
-                      .filter(vaccine => 
-                        !vaccineSearchQuery || 
-                        vaccine.name.toLowerCase().includes(vaccineSearchQuery.toLowerCase()) ||
-                        vaccine.description.toLowerCase().includes(vaccineSearchQuery.toLowerCase())
-                      )
-                      .map((vaccine) => (
-                        <TouchableOpacity
-                          key={vaccine._id}
-                          onPress={() => {
-                            setSelectedVaccine(vaccine);
-                            setVaccineSearchQuery(vaccine.name);
-                          }}
-                          className={`p-3 border-b border-gray-200 ${
-                            selectedVaccine?._id === vaccine._id ? 'bg-blue-50' : 'bg-white'
-                          }`}
-                        >
-                          <View className="flex-row items-center justify-between">
-                            <View className="flex-1">
-                              <Text className="font-medium text-gray-800">{vaccine.name}</Text>
-                              <Text className="text-sm text-gray-600">{vaccine.description}</Text>
-                              <View className="flex-row items-center mt-1">
-                                <View 
-                                  className="px-2 py-1 rounded-full mr-2"
-                                  style={{ backgroundColor: vaccineTypeConfig[vaccine.type]?.bgColor || '#f3f4f6' }}
-                                >
-                                  <Text 
-                                    className="text-xs font-medium capitalize"
-                                    style={{ color: vaccineTypeConfig[vaccine.type]?.color || '#6b7280' }}
-                                  >
-                                    {vaccine.type}
-                                  </Text>
-                                </View>
-                                {vaccine.manufacturer && (
-                                  <Text className="text-xs text-gray-500">{vaccine.manufacturer}</Text>
-                                )}
-                              </View>
-                            </View>
-                            {selectedVaccine?._id === vaccine._id && (
-                              <Ionicons name="checkmark-circle" size={20} color="#3b82f6" />
-                            )}
-                          </View>
-                        </TouchableOpacity>
-                      ))}
-                  </ScrollView>
-                )}
-
-                {/* Selected Vaccine Display */}
-                {selectedVaccine && (
-                  <View className="bg-blue-50 rounded-lg p-3 mt-2">
-                    <View className="flex-row items-center justify-between">
-                      <View className="flex-1">
-                        <Text className="font-medium text-blue-800">{selectedVaccine.name}</Text>
-                        <Text className="text-sm text-blue-600">{selectedVaccine.description}</Text>
-                      </View>
-                      <TouchableOpacity
-                        onPress={() => {
-                          setSelectedVaccine(null);
-                          setVaccineSearchQuery("");
-                        }}
-                        className="ml-2"
-                      >
-                        <Ionicons name="close-circle" size={20} color="#3b82f6" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                )}
-              </View>
-
-              {/* Schedule Details */}
-              <View className="mb-6">
-                <Text className="text-lg font-semibold text-gray-800 mb-3">Schedule Details</Text>
-                
-                <View className="space-y-4">
-                  {/* Native Schedule Date Picker */}
-                  <View>
-                    <Text className="text-sm font-medium text-gray-700 mb-2">Schedule Date *</Text>
-                    <TouchableOpacity
-                      onPress={() => setShowDatePicker(true)}
-                      className="bg-gray-50 rounded-lg p-3 flex-row items-center justify-between border-2 border-gray-200"
-                    >
-                      <View className="flex-row items-center flex-1">
-                        <View className="bg-blue-100 rounded-lg p-2 mr-3">
-                          <Ionicons name="calendar" size={20} color="#3b82f6" />
-                        </View>
-                        <Text className={`${scheduleDate ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
-                          {scheduleDate ? new Date(scheduleDate).toLocaleDateString('en-US', { 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
-                          }) : 'Tap to open calendar'}
-                        </Text>
-                      </View>
-                      <Ionicons name="calendar-outline" size={20} color="#3b82f6" />
-                    </TouchableOpacity>
-                    <Text className="text-xs text-gray-500 mt-1">
-                      Tap to open calendar and select first dose date
-                    </Text>
-
-                    {/* Native Date Picker */}
-                    {showDatePicker && Platform.OS === 'ios' && (
-                    <Modal
-                      transparent
-                      animationType="slide"
-                        visible={showDatePicker}
-                      onRequestClose={() => setShowDatePicker(false)}
-                    >
-                        <View className="flex-1 bg-black/50 justify-end">
-                          <View className="bg-white rounded-t-3xl p-4">
-                            <View className="flex-row justify-between items-center mb-4">
-                              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                                <Text className="text-blue-500 text-lg">Cancel</Text>
-                              </TouchableOpacity>
-                              <Text className="text-lg font-semibold text-gray-800">Select Date</Text>
-                              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                                <Text className="text-blue-500 text-lg font-semibold">Done</Text>
-                              </TouchableOpacity>
-                            </View>
-                            <DateTimePicker
-                              value={selectedDate}
-                              mode="date"
-                              display="spinner"
-                              onChange={(_event: any, date?: Date) => {
-                                if (date) {
-                                  setSelectedDate(date);
-                                  setScheduleDate(date.toISOString().split('T')[0]);
-                                }
-                              }}
-                              minimumDate={new Date()}
-                            />
-                          </View>
-                        </View>
-                      </Modal>
-                    )}
-                    {showDatePicker && Platform.OS === 'android' && (
-                      <DateTimePicker
-                        value={selectedDate}
-                        mode="date"
-                        display="default"
-                        onChange={(_event: any, date?: Date) => {
-                          setShowDatePicker(false);
-                          if (date) {
-                            setSelectedDate(date);
-                            setScheduleDate(date.toISOString().split('T')[0]);
-                          }
-                        }}
-                        minimumDate={new Date()}
-                      />
-                    )}
-                              </View>
-
-                  {/* Simple Horizontal Scroll Total Doses Selector */}
-                  <View>
-                    <Text className="text-sm font-medium text-gray-700 mb-2">Total Doses *</Text>
-                    <View className="bg-gray-50 rounded-lg p-3 border-2 border-gray-200">
-                      <View className="flex-row items-center mb-2">
-                        <View className="bg-green-100 rounded-lg p-2 mr-2">
-                          <Ionicons name="medical" size={18} color="#10b981" />
-                        </View>
-                        <Text className="text-gray-800 font-bold text-base">
-                          {totalDoses} {totalDoses === "1" ? 'dose' : 'doses'}
-                                      </Text>
-                              </View>
-
-                      <ScrollView 
-                        horizontal 
-                        showsHorizontalScrollIndicator={false}
-                        style={{ marginHorizontal: -4 }}
-                      >
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                                    <TouchableOpacity
-                            key={num}
-                            onPress={() => setTotalDoses(num.toString())}
-                            style={{
-                              width: 50,
-                              height: 50,
-                              marginHorizontal: 4,
-                              borderRadius: 12,
-                              backgroundColor: parseInt(totalDoses) === num ? '#10b981' : '#ffffff',
-                              borderWidth: 2,
-                              borderColor: parseInt(totalDoses) === num ? '#10b981' : '#d1d5db',
-                              justifyContent: 'center',
-                              alignItems: 'center',
-                            }}
-                          >
-                            <Text style={{
-                              fontSize: 18,
-                              fontWeight: 'bold',
-                              color: parseInt(totalDoses) === num ? '#ffffff' : '#374151',
-                            }}>
-                              {num}
-                                      </Text>
-                                    </TouchableOpacity>
-                                  ))}
-                                </ScrollView>
-                              </View>
-                    <Text className="text-xs text-gray-500 mt-1">
-                      Scroll and tap to select dose count
-                    </Text>
-
-                  </View>
-
-                  {/* Enhanced Interval Selector - Only show if doses > 1 */}
-                  {parseInt(totalDoses) > 1 && (
-                  <View>
-                      <Text className="text-sm font-medium text-gray-700 mb-2">Interval Between Doses *</Text>
-                      
-                      {/* Spinner Control */}
-                      <View className="bg-gray-50 rounded-lg p-3 flex-row items-center justify-between border-2 border-gray-200 mb-3">
-                        <View className="flex-row items-center flex-1">
-                          <View className="bg-purple-100 rounded-lg p-2 mr-3">
-                            <Ionicons name="time" size={20} color="#a855f7" />
-                      </View>
-                          <View>
-                            <Text className="text-gray-800 font-bold text-lg">
-                              {interval} days
-                    </Text>
-                            <Text className="text-gray-500 text-xs">
-                              {parseInt(interval) === 7 ? '1 week' : 
-                               parseInt(interval) === 14 ? '2 weeks' : 
-                               parseInt(interval) === 21 ? '3 weeks' : 
-                               parseInt(interval) === 28 ? '4 weeks' : 
-                               parseInt(interval) === 30 ? '1 month' : 
-                               parseInt(interval) === 60 ? '2 months' : 
-                               parseInt(interval) === 90 ? '3 months' : 
-                               `${Math.floor(parseInt(interval) / 7)} weeks`}
-                            </Text>
-                            </View>
-                          </View>
-                          
-                        {/* Spinner Controls */}
-                        <View className="flex-row items-center space-x-2">
-                                  <TouchableOpacity
-                                    onPress={() => {
-                              const current = parseInt(interval);
-                              const newValue = Math.max(1, current - 1);
-                              setInterval(newValue.toString());
-                                    }}
-                            disabled={parseInt(interval) <= 1}
-                            className={`w-10 h-10 rounded-lg items-center justify-center ${
-                              parseInt(interval) <= 1 ? 'bg-gray-200' : 'bg-blue-500'
-                                    }`}
-                                  >
-                                          <Ionicons 
-                              name="remove" 
-                              size={20} 
-                              color={parseInt(interval) <= 1 ? '#9ca3af' : 'white'} 
-                            />
-                                  </TouchableOpacity>
-                          
-                                <TouchableOpacity
-                            onPress={() => {
-                              const current = parseInt(interval);
-                              const newValue = Math.min(365, current + 1);
-                              setInterval(newValue.toString());
-                            }}
-                            disabled={parseInt(interval) >= 365}
-                            className={`w-10 h-10 rounded-lg items-center justify-center ml-2 ${
-                              parseInt(interval) >= 365 ? 'bg-gray-200' : 'bg-blue-500'
-                            }`}
-                          >
-                            <Ionicons 
-                              name="add" 
-                              size={20} 
-                              color={parseInt(interval) >= 365 ? '#9ca3af' : 'white'} 
-                            />
-                                </TouchableOpacity>
-                              </View>
-                            </View>
-
-                      {/* Quick Presets */}
-                    <View>
-                        <Text className="text-xs font-medium text-gray-600 mb-2">Quick Presets:</Text>
-                        <View className="flex-row flex-wrap">
-                          {[
-                            { days: "7", label: "1 week" },
-                            { days: "14", label: "2 weeks" },
-                            { days: "21", label: "3 weeks" },
-                            { days: "28", label: "4 weeks" },
-                            { days: "30", label: "1 month" },
-                            { days: "60", label: "2 months" },
-                            { days: "90", label: "3 months" },
-                          ].map((preset) => (
-                            <TouchableOpacity
-                              key={preset.days}
-                              onPress={() => setInterval(preset.days)}
-                              className={`mr-2 mb-2 px-3 py-2 rounded-lg border-2 ${
-                                interval === preset.days 
-                                  ? 'bg-purple-500 border-purple-500' 
-                                  : 'bg-white border-gray-300'
-                              }`}
-                            >
-                              <Text className={`text-xs font-medium ${
-                                interval === preset.days ? 'text-white' : 'text-gray-700'
-                              }`}>
-                                {preset.label}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                      </View>
-                      
-                      <Text className="text-xs text-gray-500 mt-2">
-                        Use +/- to adjust day by day, or tap a preset for common intervals
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Simple Vaccination Type Selection */}
-                  <View>
-                    <Text className="text-sm font-medium text-gray-700 mb-3">Vaccination Type *</Text>
-                    
-                    {/* Simple Button Row */}
-                    <View style={{ marginBottom: 12 }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <TouchableOpacity
-                          style={{
-                            flex: 1,
-                            marginRight: 4,
-                            padding: 12,
-                            borderRadius: 8,
-                            borderWidth: 2,
-                            borderColor: vaccinationType === 'routine' ? '#3b82f6' : '#e5e7eb',
-                            backgroundColor: vaccinationType === 'routine' ? '#eff6ff' : '#ffffff',
-                            alignItems: 'center'
-                          }}
-                          onPress={() => setVaccinationType('routine')}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons 
-                            name="shield-checkmark" 
-                            size={20} 
-                            color={vaccinationType === 'routine' ? '#3b82f6' : '#6b7280'} 
-                          />
-                          <Text style={{ 
-                            marginTop: 4, 
-                            fontSize: 12, 
-                            fontWeight: '600',
-                            color: vaccinationType === 'routine' ? '#3b82f6' : '#6b7280'
-                          }}>
-                            Routine
-                          </Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity
-                          style={{
-                            flex: 1,
-                            marginLeft: 4,
-                            padding: 12,
-                            borderRadius: 8,
-                            borderWidth: 2,
-                            borderColor: vaccinationType === 'travel' ? '#3b82f6' : '#e5e7eb',
-                            backgroundColor: vaccinationType === 'travel' ? '#eff6ff' : '#ffffff',
-                            alignItems: 'center'
-                          }}
-                          onPress={() => setVaccinationType('travel')}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons 
-                            name="airplane" 
-                            size={20} 
-                            color={vaccinationType === 'travel' ? '#3b82f6' : '#6b7280'} 
-                          />
-                          <Text style={{ 
-                            marginTop: 4, 
-                            fontSize: 12, 
-                            fontWeight: '600',
-                            color: vaccinationType === 'travel' ? '#3b82f6' : '#6b7280'
-                          }}>
-                            Travel
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                      
-                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        <TouchableOpacity
-                          style={{
-                            flex: 1,
-                            marginRight: 4,
-                            padding: 12,
-                            borderRadius: 8,
-                            borderWidth: 2,
-                            borderColor: vaccinationType === 'occupational' ? '#3b82f6' : '#e5e7eb',
-                            backgroundColor: vaccinationType === 'occupational' ? '#eff6ff' : '#ffffff',
-                            alignItems: 'center'
-                          }}
-                          onPress={() => setVaccinationType('occupational')}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons 
-                            name="briefcase" 
-                            size={20} 
-                            color={vaccinationType === 'occupational' ? '#3b82f6' : '#6b7280'} 
-                          />
-                          <Text style={{ 
-                            marginTop: 4, 
-                            fontSize: 12, 
-                            fontWeight: '600',
-                            color: vaccinationType === 'occupational' ? '#3b82f6' : '#6b7280'
-                          }}>
-                            Work
-                          </Text>
-                        </TouchableOpacity>
-                        
-                        <TouchableOpacity
-                          style={{
-                            flex: 1,
-                            marginLeft: 4,
-                            padding: 12,
-                            borderRadius: 8,
-                            borderWidth: 2,
-                            borderColor: vaccinationType === 'emergency' ? '#3b82f6' : '#e5e7eb',
-                            backgroundColor: vaccinationType === 'emergency' ? '#eff6ff' : '#ffffff',
-                            alignItems: 'center'
-                          }}
-                          onPress={() => setVaccinationType('emergency')}
-                          activeOpacity={0.7}
-                        >
-                          <Ionicons 
-                            name="medical" 
-                            size={20} 
-                            color={vaccinationType === 'emergency' ? '#3b82f6' : '#6b7280'} 
-                          />
-                          <Text style={{ 
-                            marginTop: 4, 
-                            fontSize: 12, 
-                            fontWeight: '600',
-                            color: vaccinationType === 'emergency' ? '#3b82f6' : '#6b7280'
-                          }}>
-                            Emergency
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                    
-                    <Text className="text-xs text-gray-500">
-                      Select the category of vaccination
-                    </Text>
-                  </View>
-
-                  {/* Healthcare Provider */}
-                  <View>
-                    <Text className="text-sm font-medium text-gray-700 mb-2">Healthcare Provider (Optional)</Text>
-                    <TextInput
-                      className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                      placeholder="e.g., Dr. Smith, City Hospital"
-                      value={healthcareProvider}
-                      onChangeText={setHealthcareProvider}
-                      placeholderTextColor="#9ca3af"
-                    />
-                  </View>
-
-                  {/* Notes */}
-                  <View>
-                    <Text className="text-sm font-medium text-gray-700 mb-2">Notes (Optional)</Text>
-                    <TextInput
-                      className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                      placeholder="Additional notes about this schedule..."
-                      value={notes}
-                      onChangeText={setNotes}
-                      multiline
-                      numberOfLines={3}
-                      placeholderTextColor="#9ca3af"
-                    />
-                  </View>
-                </View>
-              </View>
-
-              {/* Schedule Preview */}
-              {selectedVaccine && scheduleDate && totalDoses && (
-                <View className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                  <Text className="text-sm font-medium text-blue-800 mb-2">Schedule Preview</Text>
-                  <View className="space-y-1">
-                    <Text className="text-sm text-blue-700">
-                      • <Text className="font-medium">{selectedVaccine.name}</Text>
-                    </Text>
-                    <Text className="text-sm text-blue-700">
-                      • <Text className="font-medium">{totalDoses} dose{totalDoses !== "1" ? 's' : ''}</Text>
-                      {parseInt(totalDoses) > 1 && (
-                        <Text> • Every {interval} days</Text>
-                      )}
-                    </Text>
-                    <Text className="text-sm text-blue-700">
-                      • <Text className="font-medium">Start:</Text> {scheduleDate ? new Date(scheduleDate).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'short', 
-                        day: 'numeric' 
-                      }) : 'Not selected'}
-                    </Text>
-                    <Text className="text-sm text-blue-700">
-                      • <Text className="font-medium">Type:</Text> {vaccinationType.charAt(0).toUpperCase() + vaccinationType.slice(1)}
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {/* Action Buttons */}
-              <View className="flex-row space-x-3 mb-6">
-                <TouchableOpacity
-                  onPress={() => {
-                    setShowCreateModal(false);
-                    resetCreateForm();
-                  }}
-                  className="flex-1 bg-gray-500 rounded-lg py-3 items-center"
-                >
-                  <Text className="text-white font-medium">Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleCreateScheduleSubmit}
-                  disabled={loading}
-                  className="flex-1 bg-blue-500 rounded-lg py-3 items-center"
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Text className="text-white font-medium">Create Schedule</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </View>
-        </View>
-        </Modal>
+          onSubmit={handleCreateScheduleSubmit}
+          loading={loading}
+          showAlert={showAlert}
+          availableVaccines={availableVaccines}
+          selectedVaccine={selectedVaccine}
+          setSelectedVaccine={setSelectedVaccine}
+          vaccineSearchQuery={vaccineSearchQuery}
+          setVaccineSearchQuery={setVaccineSearchQuery}
+          totalDoses={totalDoses}
+          setTotalDoses={setTotalDoses}
+          interval={interval}
+          setInterval={setInterval}
+          scheduleDate={scheduleDate}
+          setScheduleDate={setScheduleDate}
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          healthcareProvider={healthcareProvider}
+          setHealthcareProvider={setHealthcareProvider}
+          notes={notes}
+          setNotes={setNotes}
+          vaccinationType={vaccinationType}
+          setVaccinationType={setVaccinationType}
+          showDatePicker={showDatePicker}
+          setShowDatePicker={setShowDatePicker}
+        />
 
         {/* Enhanced Dose Management Modal */}
         <Modal
@@ -2446,30 +1921,30 @@ export default function SchedulePage() {
             <View className="bg-white rounded-3xl mx-6 w-full max-w-sm shadow-xl">
               {selectedDose && (
                 <>
-                  <View className="p-6 border-b border-gray-100">
-                    <View className="flex-row justify-between items-center">
-                      <View className="flex-row items-center">
-                        <View className="w-12 h-12 rounded-2xl bg-blue-100 items-center justify-center mr-4">
+              <View className="p-6 border-b border-gray-100">
+                <View className="flex-row justify-between items-center">
+                  <View className="flex-row items-center">
+                    <View className="w-12 h-12 rounded-2xl bg-blue-100 items-center justify-center mr-4">
                           <Ionicons name="medical" size={24} color="#3b82f6" />
-                        </View>
-                        <View>
+                    </View>
+                    <View>
                           <Text className="text-xl font-bold text-gray-800">
                             Dose {selectedDose.doseNumber}
                           </Text>
-                          <Text className="text-gray-600 text-sm">
+                      <Text className="text-gray-600 text-sm">
                             {selectedDose.schedule.vaccineName}
-                          </Text>
-                        </View>
-                      </View>
-                      <TouchableOpacity 
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
                         onPress={() => setShowDoseModal(false)}
                         className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
                       >
                         <Ionicons name="close" size={20} color="#64748b" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                  
+                  </TouchableOpacity>
+                </View>
+              </View>
+            
                   <View className="p-6">
                     <View className="bg-gray-50 rounded-2xl p-4 mb-4">
                       <Text className="text-sm text-gray-600 text-center">
@@ -2477,20 +1952,20 @@ export default function SchedulePage() {
                           {selectedDose.schedule.doses.find(d => d.doseNumber === selectedDose.doseNumber)?.status}
                         </Text>
                       </Text>
-                    </View>
-                    
+                </View>
+
                     <Text className="text-lg font-bold text-gray-800 mb-4">Choose new status:</Text>
                     
                     <View className="space-y-3">
-                      <TouchableOpacity
+                        <TouchableOpacity
                         onPress={() => handleDoseStatusUpdate(selectedDose.schedule._id, selectedDose.doseNumber, 'completed')}
                         className="bg-green-500 rounded-xl py-4 items-center shadow-sm"
                       >
                         <View className="flex-row items-center">
                           <Ionicons name="checkmark-circle" size={20} color="white" />
                           <Text className="text-white font-semibold ml-2">Completed</Text>
-                        </View>
-                      </TouchableOpacity>
+                          </View>
+                        </TouchableOpacity>
                       
                       <TouchableOpacity
                         onPress={() => handleDoseStatusUpdate(selectedDose.schedule._id, selectedDose.doseNumber, 'scheduled')}
@@ -2509,18 +1984,18 @@ export default function SchedulePage() {
                         <View className="flex-row items-center">
                           <Ionicons name="warning" size={20} color="white" />
                           <Text className="text-white font-semibold ml-2">Missed</Text>
-                        </View>
+                    </View>
                       </TouchableOpacity>
                       
-                      <TouchableOpacity
+                    <TouchableOpacity
                         onPress={() => handleDoseStatusUpdate(selectedDose.schedule._id, selectedDose.doseNumber, 'cancelled')}
                         className="bg-red-500 rounded-xl py-4 items-center shadow-sm"
-                      >
-                        <View className="flex-row items-center">
+                    >
+                      <View className="flex-row items-center">
                           <Ionicons name="close-circle" size={20} color="white" />
                           <Text className="text-white font-semibold ml-2">Cancelled</Text>
-                        </View>
-                      </TouchableOpacity>
+                      </View>
+                    </TouchableOpacity>
                     </View>
                   </View>
                 </>
@@ -2530,10 +2005,10 @@ export default function SchedulePage() {
         </Modal>
 
         {/* Enhanced Update Schedule Modal */}
-        <Modal
+                    <Modal
           visible={showUpdateScheduleModal}
-          transparent
-          animationType="slide"
+                      transparent
+                      animationType="slide"
           onRequestClose={() => {
             setShowUpdateScheduleModal(false);
             setSelectedSchedule(null);
@@ -2543,20 +2018,20 @@ export default function SchedulePage() {
         >
           <View className="flex-1 bg-black/50 justify-end">
             <View className="bg-white rounded-t-3xl max-h-5/6">
-              <View className="p-6 border-b border-gray-100">
-                <View className="flex-row justify-between items-center">
+                          <View className="p-6 border-b border-gray-100">
+                            <View className="flex-row justify-between items-center">
                   <View className="flex-row items-center">
                     <View className="w-12 h-12 rounded-2xl bg-green-100 items-center justify-center mr-4">
                       <Ionicons name="create" size={24} color="#16a34a" />
-                    </View>
+                            </View>
                     <View>
                       <Text className="text-xl font-bold text-gray-800">Update Schedule</Text>
                       <Text className="text-gray-600 text-sm">
                         Edit {selectedSchedule?.vaccineName || 'this schedule'}
-                      </Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity 
+                                      </Text>
+                              </View>
+                              </View>
+                                    <TouchableOpacity
                     onPress={() => {
                       setShowUpdateScheduleModal(false);
                       setSelectedSchedule(null);
@@ -2566,10 +2041,10 @@ export default function SchedulePage() {
                     className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center"
                   >
                     <Ionicons name="close" size={24} color="#64748b" />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            
+                                    </TouchableOpacity>
+                              </View>
+                            </View>
+
             <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
               {/* Schedule Details */}
               <View className="mb-6">
@@ -2588,8 +2063,8 @@ export default function SchedulePage() {
                       onChangeText={setUpdateVaccineName}
                       placeholderTextColor="#9ca3af"
                     />
-                    </View>
-                  </View>
+                            </View>
+                          </View>
 
                   {/* Healthcare Provider */}
                   <View>
@@ -2603,13 +2078,13 @@ export default function SchedulePage() {
                       onChangeText={setUpdateHealthcareProvider}
                       placeholderTextColor="#9ca3af"
                     />
-                    </View>
+                        </View>
                   </View>
 
                   {/* Schedule Date with Native Picker */}
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">First Dose Date *</Text>
-                      <TouchableOpacity
+                    <TouchableOpacity
                       onPress={() => setShowUpdateDatePicker(true)}
                       className="bg-gray-50 rounded-lg p-3 flex-row items-center justify-between border-2 border-gray-200"
                     >
@@ -2633,9 +2108,9 @@ export default function SchedulePage() {
 
                     {/* Native Date Picker for Update */}
                     {showUpdateDatePicker && Platform.OS === 'ios' && (
-                      <Modal
-                        transparent
-                        animationType="slide"
+                    <Modal
+                      transparent
+                      animationType="slide"
                         visible={showUpdateDatePicker}
                         onRequestClose={() => setShowUpdateDatePicker(false)}
                       >
@@ -2661,9 +2136,9 @@ export default function SchedulePage() {
                                 }
                               }}
                               minimumDate={new Date()}
-                            />
-                          </View>
-                        </View>
+                                          />
+                                        </View>
+                                      </View>
                       </Modal>
                     )}
                     {showUpdateDatePicker && Platform.OS === 'android' && (
@@ -2681,25 +2156,25 @@ export default function SchedulePage() {
                         minimumDate={new Date()}
                       />
                     )}
-                  </View>
+                            </View>
 
                   {/* Enhanced Current Doses Section */}
                   {selectedSchedule && (
                     <View className="bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 rounded-xl p-4 mb-4">
                       {/* Header */}
                       <View className="flex-row items-center justify-between mb-2">
-                        <View className="flex-row items-center">
+                              <View className="flex-row items-center">
                           <View className="bg-purple-500 rounded-lg p-2 mr-3">
                             <Ionicons name="list" size={20} color="white" />
-                          </View>
+                              </View>
                   <View>
                             <Text className="text-lg font-bold text-gray-800">Current Doses</Text>
                             <Text className="text-xs text-purple-700">
                               {selectedSchedule.doses.length} dose{selectedSchedule.doses.length !== 1 ? 's' : ''} scheduled
                             </Text>
+                            </View>
                           </View>
-                        </View>
-                      </View>
+                  </View>
 
                       {/* Instructions */}
                       <View className="bg-white/60 rounded-lg p-3 mb-3 border border-purple-200">
@@ -2711,10 +2186,10 @@ export default function SchedulePage() {
                               • First dose uses the schedule date above{'\n'}
                               • Edit interval days to reschedule doses{'\n'}
                               • Changes apply when you click Update Schedule
-                            </Text>
-                          </View>
+                              </Text>
                         </View>
                       </View>
+                    </View>
 
                       {/* Doses List */}
                       <View className="space-y-2">
@@ -2739,10 +2214,10 @@ export default function SchedulePage() {
                                   <View 
                                     className="w-12 h-12 rounded-xl items-center justify-center mr-3"
                                     style={{ backgroundColor: doseStatusConfig.bgColor }}
-                                  >
-                                    <Ionicons 
+                        >
+                          <Ionicons 
                                       name={doseStatusConfig.icon as any} 
-                                      size={20} 
+                            size={20} 
                                       color={doseStatusConfig.color} 
                                     />
                                   </View>
@@ -2754,7 +2229,7 @@ export default function SchedulePage() {
                                     >
                                       <Text className="text-xs font-semibold" style={{ color: doseStatusConfig.color }}>
                                         {doseStatusConfig.label}
-                                      </Text>
+                          </Text>
                                     </View>
                                   </View>
                                 </View>
@@ -2777,9 +2252,9 @@ export default function SchedulePage() {
                                     <Text className="text-xs font-semibold text-gray-700">Adjust Interval:</Text>
                                     <Text className="text-xs text-gray-500">
                                       Current: {currentInterval} days
-                                    </Text>
-                                  </View>
-                                  
+                          </Text>
+                      </View>
+                      
                                   <View className="flex-row items-center">
                                     <Ionicons name="time-outline" size={16} color="#6b7280" />
                     <TextInput
@@ -2813,7 +2288,7 @@ export default function SchedulePage() {
                                               year: 'numeric'
                                             });
                                           })()}
-                                        </Text>
+                          </Text>
                                       </View>
                                     </View>
                                   )}
@@ -2827,9 +2302,9 @@ export default function SchedulePage() {
                                     <Ionicons name="shield-checkmark" size={14} color="#10b981" />
                                     <Text className="text-xs text-green-700 ml-1 font-medium">
                                       First dose - uses schedule date above
-                                    </Text>
-                                  </View>
-                                </View>
+                          </Text>
+                      </View>
+                    </View>
                               )}
                             </View>
                           );
@@ -2849,27 +2324,27 @@ export default function SchedulePage() {
                           <Text className="text-base font-semibold text-gray-800">Add Another Dose</Text>
                           <Text className="text-xs text-blue-700">
                             Current: {selectedSchedule.doses.length} doses • Add dose #{selectedSchedule.doses.length + 1}
-                          </Text>
+                    </Text>
                         </View>
-                      </View>
+                  </View>
 
-                      <View>
+                  <View>
                         <Text className="text-sm font-medium text-gray-700 mb-2">
                           Days from last dose *
                         </Text>
                         <View className="flex-row items-center space-x-2">
                           <View className="flex-1 flex-row items-center bg-white rounded-lg p-3 border-2 border-blue-300">
                             <Ionicons name="time" size={20} color="#3b82f6" />
-                            <TextInput
+                    <TextInput
                               className="flex-1 ml-2 text-gray-800"
                       placeholder="28"
                               value={newDoseInterval}
                       keyboardType="numeric"
                       placeholderTextColor="#9ca3af"
                               onChangeText={setNewDoseInterval}
-                            />
+                    />
                             <Text className="text-gray-500 text-sm">days</Text>
-                          </View>
+                  </View>
                           <TouchableOpacity
                             onPress={async () => {
                               const customInterval = parseInt(newDoseInterval) || 28;
@@ -2954,10 +2429,10 @@ export default function SchedulePage() {
                       placeholderTextColor="#9ca3af"
                         style={{ minHeight: 80 }}
                     />
-                    </View>
                   </View>
                 </View>
               </View>
+                  </View>
 
               {/* Action Buttons */}
               <View className="flex-row space-x-3 mb-6">
@@ -2996,7 +2471,10 @@ export default function SchedulePage() {
           visible={showAddDependentModal}
           transparent
           animationType="slide"
-          onRequestClose={() => setShowAddDependentModal(false)}
+          onRequestClose={() => {
+            setShowAddDependentModal(false);
+            setCurrentDependentStep(1);
+          }}
         >
           <KeyboardAvoidingView
             style={{ flex: 1 }}
@@ -3005,73 +2483,104 @@ export default function SchedulePage() {
           >
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
               <View className="flex-1 bg-black/50 justify-end">
-                <View className="bg-white rounded-t-3xl max-h-4/5 overflow-hidden">
-                  {/* Gradient Header */}
-                  <LinearGradient
-                    colors={['#1e40af', '#3b82f6', '#60a5fa']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    className="px-6 py-8"
-                  >
-                    <View className="flex-row justify-between items-start">
+                <View className="bg-white rounded-t-3xl overflow-hidden" style={{ maxHeight: '90%' }}>
+                  {/* Gradient Header with Step Indicator */}
+                  <View className="px-6 pt-8 pb-6 bg-blue-500 rounded-t-3xl">
+                    <View className="flex-row justify-between items-start mb-4">
                       <View className="flex-1">
-                        <View className="flex-row items-center mb-3">
-                          <View className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-lg items-center justify-center mr-4 shadow-lg">
-                            <Ionicons name="person-add" size={28} color="white" />
-                          </View>
-                          <View className="flex-1">
-                            <Text className="text-2xl font-bold text-white">
-                              Add Family Member
-                            </Text>
-                            <Text className="text-blue-100 text-sm mt-1">
-                              Add a new dependent to your profile
-                            </Text>
-                          </View>
-                        </View>
+                        <Text className="text-2xl font-bold text-white mb-2">
+                          Add Family Member
+                          </Text>
+                        <Text className="text-blue-100 text-sm">
+                          Add a new dependent to your profile
+                          </Text>
                       </View>
-                      <TouchableOpacity
-                        onPress={() => setShowAddDependentModal(false)}
-                        className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-lg items-center justify-center shadow-lg"
+                      <TouchableOpacity 
+                        onPress={() => {
+                          setShowAddDependentModal(false);
+                          setCurrentDependentStep(1);
+                        }}
+                        className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-lg items-center justify-center"
+                        style={{ marginLeft: 12 }}
                       >
                         <Ionicons name="close" size={24} color="white" />
                       </TouchableOpacity>
                     </View>
-                  </LinearGradient>
 
+                    {/* Step Indicator */}
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 }}>
+                      {[1, 2].map((step) => (
+                        <View key={step} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={{
+                            width: step === currentDependentStep ? 36 : 28,
+                            height: step === currentDependentStep ? 36 : 28,
+                            borderRadius: step === currentDependentStep ? 18 : 14,
+                            backgroundColor: step <= currentDependentStep ? 'white' : 'rgba(255,255,255,0.3)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            borderWidth: step === currentDependentStep ? 3 : 0,
+                            borderColor: 'rgba(255,255,255,0.5)',
+                          }}>
+                            {step < currentDependentStep ? (
+                              <Ionicons name="checkmark" size={16} color="#10b981" />
+                            ) : (
+                              <Text style={{
+                                fontSize: step === currentDependentStep ? 16 : 14,
+                                fontWeight: '700',
+                                color: step <= currentDependentStep ? '#3b82f6' : 'rgba(255,255,255,0.7)',
+                              }}>
+                                {step}
+                              </Text>
+                            )}
+                          </View>
+                          {step < 2 && (
+                            <View style={{
+                              width: 40,
+                              height: 2,
+                              backgroundColor: step < currentDependentStep ? 'white' : 'rgba(255,255,255,0.3)',
+                              marginHorizontal: 8,
+                            }} />
+                          )}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                  
                   <ScrollView
-                    className="p-6 bg-gray-50"
+                    className="px-5 py-4 bg-gray-50"
                     showsVerticalScrollIndicator={false}
                     keyboardShouldPersistTaps="handled"
                     contentContainerStyle={{ paddingBottom: 20 }}
                   >
-                    <View className="space-y-6">
-                      {/* Personal Details Section */}
-                      <View>
-                        <View className="flex-row items-center mb-4">
-                          <View className="w-10 h-10 rounded-xl bg-blue-100 items-center justify-center mr-3">
-                            <Ionicons name="person" size={20} color="#3b82f6" />
+                    {/* Step 1: Personal Details */}
+                    {currentDependentStep === 1 && (
+                    <View>
+                      <View className="mb-4">
+                        <View className="flex-row items-center mb-3">
+                          <View className="w-9 h-9 rounded-xl bg-blue-100 items-center justify-center mr-2">
+                            <Ionicons name="person" size={18} color="#3b82f6" />
                           </View>
                           <View className="flex-1">
-                            <Text className="text-lg font-bold text-gray-800">
+                            <Text className="text-base font-bold text-gray-800">
                               Personal Details
-                            </Text>
+                        </Text>
                             <Text className="text-xs text-gray-500">
-                              Basic information about the dependent
-                            </Text>
+                              Step 1 of 2
+                      </Text>
                           </View>
-                        </View>
-
+                    </View>
+                    
                         {/* First Name */}
-                        <View className="mb-4">
-                          <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                        <View className="mb-3">
+                          <Text className="text-xs font-semibold text-gray-600 mb-1.5 ml-1">
                             FIRST NAME *
                           </Text>
-                          <View className="flex-row items-center bg-white rounded-xl p-4 border-2 border-blue-100 shadow-sm">
-                            <View className="w-10 h-10 rounded-lg bg-blue-100 items-center justify-center mr-3">
-                              <Ionicons name="person" size={20} color="#3b82f6" />
-                            </View>
+                          <View className="flex-row items-center bg-white rounded-xl p-3 border-2 border-blue-100 shadow-sm">
+                            <View className="w-8 h-8 rounded-lg bg-blue-100 items-center justify-center mr-2.5">
+                              <Ionicons name="person" size={16} color="#3b82f6" />
+                        </View>
                             <TextInput
-                              className="flex-1 text-gray-800 font-medium text-base"
+                              className="flex-1 text-gray-800 font-medium text-sm"
                               placeholder="Enter first name"
                               value={dependentForm.firstName}
                               onChangeText={(text) =>
@@ -3088,16 +2597,16 @@ export default function SchedulePage() {
                         </View>
 
                         {/* Last Name */}
-                        <View className="mb-4">
-                          <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                        <View className="mb-3">
+                          <Text className="text-xs font-semibold text-gray-600 mb-1.5 ml-1">
                             LAST NAME *
                           </Text>
-                          <View className="flex-row items-center bg-white rounded-xl p-4 border-2 border-blue-100 shadow-sm">
-                            <View className="w-10 h-10 rounded-lg bg-blue-100 items-center justify-center mr-3">
-                              <Ionicons name="person-outline" size={20} color="#3b82f6" />
-                            </View>
+                          <View className="flex-row items-center bg-white rounded-xl p-3 border-2 border-blue-100 shadow-sm">
+                            <View className="w-8 h-8 rounded-lg bg-blue-100 items-center justify-center mr-2.5">
+                              <Ionicons name="person-outline" size={16} color="#3b82f6" />
+                        </View>
                             <TextInput
-                              className="flex-1 text-gray-800 font-medium text-base"
+                              className="flex-1 text-gray-800 font-medium text-sm"
                               placeholder="Enter last name"
                               value={dependentForm.lastName}
                               onChangeText={(text) =>
@@ -3111,31 +2620,31 @@ export default function SchedulePage() {
                         </View>
 
                         {/* Date of Birth */}
-                        <View className="mb-4">
-                          <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                        <View className="mb-3">
+                          <Text className="text-xs font-semibold text-gray-600 mb-1.5 ml-1">
                             DATE OF BIRTH *
                           </Text>
-                          <TouchableOpacity
+                      <TouchableOpacity
                             onPress={() => setShowDependentDatePicker(true)}
-                            className="bg-white rounded-xl p-4 flex-row items-center justify-between border-2 border-blue-100 shadow-sm"
+                            className="bg-white rounded-xl p-3 flex-row items-center justify-between border-2 border-blue-100 shadow-sm"
                           >
                             <View className="flex-row items-center flex-1">
-                              <View className="w-10 h-10 rounded-lg bg-purple-100 items-center justify-center mr-3">
-                                <Ionicons name="calendar" size={20} color="#8b5cf6" />
-                              </View>
-                              <Text className={`font-medium text-base ${dependentForm.dateOfBirth ? 'text-gray-800' : 'text-gray-400'}`}>
+                              <View className="w-8 h-8 rounded-lg bg-purple-100 items-center justify-center mr-2.5">
+                                <Ionicons name="calendar" size={16} color="#8b5cf6" />
+                        </View>
+                              <Text className={`font-medium text-sm ${dependentForm.dateOfBirth ? 'text-gray-800' : 'text-gray-400'}`}>
                                 {dependentForm.dateOfBirth 
                                   ? new Date(dependentForm.dateOfBirth).toLocaleDateString('en-US', { 
                                       year: 'numeric', 
-                                      month: 'long', 
+                                      month: 'short', 
                                       day: 'numeric' 
                                     })
                                   : 'Tap to select date'}
                               </Text>
                             </View>
-                            <Ionicons name="chevron-forward" size={20} color="#3b82f6" />
-                          </TouchableOpacity>
-
+                            <Ionicons name="chevron-forward" size={18} color="#3b82f6" />
+                      </TouchableOpacity>
+                      
                           {/* Native Date Picker */}
                           {showDependentDatePicker && Platform.OS === 'ios' && (
                             <Modal
@@ -3153,8 +2662,8 @@ export default function SchedulePage() {
                                     <Text className="text-lg font-semibold text-gray-800">Select Date</Text>
                                     <TouchableOpacity onPress={() => setShowDependentDatePicker(false)}>
                                       <Text className="text-blue-500 text-lg font-semibold">Done</Text>
-                                    </TouchableOpacity>
-                                  </View>
+                      </TouchableOpacity>
+                    </View>
                                   <DateTimePicker
                                     value={dependentSelectedDate}
                                     mode="date"
@@ -3170,9 +2679,9 @@ export default function SchedulePage() {
                                     }}
                                     maximumDate={new Date()}
                                   />
-                                </View>
-                              </View>
-                            </Modal>
+            </View>
+          </View>
+        </Modal>
                           )}
                           {showDependentDatePicker && Platform.OS === 'android' && (
                             <DateTimePicker
@@ -3192,19 +2701,19 @@ export default function SchedulePage() {
                               maximumDate={new Date()}
                             />
                           )}
-                        </View>
+                    </View>
 
                         {/* Gender */}
-                        <View className="mb-4">
-                          <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                    <View>
+                          <Text className="text-xs font-semibold text-gray-600 mb-1.5 ml-1">
                             GENDER *
-                          </Text>
+                      </Text>
                           <View className="flex-row justify-between">
                             {genderOptions.map((option) => {
                               const isSelected = dependentForm.gender === option;
                               const iconMap: any = { 'Male': 'male', 'Female': 'female', 'Other': 'transgender' };
                               return (
-                                <TouchableOpacity
+                  <TouchableOpacity 
                                   key={option}
                                   onPress={() =>
                                     setDependentForm({
@@ -3212,7 +2721,7 @@ export default function SchedulePage() {
                                       gender: option,
                                     })
                                   }
-                                  className="flex-1 mx-1"
+                                  className="flex-1 mx-0.5"
                                 >
                                   {isSelected ? (
                                     <LinearGradient
@@ -3220,7 +2729,7 @@ export default function SchedulePage() {
                                       start={{ x: 0, y: 0 }}
                                       end={{ x: 0, y: 1 }}
                                       style={{
-                                        padding: 16,
+                                        padding: 10,
                                         borderRadius: 12,
                                         borderWidth: 2,
                                         borderColor: '#3b82f6',
@@ -3229,37 +2738,41 @@ export default function SchedulePage() {
                                       <View className="items-center">
                                         <Ionicons 
                                           name={iconMap[option]} 
-                                          size={24} 
+                                          size={20} 
                                           color="white"
                                         />
-                                        <Text className="text-center font-bold mt-2 text-white">
+                                        <Text className="text-center font-semibold mt-1 text-white text-xs">
                                           {option}
                                         </Text>
                                       </View>
                                     </LinearGradient>
                                   ) : (
-                                    <View className="p-4 rounded-xl border-2 border-gray-200 bg-white shadow-sm">
+                                    <View className="p-2.5 rounded-xl border-2 border-gray-200 bg-white shadow-sm">
                                       <View className="items-center">
                                         <Ionicons 
                                           name={iconMap[option]} 
-                                          size={24} 
+                                          size={20} 
                                           color="#6b7280"
                                         />
-                                        <Text className="text-center font-bold mt-2 text-gray-700">
+                                        <Text className="text-center font-semibold mt-1 text-gray-700 text-xs">
                                           {option}
                                         </Text>
                                       </View>
                                     </View>
                                   )}
-                                </TouchableOpacity>
+                  </TouchableOpacity>
                               );
                             })}
-                          </View>
-                        </View>
-                      </View>
+                </View>
+              </View>
+                  </View>
+                    </View>
+                    )}
 
-                      {/* Relationship Section */}
-                      <View>
+                    {/* Step 2: Relationship & Review */}
+                    {currentDependentStep === 2 && (
+                  <View>
+                      <View className="mb-6">
                         <View className="flex-row items-center mb-4">
                           <View className="w-10 h-10 rounded-xl bg-green-100 items-center justify-center mr-3">
                             <Ionicons name="people" size={20} color="#10b981" />
@@ -3269,12 +2782,12 @@ export default function SchedulePage() {
                               Relationship
                             </Text>
                             <Text className="text-xs text-gray-500">
-                              How they are related to you
+                              Step 2 of 2
                             </Text>
                           </View>
-                        </View>
+                  </View>
 
-                        <View>
+                  <View>
                           <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
                             RELATIONSHIP *
                           </Text>
@@ -3315,9 +2828,9 @@ export default function SchedulePage() {
                           {showRelationshipDropdown && (
                             <View className="bg-white border-2 border-blue-200 rounded-xl mt-2 shadow-lg overflow-hidden">
                               {dependentTypeOptions.map((option, index) => (
-                                <TouchableOpacity
+                      <TouchableOpacity
                                   key={option}
-                                  onPress={() => {
+                        onPress={() => {
                                     setDependentForm({
                                       ...dependentForm,
                                       dependentType: option,
@@ -3342,63 +2855,120 @@ export default function SchedulePage() {
                                       ? "text-blue-600"
                                       : "text-gray-700"
                                   }`}>{option}</Text>
-                                </TouchableOpacity>
+                      </TouchableOpacity>
                               ))}
-                            </View>
+                    </View>
                           )}
+                        </View>
+                  </View>
+
+                      {/* Summary Preview */}
+                      <View className="mb-6">
+                        <View className="flex-row items-center mb-3">
+                          <View className="w-10 h-10 rounded-xl bg-purple-100 items-center justify-center mr-3">
+                            <Ionicons name="eye" size={20} color="#8b5cf6" />
+                          </View>
+                          <Text className="text-lg font-bold text-gray-800">Review Details</Text>
+                        </View>
+                        <View className="p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                          <View className="space-y-2">
+                            <View className="flex-row items-center">
+                              <Ionicons name="person" size={16} color="#3b82f6" />
+                              <Text className="text-sm text-blue-700 ml-2">
+                                <Text className="font-bold">Name:</Text> {dependentForm.firstName} {dependentForm.lastName}
+                    </Text>
+                  </View>
+                            <View className="flex-row items-center">
+                              <Ionicons name="calendar" size={16} color="#3b82f6" />
+                              <Text className="text-sm text-blue-700 ml-2">
+                                <Text className="font-bold">DOB:</Text> {dependentForm.dateOfBirth 
+                                  ? new Date(dependentForm.dateOfBirth).toLocaleDateString('en-US', { 
+                                      year: 'numeric', 
+                                      month: 'short', 
+                                      day: 'numeric' 
+                                    })
+                                  : 'Not selected'}
+                              </Text>
+                  </View>
+                            <View className="flex-row items-center">
+                              <Ionicons name={
+                                dependentForm.gender === 'Male' ? 'male' : 
+                                dependentForm.gender === 'Female' ? 'female' : 'transgender'
+                              } size={16} color="#3b82f6" />
+                              <Text className="text-sm text-blue-700 ml-2">
+                                <Text className="font-bold">Gender:</Text> {dependentForm.gender || 'Not selected'}
+                              </Text>
+                </View>
+                            <View className="flex-row items-center">
+                              <Ionicons name="people" size={16} color="#3b82f6" />
+                              <Text className="text-sm text-blue-700 ml-2">
+                                <Text className="font-bold">Relationship:</Text> {dependentForm.dependentType || 'Not selected'}
+                              </Text>
+              </View>
+                          </View>
                         </View>
                       </View>
                     </View>
+                    )}
 
-                    {/* Action Buttons */}
-                    <View className="mt-8 mb-4">
-                      <TouchableOpacity
-                        onPress={handleAddDependent}
-                        disabled={
-                          loading ||
-                          !dependentForm.firstName.trim() ||
-                          !dependentForm.lastName.trim() ||
-                          !dependentForm.dateOfBirth.trim()
-                        }
+                    {/* Navigation Buttons */}
+                    <View className="mt-6">
+                      {/* Main Action Button */}
+                <TouchableOpacity
+                        onPress={handleDependentNext}
+                        disabled={loading}
                         className={`rounded-2xl py-5 items-center shadow-xl mb-3 ${
-                          loading ||
-                          !dependentForm.firstName.trim() ||
-                          !dependentForm.lastName.trim() ||
-                          !dependentForm.dateOfBirth.trim()
-                            ? "bg-gray-300"
-                            : "bg-blue-500"
+                          loading ? 'bg-gray-300' : currentDependentStep === 2 ? 'bg-green-500' : 'bg-blue-500'
                         }`}
                         style={{
-                          shadowColor: loading || !dependentForm.firstName.trim() || !dependentForm.lastName.trim() || !dependentForm.dateOfBirth.trim() ? '#9ca3af' : '#3b82f6',
+                          shadowColor: currentDependentStep === 2 ? '#10b981' : '#3b82f6',
                           shadowOffset: { width: 0, height: 4 },
                           shadowOpacity: 0.3,
                           shadowRadius: 8,
                           elevation: 8,
                         }}
-                      >
-                        {loading ? (
-                          <ActivityIndicator size="small" color="white" />
+                >
+                  {loading ? (
+                          <View className="flex-row items-center">
+                    <ActivityIndicator size="small" color="white" />
+                            <Text className="text-white font-bold text-lg ml-2">
+                              Adding Member...
+                            </Text>
+                          </View>
                         ) : (
                           <View className="flex-row items-center">
-                            <Ionicons name="person-add" size={24} color="white" />
-                            <Text className="text-white font-bold text-lg ml-2">Add Family Member</Text>
+                            <Ionicons 
+                              name={currentDependentStep === 2 ? "checkmark-circle" : "arrow-forward"} 
+                              size={24} 
+                              color="white" 
+                            />
+                            <Text className="text-white font-bold text-lg ml-2">
+                              {currentDependentStep === 2 ? 'Add Family Member' : 'Next Step'}
+                            </Text>
                           </View>
-                        )}
-                      </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
                       
+                      {/* Back/Cancel Button */}
                       <TouchableOpacity
-                        onPress={() => setShowAddDependentModal(false)}
+                        onPress={handleDependentBack}
                         className="bg-white rounded-2xl py-4 items-center border-2 border-gray-200"
                       >
                         <View className="flex-row items-center">
-                          <Ionicons name="close-circle-outline" size={22} color="#6b7280" />
-                          <Text className="text-gray-700 font-semibold text-base ml-2">Cancel</Text>
+                          <Ionicons 
+                            name={currentDependentStep === 1 ? "close-circle-outline" : "arrow-back"} 
+                            size={22} 
+                            color="#6b7280" 
+                          />
+                          <Text className="text-gray-700 font-semibold text-base ml-2">
+                            {currentDependentStep === 1 ? 'Cancel' : 'Previous Step'}
+                          </Text>
                         </View>
-                      </TouchableOpacity>
-                    </View>
-                  </ScrollView>
-                </View>
+                </TouchableOpacity>
               </View>
+            </ScrollView>
+          </View>
+        </View>
             </TouchableWithoutFeedback>
           </KeyboardAvoidingView>
         </Modal>

@@ -16,6 +16,7 @@ router.get("/:id", userController_1.getUserById);
 router.put("/profile/update", auth_1.default, userController_1.updateProfile);
 router.post("/new-dependent", auth_1.default, dependentController_1.addDependent);
 router.get("/dependents/:guardianId", auth_1.default, dependentController_1.getDependentsByGuardian);
+router.put("/dependents/:guardianId/:dependentId", auth_1.default, dependentController_1.updateDependent);
 router.delete("/dependents/:guardianId/:dependentId", auth_1.default, dependentController_1.removeDependent);
 exports.default = router;
 //# sourceMappingURL=userRoutes.js.map
