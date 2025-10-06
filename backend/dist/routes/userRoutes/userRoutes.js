@@ -6,11 +6,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const userController_1 = require("../../controllers/userControllers/userController");
 const dependentController_1 = require("../../controllers/userControllers/dependentController");
+const auth_1 = __importDefault(require("../../middleware/auth"));
 const router = express_1.default.Router();
 router.post("/register", userController_1.registerUser);
 router.post("/login", userController_1.loginUser);
+router.post("/logout", auth_1.default, userController_1.logoutUser);
 router.post("/new-dependent", dependentController_1.addDependent);
+router.get("/profile", auth_1.default, userController_1.getMyProfile);
 router.get("/:id", userController_1.getUserById);
 router.get("/dependents/:guardianId", dependentController_1.getDependentsByGuardian);
+router.put("/profile/update", auth_1.default, userController_1.updateProfile);
 exports.default = router;
 //# sourceMappingURL=userRoutes.js.map

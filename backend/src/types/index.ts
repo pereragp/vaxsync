@@ -109,6 +109,7 @@ export interface IHealthCard extends Document {
     facility?: string;
     certificateNumber?: string;
     notes?: string;
+    status?: "completed" | "cancelled";
   }[];
   createdAt: Date;
   updatedAt: Date;

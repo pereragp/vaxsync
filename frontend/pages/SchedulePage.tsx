@@ -23,6 +23,9 @@ import { useRouter } from 'expo-router';
 import scheduleAPI, { VaccineSchedule, CreateScheduleRequest, Vaccine } from '../api/scheduleApi';
 import healthCardAPI, { HealthCard } from '../api/healthCardApi';
 import userAPI from '../api/userApi';
+import { GestureHandlerRootView, Swipeable, GestureDetector, Gesture } from 'react-native-gesture-handler';
+import * as Haptics from 'expo-haptics';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -98,23 +101,23 @@ export default function SchedulePage() {
   const [totalDoses, setTotalDoses] = useState("1");
   const [interval, setInterval] = useState("28"); // days
   const [scheduleDate, setScheduleDate] = useState("");
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [healthcareProvider, setHealthcareProvider] = useState("");
   const [notes, setNotes] = useState("");
   const [vaccinationType, setVaccinationType] = useState<'routine' | 'travel' | 'occupational' | 'emergency'>('routine');
   
-  // Enhanced date picker state
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
-  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+  // Date picker state
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showDosePicker, setShowDosePicker] = useState(false);
 
   // Update schedule form state
   const [updateVaccineName, setUpdateVaccineName] = useState("");
   const [updateHealthcareProvider, setUpdateHealthcareProvider] = useState("");
   const [updateNotes, setUpdateNotes] = useState("");
   const [updateScheduleDate, setUpdateScheduleDate] = useState("");
-  const [updateInterval, setUpdateInterval] = useState("");
+  const [updateSelectedDate, setUpdateSelectedDate] = useState(new Date());
+  const [showUpdateDatePicker, setShowUpdateDatePicker] = useState(false);
+  const [newDoseInterval, setNewDoseInterval] = useState("");
+  const [doseIntervals, setDoseIntervals] = useState<{[key: number]: string}>({});
 
   // Animations
   const cardAnimations = useRef<{[key: string]: Animated.Value}>({});
@@ -122,6 +125,12 @@ export default function SchedulePage() {
   const progressAnimations = useRef<{[key: string]: Animated.Value}>({});
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  // Swipeable refs for doses
+  const doseSwipeableRefs = useRef<{[key: string]: Swipeable | null}>({});
+  
+  // Track if any swipeable is open to disable scroll
+  const [isSwipeableOpen, setIsSwipeableOpen] = useState(false);
 
   // Load current user data
   useEffect(() => {
@@ -463,44 +472,12 @@ export default function SchedulePage() {
     setTotalDoses("1");
     setInterval("28");
     setScheduleDate("");
+    setSelectedDate(new Date());
     setHealthcareProvider("");
     setNotes("");
     setVaccinationType('routine');
-    setSelectedYear(new Date().getFullYear());
-    setSelectedMonth(new Date().getMonth() + 1);
-    setSelectedDay(new Date().getDate());
-    setShowDatePicker(false);
-    setShowDosePicker(false);
-  };
-
-  // Helper functions for date handling
-  const getDaysInMonth = (year: number, month: number) => {
-    return new Date(year, month, 0).getDate();
-  };
-
-  const formatDateForDisplay = (year: number, month: number, day: number) => {
-    return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-  };
-
-  const formatDateForAPI = (year: number, month: number, day: number) => {
-    return `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-  };
-
-  const handleDateSelection = () => {
-    const formattedDate = formatDateForAPI(selectedYear, selectedMonth, selectedDay);
-    setScheduleDate(formattedDate);
     setShowDatePicker(false);
   };
-
-  // Generate arrays for picker options
-  const years = Array.from({ length: 10 }, (_, i) => new Date().getFullYear() + i);
-  const months = [
-    { value: 1, label: 'January' }, { value: 2, label: 'February' }, { value: 3, label: 'March' },
-    { value: 4, label: 'April' }, { value: 5, label: 'May' }, { value: 6, label: 'June' },
-    { value: 7, label: 'July' }, { value: 8, label: 'August' }, { value: 9, label: 'September' },
-    { value: 10, label: 'October' }, { value: 11, label: 'November' }, { value: 12, label: 'December' }
-  ];
-  const doseOptions = Array.from({ length: 5 }, (_, i) => (i + 1).toString());
 
   const handleDosePress = (schedule: VaccineSchedule, doseNumber: number) => {
     setSelectedDose({ schedule, doseNumber });
@@ -543,46 +520,64 @@ export default function SchedulePage() {
         if (completedDoses === totalDoses) {
           Alert.alert(
             'Schedule Completed! 🎉', 
-            `All doses completed! Redirecting to view your vaccination records and post-vaccination instructions.`,
-            [{ 
-              text: 'View Records', 
-              style: 'default',
-              onPress: () => {
-                // Navigate to VaccinesPage with completed vaccine data
-                router.push({
-                  pathname: '/vaccines',
-                  params: {
-                    showInstructions: 'true',
-                    vaccineName: completedVaccineData.vaccineName,
-                    doseNumber: completedVaccineData.doseNumber.toString(),
-                    totalDoses: completedVaccineData.totalDoses.toString(),
-                    dateCompleted: completedVaccineData.dateCompleted,
-                  }
-                });
+            `All doses completed! Would you like to view post-vaccination instructions?`,
+            [
+              { 
+                text: 'Skip', 
+                style: 'cancel',
+                onPress: () => {
+                  // Stay on schedule page
+                }
+              },
+              { 
+                text: 'View Instructions', 
+                style: 'default',
+                onPress: () => {
+                  // Navigate to VaccinesPage with completed vaccine data
+                  router.push({
+                    pathname: '/vaccines',
+                    params: {
+                      showInstructions: 'true',
+                      vaccineName: completedVaccineData.vaccineName,
+                      doseNumber: completedVaccineData.doseNumber.toString(),
+                      totalDoses: completedVaccineData.totalDoses.toString(),
+                      dateCompleted: completedVaccineData.dateCompleted,
+                    }
+                  });
+                }
               }
-            }]
+            ]
           );
         } else {
           Alert.alert(
             'Dose Completed! ✅', 
-            `Dose ${doseNumber} marked as completed! Redirecting to view post-vaccination instructions.`,
-            [{ 
-              text: 'View Instructions', 
-              style: 'default',
-              onPress: () => {
-                // Navigate to VaccinesPage with completed vaccine data
-                router.push({
-                  pathname: '/vaccines',
-                  params: {
-                    showInstructions: 'true',
-                    vaccineName: completedVaccineData.vaccineName,
-                    doseNumber: completedVaccineData.doseNumber.toString(),
-                    totalDoses: completedVaccineData.totalDoses.toString(),
-                    dateCompleted: completedVaccineData.dateCompleted,
-                  }
-                });
+            `Dose ${doseNumber} marked as completed! Would you like to view post-vaccination instructions?`,
+            [
+              { 
+                text: 'Skip', 
+                style: 'cancel',
+                onPress: () => {
+                  // Stay on schedule page
+                }
+              },
+              { 
+                text: 'View Instructions', 
+                style: 'default',
+                onPress: () => {
+                  // Navigate to VaccinesPage with completed vaccine data
+                  router.push({
+                    pathname: '/vaccines',
+                    params: {
+                      showInstructions: 'true',
+                      vaccineName: completedVaccineData.vaccineName,
+                      doseNumber: completedVaccineData.doseNumber.toString(),
+                      totalDoses: completedVaccineData.totalDoses.toString(),
+                      dateCompleted: completedVaccineData.dateCompleted,
+                    }
+                  });
+                }
               }
-            }]
+            ]
           );
         }
       } else {
@@ -612,7 +607,20 @@ export default function SchedulePage() {
       setUpdateScheduleDate(new Date(firstDose.dateScheduled).toISOString().split('T')[0]);
     }
     
-    setUpdateInterval(schedule.interval.toString());
+    // Initialize dose intervals
+    const intervals: {[key: number]: string} = {};
+    schedule.doses.forEach((dose, index) => {
+      if (index > 0) {
+        const daysDiff = Math.round(
+          (new Date(dose.dateScheduled).getTime() - 
+           new Date(schedule.doses[index - 1].dateScheduled).getTime()) / 
+          (1000 * 60 * 60 * 24)
+        );
+        intervals[dose.doseNumber] = daysDiff.toString();
+      }
+    });
+    setDoseIntervals(intervals);
+    
     setShowUpdateScheduleModal(true);
   };
 
@@ -622,13 +630,43 @@ export default function SchedulePage() {
     try {
       setLoading(true);
 
-      const updateData = {
+      // Check if any dose intervals were changed
+      const hasIntervalChanges = Object.keys(doseIntervals).length > 0;
+
+      const updateData: any = {
         vaccineName: updateVaccineName.trim(),
         healthcareProvider: updateHealthcareProvider.trim() ? { name: updateHealthcareProvider.trim() } : undefined,
         notes: updateNotes.trim() || undefined,
         scheduleDate: updateScheduleDate,
-        interval: parseInt(updateInterval),
       };
+
+      // Always recalculate dose dates if schedule date or intervals changed
+      const updatedDoses = selectedSchedule.doses.map((dose, index) => {
+        if (index === 0) {
+          // First dose uses the schedule date
+          return {
+            ...dose,
+            dateScheduled: new Date(updateScheduleDate)
+          };
+        } else {
+          // Calculate date based on custom interval from the dose intervals state
+          const customInterval = parseInt(doseIntervals[dose.doseNumber]);
+          if (customInterval && customInterval > 0) {
+            const prevDate = new Date(selectedSchedule.doses[index - 1].dateScheduled);
+            const newDate = new Date(prevDate);
+            newDate.setDate(newDate.getDate() + customInterval);
+            
+            return {
+              ...dose,
+              dateScheduled: newDate
+            };
+          }
+          // If no custom interval, keep the existing dose date
+          return dose;
+        }
+      });
+
+      updateData.doses = updatedDoses;
 
       await scheduleAPI.updateSchedule(selectedSchedule._id, updateData);
 
@@ -641,7 +679,8 @@ export default function SchedulePage() {
       setUpdateHealthcareProvider("");
       setUpdateNotes("");
       setUpdateScheduleDate("");
-      setUpdateInterval("");
+      setNewDoseInterval("");
+      setDoseIntervals({});
 
       // Close modal
       setShowUpdateScheduleModal(false);
@@ -688,6 +727,18 @@ export default function SchedulePage() {
     total: schedules.length,
     scheduled: schedules.filter(s => s.doses.some(d => d.status === 'scheduled')).length,
     completed: schedules.filter(s => s.doses.some(d => d.status === 'completed')).length,
+    overdue: schedules.filter(s => {
+      // Check if schedule has any overdue doses (scheduled but date passed)
+      return s.doses.some(dose => {
+        if (dose.status === 'scheduled') {
+          const doseDate = new Date(dose.dateScheduled);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return doseDate < today;
+        }
+        return false;
+      });
+    }).length,
     missed: schedules.filter(s => s.doses.some(d => d.status === 'missed')).length,
     cancelled: schedules.filter(s => s.doses.some(d => d.status === 'cancelled')).length,
   };
@@ -702,9 +753,23 @@ export default function SchedulePage() {
     let matchesFilter = true;
     
     if (filterStatus !== 'all') {
-      // Check if any dose in the schedule matches the filter status
-      const hasMatchingDose = schedule.doses.some(dose => dose.status === filterStatus);
-      matchesFilter = hasMatchingDose;
+      if (filterStatus === 'overdue') {
+        // Check if any dose is scheduled but overdue (date passed)
+        const hasOverdueDose = schedule.doses.some(dose => {
+          if (dose.status === 'scheduled') {
+            const doseDate = new Date(dose.dateScheduled);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            return doseDate < today;
+          }
+          return false;
+        });
+        matchesFilter = hasOverdueDose;
+      } else {
+        // Check if any dose in the schedule matches the filter status
+        const hasMatchingDose = schedule.doses.some(dose => dose.status === filterStatus);
+        matchesFilter = hasMatchingDose;
+      }
     }
     
     return matchesSearch && matchesFilter;
@@ -721,7 +786,8 @@ export default function SchedulePage() {
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
     const config = scheduleConfig[schedule.overallStatus];
     const completedDoses = schedule.doses.filter(d => d.status === 'completed').length;
-    const totalDoses = schedule.totalDoses;
+    const cancelledDoses = schedule.doses.filter(d => d.status === 'cancelled').length;
+    const activeDoses = schedule.totalDoses - cancelledDoses;
 
     return (
       <View style={{ width: size, height: size }}>
@@ -752,19 +818,121 @@ export default function SchedulePage() {
             {Math.round(percentage)}%
           </Text>
           <Text className="text-xs" style={{ color: config.color, fontSize: 8 }}>
-            {completedDoses}/{totalDoses}
+            {completedDoses}/{activeDoses}
           </Text>
         </View>
       </View>
     );
   };
 
+  // Render left swipe actions for schedule cards (Edit/Delete)
+  const renderLeftActions = (schedule: VaccineSchedule) => (
+    <View className="flex-col justify-center" style={{ width: 80 }}>
+      <TouchableOpacity
+        onPress={() => {
+          setIsSwipeableOpen(false);
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          handleUpdateSchedule(schedule);
+        }}
+        className="bg-blue-500 justify-center items-center flex-1 rounded-tl-2xl"
+      >
+        <Ionicons name="create-outline" size={24} color="white" />
+        <Text className="text-white text-xs font-semibold mt-1">Edit</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => {
+          setIsSwipeableOpen(false);
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          handleDeleteSchedule(schedule._id, schedule.vaccineName);
+        }}
+        className="bg-red-500 justify-center items-center flex-1 rounded-bl-2xl"
+      >
+        <Ionicons name="trash-outline" size={24} color="white" />
+        <Text className="text-white text-xs font-semibold mt-1">Delete</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  // Render left swipe actions for dose items (Mark as completed)
+  const renderLeftDoseActions = (schedule: VaccineSchedule, dose: any) => {
+    const swipeKey = `${schedule._id}-${dose.doseNumber}`;
+    
+    if (dose.status === 'completed') {
+      return (
+        <View className="flex-row items-center">
+          <View className="bg-gray-400 justify-center items-center px-6 h-full rounded-l-2xl" style={{ width: 100 }}>
+            <Ionicons name="checkmark-done" size={24} color="white" />
+            <Text className="text-white text-xs font-semibold mt-1">Completed</Text>
+          </View>
+        </View>
+      );
+    }
+    
+    return (
+      <View className="flex-row items-center">
+        <TouchableOpacity
+          onPress={async () => {
+            setIsSwipeableOpen(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            // Close the swipeable
+            doseSwipeableRefs.current[swipeKey]?.close();
+            // Update the status
+            await handleDoseStatusUpdate(schedule._id, dose.doseNumber, 'completed');
+          }}
+          className="bg-green-500 justify-center items-center px-6 h-full rounded-l-2xl"
+          style={{ width: 100 }}
+        >
+          <Ionicons name="checkmark-circle" size={24} color="white" />
+          <Text className="text-white text-xs font-semibold mt-1">Complete</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  // Render right swipe actions for dose items (Cancel/Mark as cancelled)
+  const renderRightDoseActions = (schedule: VaccineSchedule, dose: any) => {
+    const swipeKey = `${schedule._id}-${dose.doseNumber}`;
+    
+    if (dose.status === 'cancelled') {
+      return (
+        <View className="flex-row items-center justify-end">
+          <View className="bg-gray-400 justify-center items-center px-6 h-full rounded-r-2xl" style={{ width: 100 }}>
+            <Ionicons name="close-circle" size={24} color="white" />
+            <Text className="text-white text-xs font-semibold mt-1">Cancelled</Text>
+          </View>
+        </View>
+      );
+    }
+    
+    return (
+      <View className="flex-row items-center justify-end">
+        <TouchableOpacity
+          onPress={async () => {
+            setIsSwipeableOpen(false);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            // Close the swipeable
+            doseSwipeableRefs.current[swipeKey]?.close();
+            // Update the status to cancelled
+            await handleDoseStatusUpdate(schedule._id, dose.doseNumber, 'cancelled');
+          }}
+          className="bg-red-500 justify-center items-center px-6 h-full rounded-r-2xl"
+          style={{ width: 100 }}
+        >
+          <Ionicons name="close-circle" size={24} color="white" />
+          <Text className="text-white text-xs font-semibold mt-1">Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+
   return (
-    <SafeAreaView
-      className="flex-1"
-      edges={["top"]}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaView
+        className="flex-1"
+        edges={["top"]}
+      >
+        <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
       
       {/* Enhanced Header with Gradient */}
       <LinearGradient
@@ -790,39 +958,39 @@ export default function SchedulePage() {
         {/* Stats Cards */}
         <View className="flex-row justify-between">
           <View className="bg-white/15 rounded-2xl p-4 flex-1 mr-2 backdrop-blur-sm">
-            <View className="flex-row items-center mb-2">
+            <View className="mb-2">
               <Ionicons name="calendar" size={20} color="white" />
-              <Text className="text-white/90 text-sm font-medium ml-2">Total</Text>
+              <Text className="text-white/90 text-xs font-medium mt-1">Total</Text>
             </View>
             <Text className="text-2xl font-bold text-white">{scheduleStats.total}</Text>
             <Text className="text-white/70 text-xs">schedules</Text>
           </View>
           
           <View className="bg-white/15 rounded-2xl p-4 flex-1 mx-1 backdrop-blur-sm">
-            <View className="flex-row items-center mb-2">
+            <View className="mb-2">
               <Ionicons name="time" size={20} color="white" />
-              <Text className="text-white/90 text-sm font-medium ml-2">Scheduled</Text>
+              <Text className="text-white/90 text-xs font-medium mt-1">Scheduled</Text>
             </View>
             <Text className="text-2xl font-bold text-white">{scheduleStats.scheduled}</Text>
             <Text className="text-white/70 text-xs">upcoming</Text>
           </View>
           
           <View className="bg-white/15 rounded-2xl p-4 flex-1 mx-1 backdrop-blur-sm">
-            <View className="flex-row items-center mb-2">
+            <View className="mb-2">
               <Ionicons name="checkmark-circle" size={20} color="white" />
-              <Text className="text-white/90 text-sm font-medium ml-2">Completed</Text>
+              <Text className="text-white/90 text-xs font-medium mt-1">Completed</Text>
             </View>
             <Text className="text-2xl font-bold text-white">{scheduleStats.completed}</Text>
             <Text className="text-white/70 text-xs">finished</Text>
           </View>
           
           <View className="bg-white/15 rounded-2xl p-4 flex-1 ml-2 backdrop-blur-sm">
-            <View className="flex-row items-center mb-2">
-              <Ionicons name="warning" size={20} color="white" />
-              <Text className="text-white/90 text-sm font-medium ml-2">Missed</Text>
+            <View className="mb-2">
+              <Ionicons name="alert-circle" size={20} color="white" />
+              <Text className="text-white/90 text-xs font-medium mt-1">Overdue</Text>
             </View>
-            <Text className="text-2xl font-bold text-white">{scheduleStats.missed}</Text>
-            <Text className="text-white/70 text-xs">overdue</Text>
+            <Text className="text-2xl font-bold text-white">{scheduleStats.overdue}</Text>
+            <Text className="text-white/70 text-xs">past due</Text>
           </View>
         </View>
       </LinearGradient>
@@ -1026,8 +1194,7 @@ export default function SchedulePage() {
                 {[
                   { key: "all", label: "All", icon: "grid", color: "#6b7280" },
                   { key: "scheduled", label: "Scheduled", icon: "time", color: "#3b82f6" },
-                  { key: "completed", label: "Completed", icon: "checkmark-circle", color: "#10b981" },
-                  { key: "missed", label: "Missed", icon: "warning", color: "#f59e0b" },
+                  { key: "overdue", label: "Overdue", icon: "alert-circle", color: "#f59e0b" },
                   { key: "cancelled", label: "Cancelled", icon: "close-circle", color: "#ef4444" },
                 ].map((filter) => (
                   <TouchableOpacity
@@ -1071,6 +1238,7 @@ export default function SchedulePage() {
           ref={scrollRef} 
           contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
+          scrollEnabled={!isSwipeableOpen}
         >
           {/* Enhanced Schedule Cards */}
           {filteredSchedules.length === 0 ? (
@@ -1106,6 +1274,8 @@ export default function SchedulePage() {
           ) : (
             filteredSchedules.map((schedule, index) => {
               const completedDoses = schedule.doses.filter(d => d.status === 'completed');
+              const cancelledDoses = schedule.doses.filter(d => d.status === 'cancelled');
+              const activeDoses = schedule.totalDoses - cancelledDoses.length;
               const nextDose = schedule.doses.find(d => d.status === 'scheduled');
               const isExpanded = expandedSchedules.includes(schedule._id);
               const completionPercentage = scheduleAPI.getCompletionPercentage(schedule);
@@ -1126,24 +1296,38 @@ export default function SchedulePage() {
                     marginBottom: 16,
                   }}
                 >
-                  <TouchableOpacity
-                    onPress={() => toggleExpand(schedule._id)}
-                    className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
-                    style={{
-                      elevation: 4,
-                      shadowColor: '#000',
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.1,
-                      shadowRadius: 8,
-                    }}
+                  <Swipeable
+                    renderLeftActions={!isExpanded ? () => renderLeftActions(schedule) : undefined}
+                    overshootLeft={false}
+                    friction={2}
+                    leftThreshold={40}
+                    activeOffsetX={[-30, 30]}
+                    failOffsetY={[-5, 5]}
+                    enabled={!isExpanded}
+                    onSwipeableWillOpen={() => setIsSwipeableOpen(true)}
+                    onSwipeableClose={() => setIsSwipeableOpen(false)}
                   >
+                    <View
+                      className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+                      style={{
+                        elevation: 4,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 8,
+                      }}
+                    >
                     {/* Card header with gradient accent */}
                     <View
                       className="h-2"
                       style={{ backgroundColor: config.color }}
                     />
 
-                    <View className="p-5">
+                    <TouchableOpacity
+                      onPress={() => toggleExpand(schedule._id)}
+                      activeOpacity={0.7}
+                    >
+                      <View className="p-5">
                       <View className="flex-row justify-between items-start mb-4">
                         <View className="flex-row items-center flex-1">
                           <View
@@ -1203,15 +1387,38 @@ export default function SchedulePage() {
                             schedule={schedule}
                             size={60}
                           />
-                          <View className="bg-gray-100 rounded-full p-1 mt-2">
-                            <Ionicons
-                              name={isExpanded ? "chevron-up" : "chevron-down"}
-                              size={16}
-                              color="#6b7280"
-                            />
+                          <View className="flex-row items-center mt-2 space-x-1">
+                            {!isExpanded && (
+                              <View className="bg-gray-100 rounded-full p-1">
+                                <Ionicons
+                                  name="swap-horizontal"
+                                  size={12}
+                                  color="#9ca3af"
+                                />
+                              </View>
+                            )}
+                            <View className="bg-gray-100 rounded-full p-1">
+                              <Ionicons
+                                name={isExpanded ? "chevron-up" : "chevron-down"}
+                                size={16}
+                                color="#6b7280"
+                              />
+                            </View>
                           </View>
                         </View>
                       </View>
+
+                      {/* User Hint */}
+                      {!isExpanded && (
+                        <View className="mt-3 mb-2 px-2">
+                          <View className="flex-row items-center justify-center bg-blue-50 rounded-lg py-2 px-3 border border-blue-100">
+                            <Ionicons name="information-circle" size={14} color="#3b82f6" />
+                            <Text className="text-xs text-blue-600 ml-2">
+                              Swipe → to update • Tap to view doses
+                            </Text>
+                          </View>
+                        </View>
+                      )}
 
                       {/* Enhanced Dose indicators */}
                       <View className="bg-gray-50 rounded-2xl p-4">
@@ -1220,7 +1427,7 @@ export default function SchedulePage() {
                             Dose Progress
                           </Text>
                           <Text className="text-sm font-bold" style={{ color: config.color }}>
-                            {completedDoses.length}/{schedule.totalDoses} completed
+                            {completedDoses.length}/{activeDoses} completed
                           </Text>
                         </View>
                         
@@ -1289,42 +1496,45 @@ export default function SchedulePage() {
                           </Text>
                         </View>
                       </View>
+                      </View>
+                    </TouchableOpacity>
 
                       {/* Enhanced Expanded dose details */}
                       {isExpanded && (
-                        <View className="mt-4">
+                        <View className="mt-4 px-5 pb-5">
                           <Text className="text-lg font-bold text-gray-800 mb-4">
                             Dose Details
                           </Text>
                           <View className="space-y-3">
                             {schedule.doses.map((dose, doseIndex) => {
                               const doseConfigItem = doseConfig[dose.status];
+                              const swipeKey = `${schedule._id}-${dose.doseNumber}`;
                               
                               return (
-                                <TouchableOpacity
+                                <Swipeable
                                   key={dose.doseNumber}
-                                  onPress={() => handleDosePress(schedule, dose.doseNumber)}
-                                  className={`p-4 rounded-2xl border-2 ${
-                                    dose.status === 'completed' 
-                                      ? 'bg-white border-green-100 shadow-sm' 
-                                      : dose.status === 'scheduled'
-                                      ? 'bg-blue-50 border-blue-200 shadow-sm'
-                                      : 'bg-yellow-50 border-yellow-200 shadow-sm'
-                                  }`}
-                                  style={{
-                                    opacity: cardAnimations.current[schedule._id]?.interpolate({
-                                      inputRange: [0, 1],
-                                      outputRange: [0, 1],
-                                    }) || 1,
-                                    transform: [{
-                                      translateY: cardAnimations.current[schedule._id]?.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [20, 0],
-                                      }) || 0
-                                    }],
-                                  }}
-                                  activeOpacity={0.7}
+                                  ref={(ref) => { doseSwipeableRefs.current[swipeKey] = ref; }}
+                                  renderLeftActions={() => renderLeftDoseActions(schedule, dose)}
+                                  renderRightActions={() => renderRightDoseActions(schedule, dose)}
+                                  overshootLeft={false}
+                                  overshootRight={false}
+                                  friction={2}
+                                  leftThreshold={40}
+                                  rightThreshold={40}
+                                  activeOffsetX={[-30, 30]}
+                                  failOffsetY={[-5, 5]}
+                                  onSwipeableWillOpen={() => setIsSwipeableOpen(true)}
+                                  onSwipeableClose={() => setIsSwipeableOpen(false)}
                                 >
+                                  <View
+                                    className={`p-4 rounded-2xl border-2 ${
+                                      dose.status === 'completed' 
+                                        ? 'bg-white border-green-100 shadow-sm' 
+                                        : dose.status === 'scheduled'
+                                        ? 'bg-blue-50 border-blue-200 shadow-sm'
+                                        : 'bg-yellow-50 border-yellow-200 shadow-sm'
+                                    }`}
+                                  >
                                   <View className="flex-row justify-between items-start mb-4">
                                     <View className="flex-row items-center">
                                       <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
@@ -1360,7 +1570,20 @@ export default function SchedulePage() {
                                         }`}>
                                           {dose.status.charAt(0).toUpperCase() + dose.status.slice(1)}
                                         </Text>
-                                        <Text className="text-xs text-gray-500 mt-1">(Tap to update)</Text>
+                                        {(dose.status === 'scheduled' || dose.status === 'missed') && (
+                                          <View className="flex-row items-center mt-1 flex-wrap">
+                                            <View className="flex-row items-center mr-3">
+                                              <Text className="text-xs font-semibold" style={{ color: '#10b981' }}>swipe </Text>
+                                              <Ionicons name="arrow-forward" size={10} color="#10b981" />
+                                              <Text className="text-xs font-semibold ml-1" style={{ color: '#10b981' }}>to complete</Text>
+                                            </View>
+                                            <View className="flex-row items-center">
+                                              <Text className="text-xs font-semibold" style={{ color: '#ef4444' }}>swipe </Text>
+                                              <Ionicons name="arrow-back" size={10} color="#ef4444" />
+                                              <Text className="text-xs font-semibold ml-1" style={{ color: '#ef4444' }}>to cancel</Text>
+                                            </View>
+                                          </View>
+                                        )}
                                       </View>
                                     </View>
                                     <View 
@@ -1423,30 +1646,15 @@ export default function SchedulePage() {
                                       )}
                                     </View>
                                   </View>
-                                </TouchableOpacity>
+                                </View>
+                                </Swipeable>
                               );
                             })}
-                            
-                            {/* Enhanced Action buttons */}
-                            <View className="flex-row space-x-3 mt-6">
-                              <TouchableOpacity
-                                onPress={() => handleUpdateSchedule(schedule)}
-                                className="flex-1 bg-blue-500 rounded-xl py-3 items-center shadow-sm"
-                              >
-                                <Text className="text-white font-semibold">Update Schedule</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                onPress={() => handleDeleteSchedule(schedule._id, schedule.vaccineName)}
-                                className="flex-1 bg-red-500 rounded-xl py-3 items-center shadow-sm"
-                              >
-                                <Text className="text-white font-semibold">Delete</Text>
-                              </TouchableOpacity>
-                            </View>
                           </View>
                         </View>
                       )}
                     </View>
-                  </TouchableOpacity>
+                  </Swipeable>
                 </Animated.View>
               );
             })
@@ -1540,7 +1748,11 @@ export default function SchedulePage() {
 
                 {/* Vaccine List */}
                 {(vaccineSearchQuery || availableVaccines.length > 0) && (
-                  <ScrollView className="max-h-40 bg-gray-50 rounded-lg">
+                  <ScrollView 
+                    className="max-h-40 bg-gray-50 rounded-lg"
+                    nestedScrollEnabled={true}
+                    showsVerticalScrollIndicator={true}
+                  >
                     {availableVaccines
                       .filter(vaccine => 
                         !vaccineSearchQuery || 
@@ -1615,281 +1827,236 @@ export default function SchedulePage() {
                 <Text className="text-lg font-semibold text-gray-800 mb-3">Schedule Details</Text>
                 
                 <View className="space-y-4">
-                  {/* Enhanced Schedule Date Picker */}
+                  {/* Native Schedule Date Picker */}
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Schedule Date *</Text>
                     <TouchableOpacity
                       onPress={() => setShowDatePicker(true)}
-                      className="bg-gray-50 rounded-lg p-3 flex-row items-center justify-between"
+                      className="bg-gray-50 rounded-lg p-3 flex-row items-center justify-between border-2 border-gray-200"
                     >
-                      <View className="flex-row items-center">
-                        <Ionicons name="calendar" size={20} color="#6b7280" />
-                        <Text className="ml-2 text-gray-800">
-                          {scheduleDate ? formatDateForDisplay(selectedYear, selectedMonth, selectedDay) : 'Select date'}
+                      <View className="flex-row items-center flex-1">
+                        <View className="bg-blue-100 rounded-lg p-2 mr-3">
+                          <Ionicons name="calendar" size={20} color="#3b82f6" />
+                        </View>
+                        <Text className={`${scheduleDate ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
+                          {scheduleDate ? new Date(scheduleDate).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          }) : 'Tap to open calendar'}
                         </Text>
                       </View>
-                      <Ionicons name="chevron-down" size={20} color="#6b7280" />
+                      <Ionicons name="calendar-outline" size={20} color="#3b82f6" />
                     </TouchableOpacity>
                     <Text className="text-xs text-gray-500 mt-1">
-                      Date for the first dose
+                      Tap to open calendar and select first dose date
                     </Text>
 
-                    {/* Date Picker Modal */}
-                    <Modal
-                      visible={showDatePicker}
-                      transparent
-                      animationType="slide"
-                      onRequestClose={() => setShowDatePicker(false)}
-                    >
-                      <View className="flex-1 bg-black/50 justify-center items-center">
-                        <View className="bg-white rounded-3xl mx-6 w-full max-w-sm shadow-xl">
-                          <View className="p-6 border-b border-gray-100">
-                            <View className="flex-row justify-between items-center">
-                              <Text className="text-xl font-bold text-gray-800">Select Date</Text>
-                              <TouchableOpacity 
-                                onPress={() => setShowDatePicker(false)}
-                                className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
-                              >
-                                <Ionicons name="close" size={20} color="#64748b" />
+                    {/* Native Date Picker */}
+                    {showDatePicker && Platform.OS === 'ios' && (
+                      <Modal
+                        transparent
+                        animationType="slide"
+                        visible={showDatePicker}
+                        onRequestClose={() => setShowDatePicker(false)}
+                      >
+                        <View className="flex-1 bg-black/50 justify-end">
+                          <View className="bg-white rounded-t-3xl p-4">
+                            <View className="flex-row justify-between items-center mb-4">
+                              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                                <Text className="text-blue-500 text-lg">Cancel</Text>
+                              </TouchableOpacity>
+                              <Text className="text-lg font-semibold text-gray-800">Select Date</Text>
+                              <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                                <Text className="text-blue-500 text-lg font-semibold">Done</Text>
                               </TouchableOpacity>
                             </View>
-                          </View>
-                          
-                          <View className="p-6">
-                            <View className="flex-row justify-between mb-6">
-                              {/* Year Picker */}
-                              <View className="flex-1 mr-2">
-                                <Text className="text-sm font-medium text-gray-700 mb-2">Year</Text>
-                                <ScrollView className="h-32 bg-gray-50 rounded-lg">
-                                  {years.map((year) => (
-                                    <TouchableOpacity
-                                      key={year}
-                                      onPress={() => setSelectedYear(year)}
-                                      className={`p-3 border-b border-gray-200 ${
-                                        selectedYear === year ? 'bg-blue-100' : 'bg-white'
-                                      }`}
-                                    >
-                                      <Text className={`text-center font-medium ${
-                                        selectedYear === year ? 'text-blue-700' : 'text-gray-800'
-                                      }`}>
-                                        {year}
-                                      </Text>
-                                    </TouchableOpacity>
-                                  ))}
-                                </ScrollView>
-                              </View>
-
-                              {/* Month Picker */}
-                              <View className="flex-1 mr-2">
-                                <Text className="text-sm font-medium text-gray-700 mb-2">Month</Text>
-                                <ScrollView className="h-32 bg-gray-50 rounded-lg">
-                                  {months.map((month) => (
-                                    <TouchableOpacity
-                                      key={month.value}
-                                      onPress={() => setSelectedMonth(month.value)}
-                                      className={`p-2 border-b border-gray-200 ${
-                                        selectedMonth === month.value ? 'bg-blue-100' : 'bg-white'
-                                      }`}
-                                    >
-                                      <Text className={`text-center text-xs font-medium ${
-                                        selectedMonth === month.value ? 'text-blue-700' : 'text-gray-800'
-                                      }`}>
-                                        {month.label}
-                                      </Text>
-                                    </TouchableOpacity>
-                                  ))}
-                                </ScrollView>
-                              </View>
-
-                              {/* Day Picker */}
-                              <View className="flex-1">
-                                <Text className="text-sm font-medium text-gray-700 mb-2">Day</Text>
-                                <ScrollView className="h-32 bg-gray-50 rounded-lg">
-                                  {Array.from({ length: getDaysInMonth(selectedYear, selectedMonth) }, (_, i) => i + 1).map((day) => (
-                                    <TouchableOpacity
-                                      key={day}
-                                      onPress={() => setSelectedDay(day)}
-                                      className={`p-3 border-b border-gray-200 ${
-                                        selectedDay === day ? 'bg-blue-100' : 'bg-white'
-                                      }`}
-                                    >
-                                      <Text className={`text-center font-medium ${
-                                        selectedDay === day ? 'text-blue-700' : 'text-gray-800'
-                                      }`}>
-                                        {day}
-                                      </Text>
-                                    </TouchableOpacity>
-                                  ))}
-                                </ScrollView>
-                              </View>
-                            </View>
-
-                            <View className="flex-row space-x-3">
-                              <TouchableOpacity
-                                onPress={() => setShowDatePicker(false)}
-                                className="flex-1 bg-gray-500 rounded-lg py-3 items-center"
-                              >
-                                <Text className="text-white font-medium">Cancel</Text>
-                              </TouchableOpacity>
-                              <TouchableOpacity
-                                onPress={handleDateSelection}
-                                className="flex-1 bg-blue-500 rounded-lg py-3 items-center"
-                              >
-                                <Text className="text-white font-medium">Select</Text>
-                              </TouchableOpacity>
-                            </View>
+                            <DateTimePicker
+                              value={selectedDate}
+                              mode="date"
+                              display="spinner"
+                              onChange={(_event: any, date?: Date) => {
+                                if (date) {
+                                  setSelectedDate(date);
+                                  setScheduleDate(date.toISOString().split('T')[0]);
+                                }
+                              }}
+                              minimumDate={new Date()}
+                            />
                           </View>
                         </View>
-                      </View>
-                    </Modal>
+                      </Modal>
+                    )}
+                    {showDatePicker && Platform.OS === 'android' && (
+                      <DateTimePicker
+                        value={selectedDate}
+                        mode="date"
+                        display="default"
+                        onChange={(_event: any, date?: Date) => {
+                          setShowDatePicker(false);
+                          if (date) {
+                            setSelectedDate(date);
+                            setScheduleDate(date.toISOString().split('T')[0]);
+                          }
+                        }}
+                        minimumDate={new Date()}
+                      />
+                    )}
                   </View>
 
-                  {/* Enhanced Total Doses Selector */}
+                  {/* Simple Horizontal Scroll Total Doses Selector */}
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Total Doses *</Text>
-                    <TouchableOpacity
-                      onPress={() => setShowDosePicker(true)}
-                      className="bg-gray-50 rounded-lg p-3 flex-row items-center justify-between"
-                    >
-                      <View className="flex-row items-center">
-                        <Ionicons name="medical" size={20} color="#6b7280" />
-                        <Text className="ml-2 text-gray-800">
+                    <View className="bg-gray-50 rounded-lg p-3 border-2 border-gray-200">
+                      <View className="flex-row items-center mb-2">
+                        <View className="bg-green-100 rounded-lg p-2 mr-2">
+                          <Ionicons name="medical" size={18} color="#10b981" />
+                        </View>
+                        <Text className="text-gray-800 font-bold text-base">
                           {totalDoses} {totalDoses === "1" ? 'dose' : 'doses'}
                         </Text>
                       </View>
-                      <Ionicons name="chevron-down" size={20} color="#6b7280" />
-                    </TouchableOpacity>
+                      
+                      <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false}
+                        style={{ marginHorizontal: -4 }}
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                          <TouchableOpacity
+                            key={num}
+                            onPress={() => setTotalDoses(num.toString())}
+                            style={{
+                              width: 50,
+                              height: 50,
+                              marginHorizontal: 4,
+                              borderRadius: 12,
+                              backgroundColor: parseInt(totalDoses) === num ? '#10b981' : '#ffffff',
+                              borderWidth: 2,
+                              borderColor: parseInt(totalDoses) === num ? '#10b981' : '#d1d5db',
+                              justifyContent: 'center',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <Text style={{
+                              fontSize: 18,
+                              fontWeight: 'bold',
+                              color: parseInt(totalDoses) === num ? '#ffffff' : '#374151',
+                            }}>
+                              {num}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
                     <Text className="text-xs text-gray-500 mt-1">
-                      Number of doses required for this vaccine (1-5)
+                      Scroll and tap to select dose count
                     </Text>
 
-                    {/* Dose Picker Modal */}
-                    <Modal
-                      visible={showDosePicker}
-                      transparent
-                      animationType="slide"
-                      onRequestClose={() => setShowDosePicker(false)}
-                    >
-                      <View className="flex-1 bg-black/50 justify-center items-center">
-                        <View className="bg-white rounded-3xl mx-6 w-full max-w-sm shadow-xl">
-                          <View className="p-6 border-b border-gray-100">
-                            <View className="flex-row justify-between items-center">
-                              <Text className="text-xl font-bold text-gray-800">Select Total Doses</Text>
-                              <TouchableOpacity 
-                                onPress={() => setShowDosePicker(false)}
-                                className="w-8 h-8 rounded-full bg-gray-100 items-center justify-center"
-                              >
-                                <Ionicons name="close" size={20} color="#64748b" />
-                              </TouchableOpacity>
-                            </View>
-                          </View>
-                          
-                          <View className="p-6">
-                            <View className="mb-6">
-                              <ScrollView className="h-40 bg-gray-50 rounded-lg">
-                                {doseOptions.map((dose) => (
-                                  <TouchableOpacity
-                                    key={dose}
-                                    onPress={() => {
-                                      setTotalDoses(dose);
-                                      setShowDosePicker(false);
-                                    }}
-                                    className={`p-4 border-b border-gray-200 ${
-                                      totalDoses === dose ? 'bg-blue-100' : 'bg-white'
-                                    }`}
-                                  >
-                                    <View className="flex-row items-center justify-between">
-                                      <View className="flex-row items-center">
-                                        <View className={`w-8 h-8 rounded-full items-center justify-center mr-3 ${
-                                          totalDoses === dose ? 'bg-blue-500' : 'bg-gray-200'
-                                        }`}>
-                                          <Ionicons 
-                                            name="medical" 
-                                            size={16} 
-                                            color={totalDoses === dose ? 'white' : '#6b7280'} 
-                                          />
-                                        </View>
-                                        <Text className={`font-medium ${
-                                          totalDoses === dose ? 'text-blue-700' : 'text-gray-800'
-                                        }`}>
-                                          {dose} {dose === "1" ? 'dose' : 'doses'}
-                                        </Text>
-                                      </View>
-                                      {totalDoses === dose && (
-                                        <Ionicons name="checkmark-circle" size={20} color="#3b82f6" />
-                                      )}
-                                    </View>
-                                  </TouchableOpacity>
-                                ))}
-                              </ScrollView>
-                            </View>
-
-                            {/* Custom Input Option */}
-                            <View className="mb-4">
-                              <Text className="text-sm font-medium text-gray-700 mb-2">Or enter custom number:</Text>
-                              <View className="flex-row items-center">
-                                <TextInput
-                                  className="flex-1 bg-gray-50 rounded-lg p-3 text-gray-800 mr-2"
-                                  placeholder="Enter number"
-                                  value={totalDoses}
-                                  onChangeText={setTotalDoses}
-                                  keyboardType="numeric"
-                                  placeholderTextColor="#9ca3af"
-                                />
-                                <TouchableOpacity
-                                  onPress={() => setShowDosePicker(false)}
-                                  className="bg-blue-500 rounded-lg px-4 py-3"
-                                >
-                                  <Text className="text-white font-medium">Done</Text>
-                                </TouchableOpacity>
-                              </View>
-                            </View>
-
-                            <TouchableOpacity
-                              onPress={() => setShowDosePicker(false)}
-                              className="w-full bg-gray-500 rounded-lg py-3 items-center"
-                            >
-                              <Text className="text-white font-medium">Cancel</Text>
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      </View>
-                    </Modal>
                   </View>
 
-                  {/* Enhanced Interval - Only show if doses > 1 */}
+                  {/* Enhanced Interval Selector - Only show if doses > 1 */}
                   {parseInt(totalDoses) > 1 && (
                     <View>
-                      <Text className="text-sm font-medium text-gray-700 mb-2">Interval (Days) *</Text>
-                      <View className="flex-row items-center">
-                        <TextInput
-                          className="flex-1 bg-gray-50 rounded-lg p-3 text-gray-800 mr-2"
-                          placeholder="28"
-                          value={interval}
-                          onChangeText={setInterval}
-                          keyboardType="numeric"
-                          placeholderTextColor="#9ca3af"
-                        />
-                        <View className="flex-row space-x-1">
-                          {["7", "14", "28", "30"].map((days) => (
+                      <Text className="text-sm font-medium text-gray-700 mb-2">Interval Between Doses *</Text>
+                      
+                      {/* Spinner Control */}
+                      <View className="bg-gray-50 rounded-lg p-3 flex-row items-center justify-between border-2 border-gray-200 mb-3">
+                        <View className="flex-row items-center flex-1">
+                          <View className="bg-purple-100 rounded-lg p-2 mr-3">
+                            <Ionicons name="time" size={20} color="#a855f7" />
+                          </View>
+                          <View>
+                            <Text className="text-gray-800 font-bold text-lg">
+                              {interval} days
+                            </Text>
+                            <Text className="text-gray-500 text-xs">
+                              {parseInt(interval) === 7 ? '1 week' : 
+                               parseInt(interval) === 14 ? '2 weeks' : 
+                               parseInt(interval) === 21 ? '3 weeks' : 
+                               parseInt(interval) === 28 ? '4 weeks' : 
+                               parseInt(interval) === 30 ? '1 month' : 
+                               parseInt(interval) === 60 ? '2 months' : 
+                               parseInt(interval) === 90 ? '3 months' : 
+                               `${Math.floor(parseInt(interval) / 7)} weeks`}
+                            </Text>
+                          </View>
+                        </View>
+                        
+                        {/* Spinner Controls */}
+                        <View className="flex-row items-center space-x-2">
+                          <TouchableOpacity
+                            onPress={() => {
+                              const current = parseInt(interval);
+                              const newValue = Math.max(1, current - 1);
+                              setInterval(newValue.toString());
+                            }}
+                            disabled={parseInt(interval) <= 1}
+                            className={`w-10 h-10 rounded-lg items-center justify-center ${
+                              parseInt(interval) <= 1 ? 'bg-gray-200' : 'bg-blue-500'
+                            }`}
+                          >
+                            <Ionicons 
+                              name="remove" 
+                              size={20} 
+                              color={parseInt(interval) <= 1 ? '#9ca3af' : 'white'} 
+                            />
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity
+                            onPress={() => {
+                              const current = parseInt(interval);
+                              const newValue = Math.min(365, current + 1);
+                              setInterval(newValue.toString());
+                            }}
+                            disabled={parseInt(interval) >= 365}
+                            className={`w-10 h-10 rounded-lg items-center justify-center ml-2 ${
+                              parseInt(interval) >= 365 ? 'bg-gray-200' : 'bg-blue-500'
+                            }`}
+                          >
+                            <Ionicons 
+                              name="add" 
+                              size={20} 
+                              color={parseInt(interval) >= 365 ? '#9ca3af' : 'white'} 
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+
+                      {/* Quick Presets */}
+                      <View>
+                        <Text className="text-xs font-medium text-gray-600 mb-2">Quick Presets:</Text>
+                        <View className="flex-row flex-wrap">
+                          {[
+                            { days: "7", label: "1 week" },
+                            { days: "14", label: "2 weeks" },
+                            { days: "21", label: "3 weeks" },
+                            { days: "28", label: "4 weeks" },
+                            { days: "30", label: "1 month" },
+                            { days: "60", label: "2 months" },
+                            { days: "90", label: "3 months" },
+                          ].map((preset) => (
                             <TouchableOpacity
-                              key={days}
-                              onPress={() => setInterval(days)}
-                              className={`px-3 py-2 rounded-lg ${
-                                interval === days ? 'bg-blue-500' : 'bg-gray-200'
+                              key={preset.days}
+                              onPress={() => setInterval(preset.days)}
+                              className={`mr-2 mb-2 px-3 py-2 rounded-lg border-2 ${
+                                interval === preset.days 
+                                  ? 'bg-purple-500 border-purple-500' 
+                                  : 'bg-white border-gray-300'
                               }`}
                             >
                               <Text className={`text-xs font-medium ${
-                                interval === days ? 'text-white' : 'text-gray-700'
+                                interval === preset.days ? 'text-white' : 'text-gray-700'
                               }`}>
-                                {days}d
+                                {preset.label}
                               </Text>
                             </TouchableOpacity>
                           ))}
                         </View>
                       </View>
-                      <Text className="text-xs text-gray-500 mt-1">
-                        Days between doses • Quick select: 7d, 14d, 28d, 30d
+                      
+                      <Text className="text-xs text-gray-500 mt-2">
+                        Use +/- to adjust day by day, or tap a preset for common intervals
                       </Text>
                     </View>
                   )}
@@ -2069,7 +2236,11 @@ export default function SchedulePage() {
                       )}
                     </Text>
                     <Text className="text-sm text-blue-700">
-                      • <Text className="font-medium">Start:</Text> {formatDateForDisplay(selectedYear, selectedMonth, selectedDay)}
+                      • <Text className="font-medium">Start:</Text> {scheduleDate ? new Date(scheduleDate).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric' 
+                      }) : 'Not selected'}
                     </Text>
                     <Text className="text-sm text-blue-700">
                       • <Text className="font-medium">Type:</Text> {vaccinationType.charAt(0).toUpperCase() + vaccinationType.slice(1)}
@@ -2208,6 +2379,8 @@ export default function SchedulePage() {
           onRequestClose={() => {
             setShowUpdateScheduleModal(false);
             setSelectedSchedule(null);
+            setNewDoseInterval("");
+            setDoseIntervals({});
           }}
         >
           <View className="flex-1 bg-black/50 justify-end">
@@ -2229,6 +2402,8 @@ export default function SchedulePage() {
                     onPress={() => {
                       setShowUpdateScheduleModal(false);
                       setSelectedSchedule(null);
+                      setNewDoseInterval("");
+                      setDoseIntervals({});
                     }}
                     className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center"
                   >
@@ -2246,82 +2421,381 @@ export default function SchedulePage() {
                   {/* Vaccine Name */}
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Vaccine Name *</Text>
-                    <TextInput
-                      className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                      placeholder="Enter vaccine name"
-                      value={updateVaccineName}
-                      onChangeText={setUpdateVaccineName}
-                      placeholderTextColor="#9ca3af"
-                    />
+                    <View className="flex-row items-center bg-gray-50 rounded-lg p-3 border-2 border-gray-200">
+                      <Ionicons name="medical" size={20} color="#6b7280" />
+                      <TextInput
+                        className="flex-1 ml-3 text-gray-800"
+                        placeholder="Enter vaccine name"
+                        value={updateVaccineName}
+                        onChangeText={setUpdateVaccineName}
+                        placeholderTextColor="#9ca3af"
+                      />
+                    </View>
                   </View>
 
                   {/* Healthcare Provider */}
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Healthcare Provider (Optional)</Text>
-                    <TextInput
-                      className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                      placeholder="e.g., Dr. Smith, City Hospital"
-                      value={updateHealthcareProvider}
-                      onChangeText={setUpdateHealthcareProvider}
-                      placeholderTextColor="#9ca3af"
-                    />
-                  </View>
-
-                  {/* Schedule Date */}
-                  <View>
-                    <Text className="text-sm font-medium text-gray-700 mb-2">Schedule Date *</Text>
-                    <View className="flex-row items-center bg-gray-50 rounded-lg p-3">
+                    <View className="flex-row items-center bg-gray-50 rounded-lg p-3 border-2 border-gray-200">
+                      <Ionicons name="person" size={20} color="#6b7280" />
                       <TextInput
-                        className="flex-1 text-gray-800"
-                        placeholder="YYYY-MM-DD"
-                        value={updateScheduleDate}
-                        onChangeText={setUpdateScheduleDate}
+                        className="flex-1 ml-3 text-gray-800"
+                        placeholder="e.g., Dr. Smith, City Hospital"
+                        value={updateHealthcareProvider}
+                        onChangeText={setUpdateHealthcareProvider}
                         placeholderTextColor="#9ca3af"
                       />
-                      <TouchableOpacity
-                        onPress={() => {
-                          const today = new Date();
-                          const formattedDate = today.toISOString().split('T')[0];
-                          setUpdateScheduleDate(formattedDate);
-                        }}
-                        className="ml-2 bg-blue-500 rounded px-3 py-1"
-                      >
-                        <Text className="text-white text-sm">Today</Text>
-                      </TouchableOpacity>
                     </View>
-                    <Text className="text-xs text-gray-500 mt-1">
-                      Date for the first dose
-                    </Text>
                   </View>
 
-                  {/* Interval */}
+                  {/* Schedule Date with Native Picker */}
                   <View>
-                    <Text className="text-sm font-medium text-gray-700 mb-2">Interval (Days) *</Text>
-                    <TextInput
-                      className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                      placeholder="28"
-                      value={updateInterval}
-                      onChangeText={setUpdateInterval}
-                      keyboardType="numeric"
-                      placeholderTextColor="#9ca3af"
-                    />
+                    <Text className="text-sm font-medium text-gray-700 mb-2">First Dose Date *</Text>
+                    <TouchableOpacity
+                      onPress={() => setShowUpdateDatePicker(true)}
+                      className="bg-gray-50 rounded-lg p-3 flex-row items-center justify-between border-2 border-gray-200"
+                    >
+                      <View className="flex-row items-center flex-1">
+                        <View className="bg-blue-100 rounded-lg p-2 mr-3">
+                          <Ionicons name="calendar" size={20} color="#3b82f6" />
+                        </View>
+                        <Text className={`${updateScheduleDate ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
+                          {updateScheduleDate ? new Date(updateScheduleDate).toLocaleDateString('en-US', { 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          }) : 'Tap to open calendar'}
+                        </Text>
+                      </View>
+                      <Ionicons name="calendar-outline" size={20} color="#3b82f6" />
+                    </TouchableOpacity>
                     <Text className="text-xs text-gray-500 mt-1">
-                      Days between each dose
+                      Tap to open calendar and select first dose date
                     </Text>
+
+                    {/* Native Date Picker for Update */}
+                    {showUpdateDatePicker && Platform.OS === 'ios' && (
+                      <Modal
+                        transparent
+                        animationType="slide"
+                        visible={showUpdateDatePicker}
+                        onRequestClose={() => setShowUpdateDatePicker(false)}
+                      >
+                        <View className="flex-1 bg-black/50 justify-end">
+                          <View className="bg-white rounded-t-3xl p-4">
+                            <View className="flex-row justify-between items-center mb-4">
+                              <TouchableOpacity onPress={() => setShowUpdateDatePicker(false)}>
+                                <Text className="text-blue-500 text-lg">Cancel</Text>
+                              </TouchableOpacity>
+                              <Text className="text-lg font-semibold text-gray-800">Select Date</Text>
+                              <TouchableOpacity onPress={() => setShowUpdateDatePicker(false)}>
+                                <Text className="text-blue-500 text-lg font-semibold">Done</Text>
+                              </TouchableOpacity>
+                            </View>
+                            <DateTimePicker
+                              value={updateSelectedDate}
+                              mode="date"
+                              display="spinner"
+                              onChange={(_event: any, date?: Date) => {
+                                if (date) {
+                                  setUpdateSelectedDate(date);
+                                  setUpdateScheduleDate(date.toISOString().split('T')[0]);
+                                }
+                              }}
+                              minimumDate={new Date()}
+                            />
+                          </View>
+                        </View>
+                      </Modal>
+                    )}
+                    {showUpdateDatePicker && Platform.OS === 'android' && (
+                      <DateTimePicker
+                        value={updateSelectedDate}
+                        mode="date"
+                        display="default"
+                        onChange={(_event: any, date?: Date) => {
+                          setShowUpdateDatePicker(false);
+                          if (date) {
+                            setUpdateSelectedDate(date);
+                            setUpdateScheduleDate(date.toISOString().split('T')[0]);
+                          }
+                        }}
+                        minimumDate={new Date()}
+                      />
+                    )}
                   </View>
+
+                  {/* Enhanced Current Doses Section */}
+                  {selectedSchedule && (
+                    <View className="bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 rounded-xl p-4 mb-4">
+                      {/* Header */}
+                      <View className="flex-row items-center justify-between mb-2">
+                        <View className="flex-row items-center">
+                          <View className="bg-purple-500 rounded-lg p-2 mr-3">
+                            <Ionicons name="list" size={20} color="white" />
+                          </View>
+                          <View>
+                            <Text className="text-lg font-bold text-gray-800">Current Doses</Text>
+                            <Text className="text-xs text-purple-700">
+                              {selectedSchedule.doses.length} dose{selectedSchedule.doses.length !== 1 ? 's' : ''} scheduled
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Instructions */}
+                      <View className="bg-white/60 rounded-lg p-3 mb-3 border border-purple-200">
+                        <View className="flex-row items-start">
+                          <Ionicons name="information-circle" size={18} color="#7c3aed" />
+                          <View className="flex-1 ml-2">
+                            <Text className="text-xs font-semibold text-purple-900 mb-1">How to adjust intervals:</Text>
+                            <Text className="text-xs text-gray-700">
+                              • First dose uses the schedule date above{'\n'}
+                              • Edit interval days to reschedule doses{'\n'}
+                              • Changes apply when you click Update Schedule
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+
+                      {/* Doses List */}
+                      <View className="space-y-2">
+                        {selectedSchedule.doses.map((dose, index) => {
+                          const doseStatusConfig = {
+                            scheduled: { color: '#3b82f6', bgColor: '#dbeafe', icon: 'calendar', label: 'Scheduled' },
+                            completed: { color: '#10b981', bgColor: '#d1fae5', icon: 'checkmark-circle', label: 'Completed' },
+                            missed: { color: '#f59e0b', bgColor: '#fef3c7', icon: 'warning', label: 'Missed' },
+                            cancelled: { color: '#ef4444', bgColor: '#fee2e2', icon: 'close-circle', label: 'Cancelled' }
+                          }[dose.status];
+
+                          const currentInterval = index > 0 ? Math.floor(
+                            (new Date(dose.dateScheduled).getTime() - new Date(selectedSchedule.doses[index - 1].dateScheduled).getTime()) 
+                            / (1000 * 60 * 60 * 24)
+                          ) : 0;
+
+                          return (
+                            <View key={dose.doseNumber} className="bg-white rounded-xl p-4 border-2 border-gray-200 shadow-sm">
+                              {/* Dose Header */}
+                              <View className="flex-row items-center justify-between mb-3">
+                                <View className="flex-row items-center flex-1">
+                                  <View 
+                                    className="w-12 h-12 rounded-xl items-center justify-center mr-3"
+                                    style={{ backgroundColor: doseStatusConfig.bgColor }}
+                                  >
+                                    <Ionicons 
+                                      name={doseStatusConfig.icon as any} 
+                                      size={20} 
+                                      color={doseStatusConfig.color} 
+                                    />
+                                  </View>
+                                  <View className="flex-1">
+                                    <Text className="text-base font-bold text-gray-800">Dose {dose.doseNumber}</Text>
+                                    <View 
+                                      className="px-2 py-1 rounded-full mt-1 self-start"
+                                      style={{ backgroundColor: doseStatusConfig.bgColor }}
+                                    >
+                                      <Text className="text-xs font-semibold" style={{ color: doseStatusConfig.color }}>
+                                        {doseStatusConfig.label}
+                                      </Text>
+                                    </View>
+                                  </View>
+                                </View>
+                                <View className="items-end">
+                                  <Text className="text-xs text-gray-500 mb-1">Scheduled</Text>
+                                  <Text className="text-sm font-bold text-gray-800">
+                                    {new Date(dose.dateScheduled).toLocaleDateString('en-US', { 
+                                      month: 'short', 
+                                      day: 'numeric',
+                                      year: 'numeric'
+                                    })}
+                                  </Text>
+                                </View>
+                              </View>
+
+                              {/* Interval Editor (for doses after first) */}
+                              {index > 0 && (
+                                <View className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                  <View className="flex-row items-center justify-between mb-2">
+                                    <Text className="text-xs font-semibold text-gray-700">Adjust Interval:</Text>
+                                    <Text className="text-xs text-gray-500">
+                                      Current: {currentInterval} days
+                                    </Text>
+                                  </View>
+                                  
+                                  <View className="flex-row items-center">
+                                    <Ionicons name="time-outline" size={16} color="#6b7280" />
+                                    <TextInput
+                                      className="flex-1 ml-2 bg-white rounded-lg px-3 py-2 text-sm text-gray-800 border-2 border-blue-200 font-semibold"
+                                      placeholder={currentInterval.toString()}
+                                      keyboardType="numeric"
+                                      value={doseIntervals[dose.doseNumber] || ''}
+                                      onChangeText={(text) => {
+                                        setDoseIntervals(prev => ({
+                                          ...prev,
+                                          [dose.doseNumber]: text
+                                        }));
+                                      }}
+                                    />
+                                    <Text className="text-sm text-gray-600 ml-2 font-medium">days</Text>
+                                  </View>
+
+                                  {/* Preview new date */}
+                                  {doseIntervals[dose.doseNumber] && parseInt(doseIntervals[dose.doseNumber]) > 0 && (
+                                    <View className="mt-2 bg-blue-50 rounded-lg p-2 border border-blue-200">
+                                      <View className="flex-row items-center">
+                                        <Ionicons name="arrow-forward" size={14} color="#3b82f6" />
+                                        <Text className="text-xs text-blue-700 ml-1 font-semibold">
+                                          New date: {(() => {
+                                            const prevDate = new Date(selectedSchedule.doses[index - 1].dateScheduled);
+                                            const newDate = new Date(prevDate);
+                                            newDate.setDate(newDate.getDate() + parseInt(doseIntervals[dose.doseNumber]));
+                                            return newDate.toLocaleDateString('en-US', { 
+                                              month: 'short', 
+                                              day: 'numeric',
+                                              year: 'numeric'
+                                            });
+                                          })()}
+                                        </Text>
+                                      </View>
+                                    </View>
+                                  )}
+                                </View>
+                              )}
+
+                              {/* First dose note */}
+                              {index === 0 && (
+                                <View className="bg-green-50 rounded-lg p-2 border border-green-200">
+                                  <View className="flex-row items-center">
+                                    <Ionicons name="shield-checkmark" size={14} color="#10b981" />
+                                    <Text className="text-xs text-green-700 ml-1 font-medium">
+                                      First dose - uses schedule date above
+                                    </Text>
+                                  </View>
+                                </View>
+                              )}
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Add Another Dose */}
+                  {selectedSchedule && (
+                    <View className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                      <View className="flex-row items-center mb-3">
+                        <View className="bg-blue-500 rounded-lg p-2">
+                          <Ionicons name="add-circle" size={20} color="white" />
+                        </View>
+                        <View className="ml-3">
+                          <Text className="text-base font-semibold text-gray-800">Add Another Dose</Text>
+                          <Text className="text-xs text-blue-700">
+                            Current: {selectedSchedule.doses.length} doses • Add dose #{selectedSchedule.doses.length + 1}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View>
+                        <Text className="text-sm font-medium text-gray-700 mb-2">
+                          Days from last dose *
+                        </Text>
+                        <View className="flex-row items-center space-x-2">
+                          <View className="flex-1 flex-row items-center bg-white rounded-lg p-3 border-2 border-blue-300">
+                            <Ionicons name="time" size={20} color="#3b82f6" />
+                            <TextInput
+                              className="flex-1 ml-2 text-gray-800"
+                              placeholder="28"
+                              value={newDoseInterval}
+                              keyboardType="numeric"
+                              placeholderTextColor="#9ca3af"
+                              onChangeText={setNewDoseInterval}
+                            />
+                            <Text className="text-gray-500 text-sm">days</Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={async () => {
+                              const customInterval = parseInt(newDoseInterval) || 28;
+                              if (customInterval > 0) {
+                                const newDoseNumber = selectedSchedule.doses.length + 1;
+                                const lastDose = selectedSchedule.doses[selectedSchedule.doses.length - 1];
+                                const lastDoseDate = new Date(lastDose.dateScheduled);
+                                const newDoseDate = new Date(lastDoseDate);
+                                newDoseDate.setDate(newDoseDate.getDate() + customInterval);
+                                
+                                Alert.alert(
+                                  'Add New Dose',
+                                  `This will add Dose ${newDoseNumber} scheduled for ${newDoseDate.toLocaleDateString()}\n\n${customInterval} days after last dose`,
+                                  [
+                                    { text: 'Cancel', style: 'cancel' },
+                                    {
+                                      text: 'Add Dose',
+                                      onPress: async () => {
+                                        try {
+                                          setLoading(true);
+                                          await scheduleAPI.addDoseToSchedule(
+                                            selectedSchedule._id,
+                                            customInterval
+                                          );
+                                          
+                                          // Reload schedules to show the new dose
+                                          await loadSchedules();
+                                          
+                                          // Clear the input and close modal
+                                          setNewDoseInterval("");
+                                          setShowUpdateScheduleModal(false);
+                                          setSelectedSchedule(null);
+                                          
+                                          Alert.alert('Success', `Dose ${newDoseNumber} added successfully!`);
+                                        } catch (error: any) {
+                                          console.error('Error adding dose:', error);
+                                          Alert.alert('Error', error.message || 'Failed to add dose. Please try again.');
+                                        } finally {
+                                          setLoading(false);
+                                        }
+                                      }
+                                    }
+                                  ]
+                                );
+                              } else {
+                                Alert.alert('Error', 'Please enter a valid number of days');
+                              }
+                            }}
+                            className="bg-blue-500 rounded-lg px-4 py-3"
+                            disabled={loading}
+                          >
+                            {loading ? (
+                              <ActivityIndicator size="small" color="white" />
+                            ) : (
+                              <Ionicons name="add" size={20} color="white" />
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                        <Text className="text-xs text-gray-500 mt-1">
+                          Last dose date: {new Date(selectedSchedule.doses[selectedSchedule.doses.length - 1].dateScheduled).toLocaleDateString()}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
 
                   {/* Notes */}
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Notes (Optional)</Text>
-                    <TextInput
-                      className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                      placeholder="Additional notes about this schedule..."
-                      value={updateNotes}
-                      onChangeText={setUpdateNotes}
-                      multiline
-                      numberOfLines={3}
-                      placeholderTextColor="#9ca3af"
-                    />
+                    <View className="bg-gray-50 rounded-lg border-2 border-gray-200">
+                      <View className="flex-row items-start p-3 border-b border-gray-200">
+                        <Ionicons name="document-text" size={20} color="#6b7280" />
+                        <Text className="ml-2 text-gray-600 text-sm">Additional information</Text>
+                      </View>
+                      <TextInput
+                        className="p-3 text-gray-800"
+                        placeholder="Enter any additional notes about this schedule..."
+                        value={updateNotes}
+                        onChangeText={setUpdateNotes}
+                        multiline
+                        numberOfLines={3}
+                        placeholderTextColor="#9ca3af"
+                        style={{ minHeight: 80 }}
+                      />
+                    </View>
                   </View>
                 </View>
               </View>
@@ -2332,6 +2806,8 @@ export default function SchedulePage() {
                   onPress={() => {
                     setShowUpdateScheduleModal(false);
                     setSelectedSchedule(null);
+                    setNewDoseInterval("");
+                    setDoseIntervals({});
                   }}
                   className="flex-1 bg-gray-500 rounded-lg py-3 items-center"
                 >
@@ -2339,9 +2815,9 @@ export default function SchedulePage() {
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleUpdateScheduleSubmit}
-                  disabled={loading || !updateVaccineName.trim() || !updateScheduleDate || !updateInterval}
+                  disabled={loading || !updateVaccineName.trim() || !updateScheduleDate}
                   className={`flex-1 rounded-lg py-3 items-center ${
-                    loading || !updateVaccineName.trim() || !updateScheduleDate || !updateInterval ? 'bg-gray-400' : 'bg-blue-500'
+                    loading || !updateVaccineName.trim() || !updateScheduleDate ? 'bg-gray-400' : 'bg-blue-500'
                   }`}
                 >
                   {loading ? (
@@ -2357,5 +2833,6 @@ export default function SchedulePage() {
         </Modal>
       </View>
     </SafeAreaView>
+    </GestureHandlerRootView>
   );
 }
