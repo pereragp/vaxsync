@@ -192,20 +192,8 @@ class VaccinationCertificateService {
         });
         return yPosition;
     }
-    static addFooter(doc, data, contentEndY) {
-        const pageHeight = doc.page.height;
-        const footerHeight = 70;
-        const footerY = pageHeight - footerHeight - 10;
-        if (contentEndY + 100 > footerY) {
-            doc.addPage();
-            const newFooterY = pageHeight - footerHeight - 10;
-            this.renderFooterContent(doc, data, newFooterY);
-        }
-        else {
-            this.renderFooterContent(doc, data, footerY);
-        }
-    }
-    static renderFooterContent(doc, data, footerY) {
+    static addFooter(doc, data, yPosition) {
+        const footerY = yPosition + 20;
         doc.strokeColor('#2563eb')
             .lineWidth(2)
             .moveTo(50, footerY)
