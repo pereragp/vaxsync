@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Modal,
   LayoutAnimation,
   UIManager,
@@ -26,6 +25,7 @@ import userAPI from '../api/userApi';
 import { GestureHandlerRootView, Swipeable, GestureDetector, Gesture } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import CustomAlert from '../components/CustomAlert';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -132,6 +132,37 @@ export default function SchedulePage() {
   // Track if any swipeable is open to disable scroll
   const [isSwipeableOpen, setIsSwipeableOpen] = useState(false);
 
+  // Custom alert state
+  const [customAlert, setCustomAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    buttons: any[];
+    icon: 'success' | 'error' | 'warning' | 'info' | 'question';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+    icon: 'info'
+  });
+
+  // Helper function to show custom alert
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: any[] = [{ text: 'OK' }],
+    icon: 'success' | 'error' | 'warning' | 'info' | 'question' = 'info'
+  ) => {
+    setCustomAlert({
+      visible: true,
+      title,
+      message,
+      buttons,
+      icon
+    });
+  };
+
   // Load current user data
   useEffect(() => {
     loadCurrentUser();
@@ -177,7 +208,7 @@ export default function SchedulePage() {
       
       if (error.message.includes('404') || error.message.includes('Not Found')) {
         setError('No health cards found. Would you like to create them?');
-        Alert.alert(
+        showAlert(
           'No Health Cards Found',
           'No health cards exist for this user. Would you like to create them?',
           [
@@ -189,7 +220,8 @@ export default function SchedulePage() {
               text: 'Create Health Cards', 
               onPress: () => currentUser && createAllHealthCards(currentUser._id)
             }
-          ]
+          ],
+          'question'
         );
       } else {
         setError(error.message || 'Failed to load health cards');
@@ -210,19 +242,21 @@ export default function SchedulePage() {
       // Reload all health cards after creation
       await loadHealthCardData();
 
-      Alert.alert(
+      showAlert(
         'Success',
         'Health cards created successfully for user and dependents.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
+        'success'
       );
 
     } catch (error: any) {
       console.error('Error creating all health cards:', error);
       setError(error.message || 'Failed to create health cards');
-      Alert.alert(
+      showAlert(
         'Error Creating Health Cards',
         error.message || 'Failed to create health cards. Please try again.',
-        [{ text: 'OK' }]
+        [{ text: 'OK' }],
+        'error'
       );
     } finally {
       setLoading(false);
@@ -383,7 +417,7 @@ export default function SchedulePage() {
       setAvailableVaccines(vaccines);
     } catch (error: any) {
       console.error('Error loading vaccines:', error);
-      Alert.alert('Error', 'Failed to load available vaccines');
+      showAlert('Error', 'Failed to load available vaccines', [{ text: 'OK' }], 'error');
     }
   };
 
@@ -400,7 +434,7 @@ export default function SchedulePage() {
       const AsyncStorage = require('@react-native-async-storage/async-storage').default;
       const token = await AsyncStorage.getItem('userToken');
       if (!token) {
-        Alert.alert('Authentication Error', 'Please login again');
+        showAlert('Authentication Error', 'Please login again', [{ text: 'OK' }], 'error');
         setLoading(false);
         return;
       }
@@ -409,12 +443,12 @@ export default function SchedulePage() {
       // Validate form
       const vaccineName = selectedVaccine?.name || vaccineSearchQuery.trim();
       if (!vaccineName) {
-        Alert.alert('Error', 'Please select a vaccine or enter a vaccine name');
+        showAlert('Error', 'Please select a vaccine or enter a vaccine name', [{ text: 'OK' }], 'warning');
         return;
       }
 
       if (!scheduleDate) {
-        Alert.alert('Error', 'Please select a schedule date');
+        showAlert('Error', 'Please select a schedule date', [{ text: 'OK' }], 'warning');
         return;
       }
 
@@ -422,12 +456,12 @@ export default function SchedulePage() {
       const intervalNum = parseInt(interval);
 
       if (totalDosesNum < 1) {
-        Alert.alert('Error', 'Total doses must be at least 1');
+        showAlert('Error', 'Total doses must be at least 1', [{ text: 'OK' }], 'warning');
         return;
       }
 
       if (totalDosesNum > 1 && intervalNum < 0) {
-        Alert.alert('Error', 'Interval must be non-negative for multiple doses');
+        showAlert('Error', 'Interval must be non-negative for multiple doses', [{ text: 'OK' }], 'warning');
         return;
       }
 
@@ -456,11 +490,11 @@ export default function SchedulePage() {
       // Close modal
       setShowCreateModal(false);
 
-      Alert.alert('Success', 'Vaccine schedule created successfully!');
+      showAlert('Success', 'Vaccine schedule created successfully!', [{ text: 'OK' }], 'success');
 
     } catch (error: any) {
       console.error('Error creating schedule:', error);
-      Alert.alert('Error', error.message || 'Failed to create schedule');
+      showAlert('Error', error.message || 'Failed to create schedule', [{ text: 'OK' }], 'error');
     } finally {
       setLoading(false);
     }
@@ -518,8 +552,8 @@ export default function SchedulePage() {
         };
         
         if (completedDoses === totalDoses) {
-          Alert.alert(
-            'Schedule Completed! 🎉', 
+          showAlert(
+            'Schedule Completed!', 
             `All doses completed! Would you like to view post-vaccination instructions?`,
             [
               { 
@@ -531,26 +565,27 @@ export default function SchedulePage() {
               },
               { 
                 text: 'View Instructions', 
-                style: 'default',
-                onPress: () => {
-                  // Navigate to VaccinesPage with completed vaccine data
-                  router.push({
-                    pathname: '/vaccines',
-                    params: {
-                      showInstructions: 'true',
-                      vaccineName: completedVaccineData.vaccineName,
-                      doseNumber: completedVaccineData.doseNumber.toString(),
-                      totalDoses: completedVaccineData.totalDoses.toString(),
-                      dateCompleted: completedVaccineData.dateCompleted,
-                    }
-                  });
-                }
+              style: 'default',
+              onPress: () => {
+                // Navigate to VaccinesPage with completed vaccine data
+                router.push({
+                  pathname: '/vaccines',
+                  params: {
+                    showInstructions: 'true',
+                    vaccineName: completedVaccineData.vaccineName,
+                    doseNumber: completedVaccineData.doseNumber.toString(),
+                    totalDoses: completedVaccineData.totalDoses.toString(),
+                    dateCompleted: completedVaccineData.dateCompleted,
+                  }
+                });
               }
-            ]
+              }
+            ],
+            'success'
           );
         } else {
-          Alert.alert(
-            'Dose Completed! ✅', 
+          showAlert(
+            'Dose Completed!', 
             `Dose ${doseNumber} marked as completed! Would you like to view post-vaccination instructions?`,
             [
               { 
@@ -561,27 +596,28 @@ export default function SchedulePage() {
                 }
               },
               { 
-                text: 'View Instructions', 
-                style: 'default',
-                onPress: () => {
-                  // Navigate to VaccinesPage with completed vaccine data
-                  router.push({
-                    pathname: '/vaccines',
-                    params: {
-                      showInstructions: 'true',
-                      vaccineName: completedVaccineData.vaccineName,
-                      doseNumber: completedVaccineData.doseNumber.toString(),
-                      totalDoses: completedVaccineData.totalDoses.toString(),
-                      dateCompleted: completedVaccineData.dateCompleted,
-                    }
-                  });
-                }
+              text: 'View Instructions', 
+              style: 'default',
+              onPress: () => {
+                // Navigate to VaccinesPage with completed vaccine data
+                router.push({
+                  pathname: '/vaccines',
+                  params: {
+                    showInstructions: 'true',
+                    vaccineName: completedVaccineData.vaccineName,
+                    doseNumber: completedVaccineData.doseNumber.toString(),
+                    totalDoses: completedVaccineData.totalDoses.toString(),
+                    dateCompleted: completedVaccineData.dateCompleted,
+                  }
+                });
               }
-            ]
+              }
+            ],
+            'success'
           );
         }
       } else {
-        Alert.alert('Success', `Dose ${doseNumber} marked as ${newStatus} successfully!`);
+        showAlert('Success', `Dose ${doseNumber} marked as ${newStatus} successfully!`, [{ text: 'OK' }], 'success');
       }
       
       setShowDoseModal(false);
@@ -589,7 +625,7 @@ export default function SchedulePage() {
 
     } catch (error: any) {
       console.error('Error updating dose status:', error);
-      Alert.alert('Error', error.message || 'Failed to update dose status');
+      showAlert('Error', error.message || 'Failed to update dose status', [{ text: 'OK' }], 'error');
     } finally {
       setLoading(false);
     }
@@ -685,18 +721,18 @@ export default function SchedulePage() {
       // Close modal
       setShowUpdateScheduleModal(false);
 
-      Alert.alert('Success', 'Schedule updated successfully!');
+      showAlert('Success', 'Schedule updated successfully!', [{ text: 'OK' }], 'success');
 
     } catch (error: any) {
       console.error('Error updating schedule:', error);
-      Alert.alert('Error', error.message || 'Failed to update schedule');
+      showAlert('Error', error.message || 'Failed to update schedule', [{ text: 'OK' }], 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeleteSchedule = async (scheduleId: string, vaccineName: string) => {
-    Alert.alert(
+    showAlert(
       'Delete Schedule',
       `Are you sure you want to delete the schedule for ${vaccineName}?`,
       [
@@ -709,16 +745,17 @@ export default function SchedulePage() {
               setLoading(true);
               await scheduleAPI.deleteSchedule(scheduleId);
               await loadSchedules();
-              Alert.alert('Success', 'Schedule deleted successfully!');
+              showAlert('Success', 'Schedule deleted successfully!', [{ text: 'OK' }], 'success');
             } catch (error: any) {
               console.error('Error deleting schedule:', error);
-              Alert.alert('Error', error.message || 'Failed to delete schedule');
+              showAlert('Error', error.message || 'Failed to delete schedule', [{ text: 'OK' }], 'error');
             } finally {
               setLoading(false);
             }
           }
         }
-      ]
+      ],
+      'warning'
     );
   };
 
@@ -766,9 +803,9 @@ export default function SchedulePage() {
         });
         matchesFilter = hasOverdueDose;
       } else {
-        // Check if any dose in the schedule matches the filter status
-        const hasMatchingDose = schedule.doses.some(dose => dose.status === filterStatus);
-        matchesFilter = hasMatchingDose;
+      // Check if any dose in the schedule matches the filter status
+      const hasMatchingDose = schedule.doses.some(dose => dose.status === filterStatus);
+      matchesFilter = hasMatchingDose;
       }
     }
     
@@ -858,7 +895,7 @@ export default function SchedulePage() {
     const swipeKey = `${schedule._id}-${dose.doseNumber}`;
     
     if (dose.status === 'completed') {
-      return (
+  return (
         <View className="flex-row items-center">
           <View className="bg-gray-400 justify-center items-center px-6 h-full rounded-l-2xl" style={{ width: 100 }}>
             <Ionicons name="checkmark-done" size={24} color="white" />
@@ -928,11 +965,11 @@ export default function SchedulePage() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView
-        className="flex-1"
-        edges={["top"]}
-      >
-        <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
+    <SafeAreaView
+      className="flex-1"
+      edges={["top"]}
+    >
+      <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
       
       {/* Enhanced Header with Gradient */}
       <LinearGradient
@@ -1308,15 +1345,15 @@ export default function SchedulePage() {
                     onSwipeableClose={() => setIsSwipeableOpen(false)}
                   >
                     <View
-                      className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
-                      style={{
-                        elevation: 4,
-                        shadowColor: '#000',
-                        shadowOffset: { width: 0, height: 2 },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 8,
-                      }}
-                    >
+                    className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden"
+                    style={{
+                      elevation: 4,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.1,
+                      shadowRadius: 8,
+                    }}
+                  >
                     {/* Card header with gradient accent */}
                     <View
                       className="h-2"
@@ -1327,7 +1364,7 @@ export default function SchedulePage() {
                       onPress={() => toggleExpand(schedule._id)}
                       activeOpacity={0.7}
                     >
-                      <View className="p-5">
+                    <View className="p-5">
                       <View className="flex-row justify-between items-start mb-4">
                         <View className="flex-row items-center flex-1">
                           <View
@@ -1398,11 +1435,11 @@ export default function SchedulePage() {
                               </View>
                             )}
                             <View className="bg-gray-100 rounded-full p-1">
-                              <Ionicons
-                                name={isExpanded ? "chevron-up" : "chevron-down"}
-                                size={16}
-                                color="#6b7280"
-                              />
+                            <Ionicons
+                              name={isExpanded ? "chevron-up" : "chevron-down"}
+                              size={16}
+                              color="#6b7280"
+                            />
                             </View>
                           </View>
                         </View>
@@ -1527,14 +1564,14 @@ export default function SchedulePage() {
                                   onSwipeableClose={() => setIsSwipeableOpen(false)}
                                 >
                                   <View
-                                    className={`p-4 rounded-2xl border-2 ${
-                                      dose.status === 'completed' 
-                                        ? 'bg-white border-green-100 shadow-sm' 
-                                        : dose.status === 'scheduled'
-                                        ? 'bg-blue-50 border-blue-200 shadow-sm'
-                                        : 'bg-yellow-50 border-yellow-200 shadow-sm'
-                                    }`}
-                                  >
+                                  className={`p-4 rounded-2xl border-2 ${
+                                    dose.status === 'completed' 
+                                      ? 'bg-white border-green-100 shadow-sm' 
+                                      : dose.status === 'scheduled'
+                                      ? 'bg-blue-50 border-blue-200 shadow-sm'
+                                      : 'bg-yellow-50 border-yellow-200 shadow-sm'
+                                  }`}
+                                >
                                   <View className="flex-row justify-between items-start mb-4">
                                     <View className="flex-row items-center">
                                       <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
@@ -1854,12 +1891,12 @@ export default function SchedulePage() {
 
                     {/* Native Date Picker */}
                     {showDatePicker && Platform.OS === 'ios' && (
-                      <Modal
-                        transparent
-                        animationType="slide"
+                    <Modal
+                      transparent
+                      animationType="slide"
                         visible={showDatePicker}
-                        onRequestClose={() => setShowDatePicker(false)}
-                      >
+                      onRequestClose={() => setShowDatePicker(false)}
+                    >
                         <View className="flex-1 bg-black/50 justify-end">
                           <View className="bg-white rounded-t-3xl p-4">
                             <View className="flex-row justify-between items-center mb-4">
@@ -1902,7 +1939,7 @@ export default function SchedulePage() {
                         minimumDate={new Date()}
                       />
                     )}
-                  </View>
+                              </View>
 
                   {/* Simple Horizontal Scroll Total Doses Selector */}
                   <View>
@@ -1914,16 +1951,16 @@ export default function SchedulePage() {
                         </View>
                         <Text className="text-gray-800 font-bold text-base">
                           {totalDoses} {totalDoses === "1" ? 'dose' : 'doses'}
-                        </Text>
-                      </View>
-                      
+                                      </Text>
+                              </View>
+
                       <ScrollView 
                         horizontal 
                         showsHorizontalScrollIndicator={false}
                         style={{ marginHorizontal: -4 }}
                       >
                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                          <TouchableOpacity
+                                    <TouchableOpacity
                             key={num}
                             onPress={() => setTotalDoses(num.toString())}
                             style={{
@@ -1944,11 +1981,11 @@ export default function SchedulePage() {
                               color: parseInt(totalDoses) === num ? '#ffffff' : '#374151',
                             }}>
                               {num}
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </View>
+                                      </Text>
+                                    </TouchableOpacity>
+                                  ))}
+                                </ScrollView>
+                              </View>
                     <Text className="text-xs text-gray-500 mt-1">
                       Scroll and tap to select dose count
                     </Text>
@@ -1957,7 +1994,7 @@ export default function SchedulePage() {
 
                   {/* Enhanced Interval Selector - Only show if doses > 1 */}
                   {parseInt(totalDoses) > 1 && (
-                    <View>
+                  <View>
                       <Text className="text-sm font-medium text-gray-700 mb-2">Interval Between Doses *</Text>
                       
                       {/* Spinner Control */}
@@ -1965,11 +2002,11 @@ export default function SchedulePage() {
                         <View className="flex-row items-center flex-1">
                           <View className="bg-purple-100 rounded-lg p-2 mr-3">
                             <Ionicons name="time" size={20} color="#a855f7" />
-                          </View>
+                      </View>
                           <View>
                             <Text className="text-gray-800 font-bold text-lg">
                               {interval} days
-                            </Text>
+                    </Text>
                             <Text className="text-gray-500 text-xs">
                               {parseInt(interval) === 7 ? '1 week' : 
                                parseInt(interval) === 14 ? '2 weeks' : 
@@ -1980,30 +2017,30 @@ export default function SchedulePage() {
                                parseInt(interval) === 90 ? '3 months' : 
                                `${Math.floor(parseInt(interval) / 7)} weeks`}
                             </Text>
+                            </View>
                           </View>
-                        </View>
-                        
+                          
                         {/* Spinner Controls */}
                         <View className="flex-row items-center space-x-2">
-                          <TouchableOpacity
-                            onPress={() => {
+                                  <TouchableOpacity
+                                    onPress={() => {
                               const current = parseInt(interval);
                               const newValue = Math.max(1, current - 1);
                               setInterval(newValue.toString());
-                            }}
+                                    }}
                             disabled={parseInt(interval) <= 1}
                             className={`w-10 h-10 rounded-lg items-center justify-center ${
                               parseInt(interval) <= 1 ? 'bg-gray-200' : 'bg-blue-500'
-                            }`}
-                          >
-                            <Ionicons 
+                                    }`}
+                                  >
+                                          <Ionicons 
                               name="remove" 
                               size={20} 
                               color={parseInt(interval) <= 1 ? '#9ca3af' : 'white'} 
                             />
-                          </TouchableOpacity>
+                                  </TouchableOpacity>
                           
-                          <TouchableOpacity
+                                <TouchableOpacity
                             onPress={() => {
                               const current = parseInt(interval);
                               const newValue = Math.min(365, current + 1);
@@ -2019,12 +2056,12 @@ export default function SchedulePage() {
                               size={20} 
                               color={parseInt(interval) >= 365 ? '#9ca3af' : 'white'} 
                             />
-                          </TouchableOpacity>
-                        </View>
-                      </View>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
 
                       {/* Quick Presets */}
-                      <View>
+                    <View>
                         <Text className="text-xs font-medium text-gray-600 mb-2">Quick Presets:</Text>
                         <View className="flex-row flex-wrap">
                           {[
@@ -2423,13 +2460,13 @@ export default function SchedulePage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">Vaccine Name *</Text>
                     <View className="flex-row items-center bg-gray-50 rounded-lg p-3 border-2 border-gray-200">
                       <Ionicons name="medical" size={20} color="#6b7280" />
-                      <TextInput
+                    <TextInput
                         className="flex-1 ml-3 text-gray-800"
-                        placeholder="Enter vaccine name"
-                        value={updateVaccineName}
-                        onChangeText={setUpdateVaccineName}
-                        placeholderTextColor="#9ca3af"
-                      />
+                      placeholder="Enter vaccine name"
+                      value={updateVaccineName}
+                      onChangeText={setUpdateVaccineName}
+                      placeholderTextColor="#9ca3af"
+                    />
                     </View>
                   </View>
 
@@ -2438,27 +2475,27 @@ export default function SchedulePage() {
                     <Text className="text-sm font-medium text-gray-700 mb-2">Healthcare Provider (Optional)</Text>
                     <View className="flex-row items-center bg-gray-50 rounded-lg p-3 border-2 border-gray-200">
                       <Ionicons name="person" size={20} color="#6b7280" />
-                      <TextInput
+                    <TextInput
                         className="flex-1 ml-3 text-gray-800"
-                        placeholder="e.g., Dr. Smith, City Hospital"
-                        value={updateHealthcareProvider}
-                        onChangeText={setUpdateHealthcareProvider}
-                        placeholderTextColor="#9ca3af"
-                      />
+                      placeholder="e.g., Dr. Smith, City Hospital"
+                      value={updateHealthcareProvider}
+                      onChangeText={setUpdateHealthcareProvider}
+                      placeholderTextColor="#9ca3af"
+                    />
                     </View>
                   </View>
 
                   {/* Schedule Date with Native Picker */}
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">First Dose Date *</Text>
-                    <TouchableOpacity
+                      <TouchableOpacity
                       onPress={() => setShowUpdateDatePicker(true)}
                       className="bg-gray-50 rounded-lg p-3 flex-row items-center justify-between border-2 border-gray-200"
                     >
                       <View className="flex-row items-center flex-1">
                         <View className="bg-blue-100 rounded-lg p-2 mr-3">
                           <Ionicons name="calendar" size={20} color="#3b82f6" />
-                        </View>
+                    </View>
                         <Text className={`${updateScheduleDate ? 'text-gray-800 font-medium' : 'text-gray-400'}`}>
                           {updateScheduleDate ? new Date(updateScheduleDate).toLocaleDateString('en-US', { 
                             year: 'numeric', 
@@ -2534,7 +2571,7 @@ export default function SchedulePage() {
                           <View className="bg-purple-500 rounded-lg p-2 mr-3">
                             <Ionicons name="list" size={20} color="white" />
                           </View>
-                          <View>
+                  <View>
                             <Text className="text-lg font-bold text-gray-800">Current Doses</Text>
                             <Text className="text-xs text-purple-700">
                               {selectedSchedule.doses.length} dose{selectedSchedule.doses.length !== 1 ? 's' : ''} scheduled
@@ -2624,7 +2661,7 @@ export default function SchedulePage() {
                                   
                                   <View className="flex-row items-center">
                                     <Ionicons name="time-outline" size={16} color="#6b7280" />
-                                    <TextInput
+                    <TextInput
                                       className="flex-1 ml-2 bg-white rounded-lg px-3 py-2 text-sm text-gray-800 border-2 border-blue-200 font-semibold"
                                       placeholder={currentInterval.toString()}
                                       keyboardType="numeric"
@@ -2704,10 +2741,10 @@ export default function SchedulePage() {
                             <Ionicons name="time" size={20} color="#3b82f6" />
                             <TextInput
                               className="flex-1 ml-2 text-gray-800"
-                              placeholder="28"
+                      placeholder="28"
                               value={newDoseInterval}
-                              keyboardType="numeric"
-                              placeholderTextColor="#9ca3af"
+                      keyboardType="numeric"
+                      placeholderTextColor="#9ca3af"
                               onChangeText={setNewDoseInterval}
                             />
                             <Text className="text-gray-500 text-sm">days</Text>
@@ -2722,7 +2759,7 @@ export default function SchedulePage() {
                                 const newDoseDate = new Date(lastDoseDate);
                                 newDoseDate.setDate(newDoseDate.getDate() + customInterval);
                                 
-                                Alert.alert(
+                                showAlert(
                                   'Add New Dose',
                                   `This will add Dose ${newDoseNumber} scheduled for ${newDoseDate.toLocaleDateString()}\n\n${customInterval} days after last dose`,
                                   [
@@ -2745,19 +2782,20 @@ export default function SchedulePage() {
                                           setShowUpdateScheduleModal(false);
                                           setSelectedSchedule(null);
                                           
-                                          Alert.alert('Success', `Dose ${newDoseNumber} added successfully!`);
+                                          showAlert('Success', `Dose ${newDoseNumber} added successfully!`, [{ text: 'OK' }], 'success');
                                         } catch (error: any) {
                                           console.error('Error adding dose:', error);
-                                          Alert.alert('Error', error.message || 'Failed to add dose. Please try again.');
+                                          showAlert('Error', error.message || 'Failed to add dose. Please try again.', [{ text: 'OK' }], 'error');
                                         } finally {
                                           setLoading(false);
                                         }
                                       }
                                     }
-                                  ]
+                                  ],
+                                  'question'
                                 );
                               } else {
-                                Alert.alert('Error', 'Please enter a valid number of days');
+                                showAlert('Error', 'Please enter a valid number of days', [{ text: 'OK' }], 'warning');
                               }
                             }}
                             className="bg-blue-500 rounded-lg px-4 py-3"
@@ -2770,10 +2808,10 @@ export default function SchedulePage() {
                             )}
                           </TouchableOpacity>
                         </View>
-                        <Text className="text-xs text-gray-500 mt-1">
+                    <Text className="text-xs text-gray-500 mt-1">
                           Last dose date: {new Date(selectedSchedule.doses[selectedSchedule.doses.length - 1].dateScheduled).toLocaleDateString()}
-                        </Text>
-                      </View>
+                    </Text>
+                  </View>
                     </View>
                   )}
 
@@ -2785,16 +2823,16 @@ export default function SchedulePage() {
                         <Ionicons name="document-text" size={20} color="#6b7280" />
                         <Text className="ml-2 text-gray-600 text-sm">Additional information</Text>
                       </View>
-                      <TextInput
+                    <TextInput
                         className="p-3 text-gray-800"
                         placeholder="Enter any additional notes about this schedule..."
-                        value={updateNotes}
-                        onChangeText={setUpdateNotes}
-                        multiline
-                        numberOfLines={3}
-                        placeholderTextColor="#9ca3af"
+                      value={updateNotes}
+                      onChangeText={setUpdateNotes}
+                      multiline
+                      numberOfLines={3}
+                      placeholderTextColor="#9ca3af"
                         style={{ minHeight: 80 }}
-                      />
+                    />
                     </View>
                   </View>
                 </View>
@@ -2831,6 +2869,16 @@ export default function SchedulePage() {
           </View>
         </View>
         </Modal>
+
+        {/* Custom Alert */}
+        <CustomAlert
+          visible={customAlert.visible}
+          title={customAlert.title}
+          message={customAlert.message}
+          buttons={customAlert.buttons}
+          icon={customAlert.icon}
+          onClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
+        />
       </View>
     </SafeAreaView>
     </GestureHandlerRootView>

@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Modal,
   LayoutAnimation,
   UIManager,
@@ -15,7 +14,6 @@ import {
   StatusBar,
   ActivityIndicator,
   Linking,
-  Share,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -26,9 +24,12 @@ import healthCardAPI, {
   HealthCard,
   HealthCardVaccination,
 } from "../api/healthCardApi";
+import { downloadAsync, documentDirectory, cacheDirectory } from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 
 const API_BASE_URL = "http://192.168.1.32:5000";
 import InstructionsPopup from "../components/InstructionsPopup";
+import CustomAlert from "../components/CustomAlert";
 import geminiAPI from "../api/geminiApi";
 import userAPI from "../api/userApi";
 
@@ -116,6 +117,37 @@ export default function VaxCardScreen() {
   const [hasShownAutoPopup, setHasShownAutoPopup] = useState(false);
   const [autoPopupTriggered, setAutoPopupTriggered] = useState(false);
 
+  // Custom alert state
+  const [customAlert, setCustomAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    buttons: any[];
+    icon: 'success' | 'error' | 'warning' | 'info' | 'question';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+    icon: 'info'
+  });
+
+  // Helper function to show custom alert
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: any[] = [{ text: 'OK' }],
+    icon: 'success' | 'error' | 'warning' | 'info' | 'question' = 'info'
+  ) => {
+    setCustomAlert({
+      visible: true,
+      title,
+      message,
+      buttons,
+      icon
+    });
+  };
+
   // Load current user data
   useEffect(() => {
     loadCurrentUser();
@@ -191,7 +223,7 @@ export default function VaxCardScreen() {
         );
 
         // Show alert with option to create health card
-        Alert.alert(
+        showAlert(
           "Health Card Not Found",
           `No health card exists for ${profileName}. Would you like to create one?`,
           [
@@ -204,14 +236,16 @@ export default function VaxCardScreen() {
               onPress: () =>
                 currentUser && createHealthCard(currentUser._id, profileIndex, isDependent),
             },
-          ]
+          ],
+          'question'
         );
       } else {
         setError(error.message || "Failed to load vaccination data");
-        Alert.alert(
+        showAlert(
           "Error Loading Data",
           error.message || "Failed to load vaccination data from server.",
-          [{ text: "OK" }]
+          [{ text: "OK" }],
+          'error'
         );
       }
     } finally {
@@ -248,18 +282,20 @@ export default function VaxCardScreen() {
         return updatedProfiles;
       });
 
-      Alert.alert(
+      showAlert(
         "Success",
         `Health card created successfully for ${profiles[profileIndex].name}`,
-        [{ text: "OK" }]
+        [{ text: "OK" }],
+        'success'
       );
     } catch (error: any) {
       console.error("Error creating health card:", error);
       setError(error.message || "Failed to create health card");
-      Alert.alert(
+      showAlert(
         "Error Creating Health Card",
         error.message || "Failed to create health card. Please try again.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
+        'error'
       );
     } finally {
       setLoading(false);
@@ -309,7 +345,7 @@ export default function VaxCardScreen() {
         error.message.includes("Not Found")
       ) {
         setError("No health cards found. Would you like to create them?");
-        Alert.alert(
+        showAlert(
           "No Health Cards Found",
           "No health cards exist for this user. Would you like to create them?",
           [
@@ -321,7 +357,8 @@ export default function VaxCardScreen() {
               text: "Create Health Cards",
               onPress: () => createAllHealthCards(),
             },
-          ]
+          ],
+          'question'
         );
       } else {
         setError(error.message || "Failed to load health cards");
@@ -348,18 +385,20 @@ export default function VaxCardScreen() {
       // Reload all health cards after creation
       await loadAllHealthCards();
 
-      Alert.alert(
+      showAlert(
         "Success",
         "Health cards created successfully for user and dependents.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
+        'success'
       );
     } catch (error: any) {
       console.error("Error creating all health cards:", error);
       setError(error.message || "Failed to create health cards");
-      Alert.alert(
+      showAlert(
         "Error Creating Health Cards",
         error.message || "Failed to create health cards. Please try again.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
+        'error'
       );
     } finally {
       setLoading(false);
@@ -531,8 +570,8 @@ export default function VaxCardScreen() {
       });
     } catch (error: any) {
       console.error("Error generating instructions:", error);
-      Alert.alert(
-        "⚠️ Unable to Generate Instructions",
+      showAlert(
+        "Unable to Generate Instructions",
         "We couldn't generate personalized care instructions at this time. This might be due to a network issue or service temporarily unavailable.\n\nYou can still follow general post-vaccination care guidelines.",
         [
           {
@@ -542,7 +581,8 @@ export default function VaxCardScreen() {
               // Don't reset autoPopupTriggered - this prevents the loop
             },
           },
-        ]
+        ],
+        'warning'
       );
     } finally {
       setGeneratingInstructions(false);
@@ -597,7 +637,7 @@ export default function VaxCardScreen() {
   const handleDownload = async () => {
     const currentProfile = profiles[selectedIdx];
     if (!currentProfile?.healthCard) {
-      Alert.alert("No Data", "No health card data available to download");
+      showAlert("No Data", "No health card data available to download", [{ text: "OK" }], 'warning');
       return;
     }
 
@@ -607,10 +647,11 @@ export default function VaxCardScreen() {
       currentProfile.healthCard.completedVaccinations.length > 0;
 
     if (!hasVaccinations) {
-      Alert.alert(
+      showAlert(
         "No Vaccinations",
         "No completed vaccinations found to generate certificate.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
+        'info'
       );
       return;
     }
@@ -623,7 +664,7 @@ export default function VaxCardScreen() {
       const token = await AsyncStorage.getItem('userToken');
       
       if (!token) {
-        Alert.alert('Authentication Error', 'Please login again');
+        showAlert('Authentication Error', 'Please login again', [{ text: "OK" }], 'error');
         setLoading(false);
         return;
       }
@@ -637,25 +678,28 @@ export default function VaxCardScreen() {
       if (supported) {
         await Linking.openURL(downloadUrl);
 
-        Alert.alert(
+        showAlert(
           "Download Started",
           `Vaccination certificate for ${currentProfile.name} is being downloaded. Check your browser's download folder.`,
-          [{ text: "OK" }]
+          [{ text: "OK" }],
+          'success'
         );
       } else {
-        Alert.alert(
+        showAlert(
           "Download Error",
           "Cannot open download link. Please try again.",
-          [{ text: "OK" }]
+          [{ text: "OK" }],
+          'error'
         );
       }
     } catch (error: any) {
       console.error("Error downloading certificate:", error);
-      Alert.alert(
+      showAlert(
         "Download Error",
         error.message ||
           "Failed to download vaccination certificate. Please try again.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
+        'error'
       );
     } finally {
       setLoading(false);
@@ -665,7 +709,7 @@ export default function VaxCardScreen() {
   const handleShare = async () => {
     const currentProfile = profiles[selectedIdx];
     if (!currentProfile?.healthCard) {
-      Alert.alert("No Data", "No health card data available to share");
+      showAlert("No Data", "No health card data available to share", [{ text: "OK" }], 'warning');
       return;
     }
 
@@ -675,10 +719,11 @@ export default function VaxCardScreen() {
       currentProfile.healthCard.completedVaccinations.length > 0;
 
     if (!hasVaccinations) {
-      Alert.alert(
+      showAlert(
         "No Vaccinations",
         "No completed vaccinations found to generate certificate.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
+        'info'
       );
       return;
     }
@@ -686,55 +731,59 @@ export default function VaxCardScreen() {
     try {
       setLoading(true);
 
-      // Use authenticated API call to download the certificate
-      const blob = await healthCardAPI.downloadVaccinationCertificate(currentProfile.healthCard._id);
+      // Check if sharing is available on this device
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (!isAvailable) {
+        showAlert('Sharing Not Available', 'Sharing is not available on this device', [{ text: "OK" }], 'warning');
+        setLoading(false);
+        return;
+      }
 
-      // Convert blob to base64 and use Share API
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const base64data = reader.result as string;
-          
-          // Prepare share content
-          const shareMessage =
-            `📋 Vaccination Certificate for ${currentProfile.name}\n\n` +
-            `This is my digital vaccination certificate generated by VaxSync.\n` +
-            `It contains my complete vaccination history.\n\n` +
-            `Generated on: ${new Date().toLocaleDateString()}`;
+      // Get auth token
+      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
+      const token = await AsyncStorage.getItem('userToken');
+      
+      if (!token) {
+        showAlert('Authentication Error', 'Please login again', [{ text: "OK" }], 'error');
+        setLoading(false);
+        return;
+      }
 
-          // Open native share options with PDF attachment
-          const result = await Share.share({
-            message: shareMessage,
-            url: base64data, // This will be available on platforms that support it
-            title: `Vaccination Certificate - ${currentProfile.name}`,
-          });
+      // Download URL with authentication
+      const downloadUrl = `${API_BASE_URL}/api/health-card/download-certificate/${currentProfile.healthCard._id}?token=${encodeURIComponent(token)}`;
 
-          if (result.action === Share.sharedAction) {
-            Alert.alert(
-              "Shared Successfully",
-              `Vaccination certificate for ${currentProfile.name} has been shared.`,
-              [{ text: "OK" }]
-            );
-          } else if (result.action === Share.dismissedAction) {
-            // User dismissed the share dialog
-          }
-        } catch (shareError) {
-          console.error('Error sharing PDF:', shareError);
-          Alert.alert(
-            "Share Error",
-            "Could not share the PDF. Please try again.",
-            [{ text: "OK" }]
-          );
-        }
-      };
-      reader.readAsDataURL(blob);
+      // Define file path
+      const fileName = `VaxSync_Certificate_${currentProfile.name.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+      const fileUri = (documentDirectory || cacheDirectory || '') + fileName;
+
+      // Download the PDF file
+      const downloadResult = await downloadAsync(downloadUrl, fileUri);
+
+      if (downloadResult.status !== 200) {
+        throw new Error('Failed to download certificate');
+      }
+
+      // Share the downloaded PDF file
+      await Sharing.shareAsync(downloadResult.uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Vaccination Certificate - ${currentProfile.name}`,
+        UTI: 'com.adobe.pdf',
+      });
+
+      showAlert(
+        "Shared Successfully",
+        `Vaccination certificate for ${currentProfile.name} has been shared.`,
+        [{ text: "OK" }],
+        'success'
+      );
     } catch (error: any) {
       console.error("Error sharing certificate:", error);
-      Alert.alert(
+      showAlert(
         "Share Error",
         error.message ||
           "Failed to share vaccination certificate. Please try again.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
+        'error'
       );
     } finally {
       setLoading(false);
@@ -748,12 +797,12 @@ export default function VaxCardScreen() {
   ) => {
     const currentProfile = profiles[selectedIdx];
     if (!currentProfile?.healthCard) {
-      Alert.alert("Error", "No health card data available");
+      showAlert("Error", "No health card data available", [{ text: "OK" }], 'error');
       return;
     }
 
     // Show confirmation dialog
-    Alert.alert(
+    showAlert(
       "Delete Vaccination",
       `Are you sure you want to delete ${vaccineName} dose ${doseNumber}?\n\nThis action cannot be undone.`,
       [
@@ -797,24 +846,29 @@ export default function VaxCardScreen() {
 
               // Small delay before showing success alert to allow state to settle
               setTimeout(() => {
-                Alert.alert(
+                showAlert(
                   "Success",
-                  `${vaccineName} dose ${doseNumber} has been deleted successfully.`
+                  `${vaccineName} dose ${doseNumber} has been deleted successfully.`,
+                  [{ text: "OK" }],
+                  'success'
                 );
               }, 100);
             } catch (error: any) {
               console.error("Error deleting vaccination:", error);
-              Alert.alert(
+              showAlert(
                 "Error",
                 error.message ||
-                  "Failed to delete vaccination. Please try again."
+                  "Failed to delete vaccination. Please try again.",
+                [{ text: "OK" }],
+                'error'
               );
             } finally {
               setLoading(false);
             }
           },
         },
-      ]
+      ],
+      'warning'
     );
   };
 
@@ -1684,15 +1738,16 @@ export default function VaxCardScreen() {
                                                   vaccination as HealthCardVaccination
                                                 );
                                               } else {
-                                                Alert.alert(
-                                                  "⚠️ Unable to Generate Instructions",
+                                                showAlert(
+                                                  "Unable to Generate Instructions",
                                                   "This dose doesn't have a valid completion date yet. Please ensure the vaccination is properly recorded with a completion date.",
                                                   [
                                                     {
                                                       text: "OK",
                                                       style: "default",
                                                     },
-                                                  ]
+                                                  ],
+                                                  'warning'
                                                 );
                                               }
                                             }}
@@ -2370,6 +2425,16 @@ export default function VaxCardScreen() {
             loading={generatingInstructions}
           />
         )}
+
+        {/* Custom Alert */}
+        <CustomAlert
+          visible={customAlert.visible}
+          title={customAlert.title}
+          message={customAlert.message}
+          buttons={customAlert.buttons}
+          icon={customAlert.icon}
+          onClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
+        />
       </View>
     </SafeAreaView>
   );
