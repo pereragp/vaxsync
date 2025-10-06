@@ -254,8 +254,9 @@ class ScheduleController {
             }
             const allCompleted = schedule.doses.every(dose => dose.status === 'completed');
             const allCancelled = schedule.doses.every(dose => dose.status === 'cancelled');
-            const hasActiveOrCompletedDose = schedule.doses.some(dose => dose.status === 'completed' || dose.status === 'scheduled' || dose.status === 'missed');
-            if (allCompleted) {
+            const activeDoses = schedule.doses.filter(dose => dose.status !== 'cancelled');
+            const allActiveDosesCompleted = activeDoses.length > 0 && activeDoses.every(dose => dose.status === 'completed');
+            if (allCompleted || allActiveDosesCompleted) {
                 schedule.overallStatus = 'completed';
             }
             else if (allCancelled) {

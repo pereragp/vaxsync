@@ -10,16 +10,23 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const healthcardModel_1 = __importDefault(require("../../models/healthCard/healthcardModel"));
 const registerUser = async (req, res) => {
     try {
-        const { username, firstName, lastName, email, password, dateOfBirth, gender, phone, avatar, } = req.body;
+        const { username, firstName, lastName, email, password, dateOfBirth, gender, bloodType, phone, avatar, } = req.body;
         if (!username ||
             !firstName ||
             !lastName ||
             !email ||
             !gender ||
+            !bloodType ||
             !password ||
             !dateOfBirth ||
             !phone) {
             return res.status(400).json({ message: "All fields are required" });
+        }
+        const validBloodTypes = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"];
+        if (!validBloodTypes.includes(bloodType)) {
+            return res.status(400).json({
+                message: "Invalid blood type. Must be one of: A+, A-, B+, B-, AB+, AB-, O+, O-",
+            });
         }
         const userExists = await user_1.default.findOne({ $or: [{ username }, { email }] });
         if (userExists) {
@@ -37,6 +44,7 @@ const registerUser = async (req, res) => {
             password: hashedPassword,
             dateOfBirth,
             gender,
+            bloodType,
             phone,
             avatar,
         });
@@ -65,6 +73,7 @@ const registerUser = async (req, res) => {
             email: savedUser.email,
             dateOfBirth: savedUser.dateOfBirth,
             gender: savedUser.gender,
+            bloodType: savedUser.bloodType,
             phone: savedUser.phone,
         });
     }
@@ -87,6 +96,7 @@ const getUserById = async (req, res) => {
         email: user.email,
         dateOfBirth: user.dateOfBirth,
         gender: user.gender,
+        bloodType: user.bloodType,
         phone: user.phone,
         avatar: user.avatar,
         dependents: user.dependents,
@@ -149,6 +159,7 @@ const getMyProfile = async (req, res) => {
             email: user.email,
             dateOfBirth: user.dateOfBirth,
             gender: user.gender,
+            bloodType: user.bloodType,
             phone: user.phone,
             avatar: user.avatar,
             dependents: user.dependents,
@@ -180,7 +191,7 @@ exports.logoutUser = logoutUser;
 const updateProfile = async (req, res) => {
     try {
         const userId = req.user._id;
-        const { firstName, lastName, dateOfBirth, gender, phone } = req.body;
+        const { firstName, lastName, dateOfBirth, gender, bloodType, phone } = req.body;
         const user = await user_1.default.findById(userId);
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -194,6 +205,24 @@ const updateProfile = async (req, res) => {
             updatedData.dateOfBirth = dateOfBirth;
         if (gender)
             updatedData.gender = gender;
+        if (bloodType) {
+            const validBloodTypes = [
+                "A+",
+                "A-",
+                "B+",
+                "B-",
+                "AB+",
+                "AB-",
+                "O+",
+                "O-",
+            ];
+            if (!validBloodTypes.includes(bloodType)) {
+                return res.status(400).json({
+                    message: "Invalid blood type. Must be one of: A+, A-, B+, B-, AB+, AB-, O+, O-",
+                });
+            }
+            updatedData.bloodType = bloodType;
+        }
         if (phone)
             updatedData.phone = phone;
         const updatedUser = await user_1.default.findByIdAndUpdate(userId, updatedData, {
@@ -213,6 +242,7 @@ const updateProfile = async (req, res) => {
                 email: updatedUser.email,
                 dateOfBirth: updatedUser.dateOfBirth,
                 gender: updatedUser.gender,
+                bloodType: updatedUser.bloodType,
                 phone: updatedUser.phone,
                 avatar: updatedUser.avatar,
                 dependents: updatedUser.dependents,

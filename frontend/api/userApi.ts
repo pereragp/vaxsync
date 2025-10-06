@@ -10,6 +10,7 @@ export interface User {
   email: string;
   dateOfBirth: string;
   gender: string;
+  bloodType: string;
   phone: string;
   avatar?: string;
   dependents: string[];
@@ -104,6 +105,7 @@ class UserAPI {
     password: string;
     dateOfBirth: string;
     gender: string;
+    bloodType: string;
     phone: string;
   }): Promise<any> {
     return this.makeRequest<any>("/register", {
@@ -143,6 +145,7 @@ class UserAPI {
       email: userData.email,
       dateOfBirth: userData.dateOfBirth,
       gender: userData.gender,
+      bloodType: userData.bloodType || "",
       phone: userData.phone,
       avatar: userData.avatar || "",
       dependents: userData.dependents || [],
@@ -157,6 +160,7 @@ class UserAPI {
     lastName?: string;
     dateOfBirth?: string;
     gender?: string;
+    bloodType?: string;
     phone?: string;
   }): Promise<User> {
     const response = await this.makeAuthenticatedRequest<any>(
@@ -176,6 +180,7 @@ class UserAPI {
       email: response.user.email,
       dateOfBirth: response.user.dateOfBirth,
       gender: response.user.gender,
+      bloodType: response.user.bloodType || "",
       phone: response.user.phone,
       avatar: response.user.avatar || "",
       dependents: response.user.dependents || [],
@@ -197,6 +202,7 @@ class UserAPI {
       email: userData.email,
       dateOfBirth: userData.dateOfBirth,
       gender: userData.gender,
+      bloodType: userData.bloodType || "",
       phone: userData.phone,
       avatar: userData.avatar || "",
       dependents: userData.dependents || [],
@@ -242,6 +248,24 @@ class UserAPI {
         error
       );
       return [];
+    }
+  }
+
+  // Remove dependent
+  async removeDependent(
+    guardianId: string,
+    dependentId: string
+  ): Promise<void> {
+    try {
+      await this.makeAuthenticatedRequest<any>(
+        `/dependents/${guardianId}/${dependentId}`,
+        {
+          method: "DELETE",
+        }
+      );
+    } catch (error) {
+      console.error("Error removing dependent: ", error);
+      throw error;
     }
   }
 }
