@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.removeDependent = exports.getDependentsByGuardian = exports.addDependent = void 0;
+exports.removeDependent = exports.updateDependent = exports.getDependentsByGuardian = exports.addDependent = void 0;
 const dependent_1 = __importDefault(require("../../models/userModels/dependent"));
 const user_1 = __importDefault(require("../../models/userModels/user"));
 const healthcardModel_1 = __importDefault(require("../../models/healthCard/healthcardModel"));
@@ -101,6 +101,52 @@ const getDependentsByGuardian = async (req, res) => {
     }
 };
 exports.getDependentsByGuardian = getDependentsByGuardian;
+const updateDependent = async (req, res) => {
+    try {
+        const { dependentId, guardianId } = req.params;
+        const updateData = req.body;
+        if (!dependentId || !guardianId) {
+            return res.status(400).json({
+                message: "Both dependent ID and guardian ID are required",
+            });
+        }
+        if (req.user._id.toString() !== guardianId) {
+            return res.status(403).json({
+                message: "You can only update your own dependents",
+            });
+        }
+        const dependent = await dependent_1.default.findById(dependentId);
+        if (!dependent) {
+            return res.status(404).json({ message: "Dependent not found" });
+        }
+        if (dependent.guardianId.toString() !== guardianId) {
+            return res.status(403).json({
+                message: "Not authorized to update this dependent",
+            });
+        }
+        const updatedDependent = await dependent_1.default.findByIdAndUpdate(dependentId, updateData, { new: true, runValidators: true });
+        if (!updatedDependent) {
+            return res.status(404).json({ message: "Failed to update dependent" });
+        }
+        if (updateData.firstName || updateData.lastName) {
+            const fullName = `${updatedDependent.firstName} ${updatedDependent.lastName}`;
+            await healthcardModel_1.default.findOneAndUpdate({ dependentId: dependentId }, {
+                fullName: fullName,
+                gender: updatedDependent.gender,
+                dateOfBirth: updatedDependent.dateOfBirth
+            }, { new: true });
+        }
+        return res.status(200).json({
+            message: "Dependent updated successfully",
+            dependent: updatedDependent,
+        });
+    }
+    catch (error) {
+        console.error("Error updating dependent:", error);
+        return res.status(500).json({ message: "Server error", error });
+    }
+};
+exports.updateDependent = updateDependent;
 const removeDependent = async (req, res) => {
     try {
         const { dependentId, guardianId } = req.params;
