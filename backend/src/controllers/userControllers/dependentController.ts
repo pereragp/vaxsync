@@ -1,6 +1,7 @@
 import Dependent from "../../models/userModels/dependent";
 import User from "../../models/userModels/user";
 import { Request, Response } from "express";
+import HealthCard from "../../models/healthCard/healthcardModel";
 
 interface AuthenticatedRequest extends Request {
   user?: any;
@@ -60,6 +61,47 @@ const addDependent = async (req: AuthenticatedRequest, res: Response) => {
       message: "Dependent added successfully",
       dependent: savedDependent,
     });
+    // Automatically create health card for the new dependent
+    try {
+      const dependentHealthCard = new HealthCard({
+        fullName: `${savedDependent.firstName} ${savedDependent.lastName}`,
+        gender: savedDependent.gender,
+        dateOfBirth: savedDependent.dateOfBirth,
+        dependentId: savedDependent._id,
+        cardType: "dependent"
+      });
+      
+      await dependentHealthCard.save();
+      console.log(`Health card automatically created for dependent: ${savedDependent._id}`);
+      
+      // Update the guardian's health card to include the new dependent
+      await HealthCard.findOneAndUpdate(
+        { userId: guardianId, cardType: "user" },
+        { 
+          $push: { 
+            dependents: {
+              _id: savedDependent._id,
+              dependentId: savedDependent._id,
+              fullName: `${savedDependent.firstName} ${savedDependent.lastName}`,
+              dateOfBirth: savedDependent.dateOfBirth,
+              gender: savedDependent.gender,
+              dependentType: savedDependent.dependentType
+            }
+          }
+        },
+        { new: true }
+      );
+    } catch (healthCardError) {
+      console.error("Error creating health card for dependent:", healthCardError);
+      // Don't fail the dependent creation if health card creation fails
+    }
+
+    return res
+      .status(201)
+      .json({
+        message: "Dependent added successfully",
+        dependent: savedDependent,
+      });
   } catch (error) {
     console.error("Error adding dependent:", error);
     return res.status(500).json({ message: "Server error", error });

@@ -10,7 +10,7 @@ import { syncVaccinesToHealthCard } from '../healthCard/healthCardController';
 
 export class ScheduleController {
   // Create new vaccine schedule for parent users (for themselves or their dependents)
-  static async createVaccineSchedule(req: Request, res: Response): Promise<void> {
+  static async createVaccineSchedule(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { 
         vaccineId, 
@@ -23,17 +23,14 @@ export class ScheduleController {
         scheduleDate 
       } = req.body;
 
-      // const userId = req.user?._id;
-      // if (!userId) {
-      //   res.status(401).json({
-      //     success: false,
-      //     message: "User not authenticated"
-      //   } as ApiResponse);
-      //   return;
-      // }
-      
-      // Temporary hardcoded user ID for testing
-      const userId = new Types.ObjectId("68cfcf945e1c53a931fa032e");
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated"
+        } as ApiResponse);
+        return;
+      }
 
       // If vaccineId is provided, get vaccine details from database
       let vaccineData = null;
@@ -103,19 +100,16 @@ export class ScheduleController {
   }
 
   // Get all vaccine schedules for parent users (their own and their dependents')
-  static async getAllVaccineSchedules(req: Request, res: Response): Promise<void> {
+  static async getAllVaccineSchedules(req: AuthRequest, res: Response): Promise<void> {
     try {
-      // const userId = req.user?._id;
-      // if (!userId) {
-      //   res.status(401).json({
-      //     success: false,
-      //     message: "User not authenticated"
-      //   } as ApiResponse);
-      //   return;
-      // }
-      
-      // Temporary hardcoded user ID for testing
-      const userId = new Types.ObjectId("68cfcf945e1c53a931fa032e");
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated"
+        } as ApiResponse);
+        return;
+      }
 
       const { 
         page = 1, 
@@ -176,22 +170,19 @@ export class ScheduleController {
   }
 
   // Update vaccine schedule for parent users
-  static async updateVaccineSchedule(req: Request, res: Response): Promise<void> {
+  static async updateVaccineSchedule(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { scheduleId } = req.params;
-      const { vaccineName, healthcareProvider, notes, scheduleDate, interval } = req.body;
+      const { vaccineName, healthcareProvider, notes, scheduleDate, interval, doses } = req.body;
 
-      // const userId = req.user?._id;
-      // if (!userId) {
-      //   res.status(401).json({
-      //     success: false,
-      //     message: "User not authenticated"
-      //   } as ApiResponse);
-      //   return;
-      // }
-      
-      // Temporary hardcoded user ID for testing
-      const userId = new Types.ObjectId("68cfcf945e1c53a931fa032e");
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated"
+        } as ApiResponse);
+        return;
+      }
 
       // Validate ObjectId
       if (!Types.ObjectId.isValid(scheduleId)) {
@@ -227,8 +218,11 @@ export class ScheduleController {
       if (notes !== undefined) updateData.notes = notes;
       if (interval !== undefined) updateData.interval = interval;
 
-      // If schedule date or interval is updated, recalculate all dose dates
-      if (scheduleDate || interval !== undefined) {
+      // If doses are provided directly (custom intervals), use them
+      if (doses && Array.isArray(doses)) {
+        updateData.doses = doses;
+      } else if (scheduleDate || interval !== undefined) {
+        // If schedule date or interval is updated, recalculate all dose dates
         const startDate = scheduleDate ? new Date(scheduleDate) : new Date(existingSchedule.doses[0].dateScheduled);
         const intervalDays = interval !== undefined ? interval : existingSchedule.interval;
         
@@ -269,22 +263,19 @@ export class ScheduleController {
   }
 
   // Update each dose status and overall status for parent users
-  static async updateDoseStatus(req: Request, res: Response): Promise<void> {
+  static async updateDoseStatus(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { scheduleId, doseNumber } = req.params;
       const { status, dateCompleted, notes } = req.body;
 
-      // const userId = req.user?._id;
-      // if (!userId) {
-      //   res.status(401).json({
-      //     success: false,
-      //     message: "User not authenticated"
-      //   } as ApiResponse);
-      //   return;
-      // }
-      
-      // Temporary hardcoded user ID for testing
-      const userId = new Types.ObjectId("68cfcf945e1c53a931fa032e");
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated"
+        } as ApiResponse);
+        return;
+      }
 
       // Validate ObjectId
       if (!Types.ObjectId.isValid(scheduleId)) {
@@ -330,13 +321,18 @@ export class ScheduleController {
 
       // Update overall status based on dose statuses
       const allCompleted = schedule.doses.every(dose => dose.status === 'completed');
-      const anyCancelled = schedule.doses.some(dose => dose.status === 'cancelled');
+      const allCancelled = schedule.doses.every(dose => dose.status === 'cancelled');
+      const activeDoses = schedule.doses.filter(dose => dose.status !== 'cancelled');
+      const allActiveDosesCompleted = activeDoses.length > 0 && activeDoses.every(dose => dose.status === 'completed');
       
-      if (allCompleted) {
+      if (allCompleted || allActiveDosesCompleted) {
+        // Mark as completed if all doses are completed OR all non-cancelled doses are completed
         schedule.overallStatus = 'completed';
-      } else if (anyCancelled) {
+      } else if (allCancelled) {
+        // Only mark as cancelled if ALL doses are cancelled
         schedule.overallStatus = 'cancelled';
       } else {
+        // If there are any active doses (scheduled/missed), it's in progress
         schedule.overallStatus = 'in_progress';
       }
 
@@ -363,22 +359,97 @@ export class ScheduleController {
     }
   }
 
+  // Add a new dose to existing schedule
+  static async addDoseToSchedule(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { scheduleId } = req.params;
+      const { intervalDays, notes } = req.body;
+
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated"
+        } as ApiResponse);
+        return;
+      }
+
+      // Validate ObjectId
+      if (!Types.ObjectId.isValid(scheduleId)) {
+        res.status(400).json({
+          success: false,
+          message: "Invalid schedule ID format"
+        } as ApiResponse);
+        return;
+      }
+
+      // Find the schedule
+      const schedule = await VaccinationRecord.findOne({ 
+        _id: scheduleId, 
+        userId 
+      });
+      
+      if (!schedule) {
+        res.status(404).json({
+          success: false,
+          message: "Schedule not found or not authorized"
+        } as ApiResponse);
+        return;
+      }
+
+      // Get the last dose to calculate new dose date
+      const lastDose = schedule.doses[schedule.doses.length - 1];
+      const lastDoseDate = new Date(lastDose.dateScheduled);
+      
+      // Calculate new dose date based on interval days from last dose
+      const newDoseDate = new Date(lastDoseDate);
+      newDoseDate.setDate(newDoseDate.getDate() + intervalDays);
+      
+      // Create new dose object
+      const newDoseNumber = schedule.doses.length + 1;
+      const newDose = {
+        doseNumber: newDoseNumber,
+        dateScheduled: newDoseDate,
+        status: 'scheduled' as const,
+        notes: notes || undefined
+      };
+
+      // Add the new dose to the schedule
+      schedule.doses.push(newDose);
+      schedule.totalDoses = schedule.doses.length;
+
+      // Save the updated schedule
+      const updatedSchedule = await schedule.save();
+
+      res.status(200).json({
+        success: true,
+        message: `Dose ${newDoseNumber} added successfully`,
+        data: updatedSchedule
+      } as ApiResponse<IVaccinationRecord>);
+
+    } catch (error: any) {
+      console.error("Error adding dose to schedule:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to add dose to schedule",
+        error: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      } as ApiResponse);
+    }
+  }
+
   // Delete vaccine schedule for parent users
-  static async deleteVaccineSchedule(req: Request, res: Response): Promise<void> {
+  static async deleteVaccineSchedule(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { scheduleId } = req.params;
 
-      // const userId = req.user?._id;
-      // if (!userId) {
-      //   res.status(401).json({
-      //     success: false,
-      //     message: "User not authenticated"
-      //   } as ApiResponse);
-      //   return;
-      // }
-      
-      // Temporary hardcoded user ID for testing
-      const userId = new Types.ObjectId("68cfcf945e1c53a931fa032e");
+      const userId = req.user?._id;
+      if (!userId) {
+        res.status(401).json({
+          success: false,
+          message: "User not authenticated"
+        } as ApiResponse);
+        return;
+      }
 
       // Validate ObjectId
       if (!Types.ObjectId.isValid(scheduleId)) {

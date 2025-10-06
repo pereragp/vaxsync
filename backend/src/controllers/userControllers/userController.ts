@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import User from "../../models/userModels/user";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import HealthCard from "../../models/healthCard/healthcardModel";
 
 interface AuthenticatedRequest extends Request {
   user?: any;
@@ -74,6 +75,24 @@ const registerUser = async (req: Request, res: Response) => {
 
     //Save user to database
     const savedUser = await newUser.save();
+
+    // Automatically create health card for the new user
+    try {
+      const userHealthCard = new HealthCard({
+        fullName: `${savedUser.firstName} ${savedUser.lastName}`,
+        gender: savedUser.gender,
+        dateOfBirth: savedUser.dateOfBirth,
+        userId: savedUser._id,
+        cardType: "user",
+        dependents: [] // Will be empty initially
+      });
+      
+      await userHealthCard.save();
+      console.log(`Health card automatically created for user: ${savedUser._id}`);
+    } catch (healthCardError) {
+      console.error("Error creating health card during registration:", healthCardError);
+      // Don't fail the registration if health card creation fails
+    }
 
     return res.status(201).json({
       message: "User registered successfully",
