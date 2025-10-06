@@ -28,6 +28,7 @@ import userAPI from '../api/userApi';
 import { GestureHandlerRootView, Swipeable, GestureDetector, Gesture } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from '../components/CustomAlert';
 import AddSchedule from '../components/AddSchedule';
 
@@ -98,6 +99,7 @@ export default function SchedulePage() {
   const [dependentSelectedDate, setDependentSelectedDate] = useState(new Date());
   const [currentDependentStep, setCurrentDependentStep] = useState(1);
   const [selectedSchedule, setSelectedSchedule] = useState<VaccineSchedule | null>(null);
+  const [showSwipeTutorial, setShowSwipeTutorial] = useState(false);
   const [selectedDose, setSelectedDose] = useState<{ schedule: VaccineSchedule; doseNumber: number } | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -343,8 +345,32 @@ export default function SchedulePage() {
   useFocusEffect(
     useCallback(() => {
       loadHealthCardData();
+      checkFirstTimeUser();
     }, [])
   );
+
+  // Check if it's user's first time and show tutorial
+  const checkFirstTimeUser = async () => {
+    try {
+      const hasSeenTutorial = await AsyncStorage.getItem('hasSeenSwipeTutorial');
+      if (!hasSeenTutorial && schedules.length > 0) {
+        setTimeout(() => {
+          setShowSwipeTutorial(true);
+        }, 1000); // Show after 1 second
+      }
+    } catch (error) {
+      console.error('Error checking tutorial status:', error);
+    }
+  };
+
+  const dismissTutorial = async () => {
+    try {
+      await AsyncStorage.setItem('hasSeenSwipeTutorial', 'true');
+      setShowSwipeTutorial(false);
+    } catch (error) {
+      console.error('Error saving tutorial status:', error);
+    }
+  };
 
   // Load schedules when profile changes
   useEffect(() => {
@@ -1511,10 +1537,11 @@ export default function SchedulePage() {
                   <Swipeable
                     renderLeftActions={!isExpanded ? () => renderLeftActions(schedule) : undefined}
                     overshootLeft={false}
-                    friction={2}
-                    leftThreshold={40}
-                    activeOffsetX={[-30, 30]}
-                    failOffsetY={[-5, 5]}
+                    overshootFriction={8}
+                    friction={1.5}
+                    leftThreshold={30}
+                    activeOffsetX={[-35, 35]}
+                    failOffsetY={[-12, 12]}
                     enabled={!isExpanded}
                     onSwipeableWillOpen={() => setIsSwipeableOpen(true)}
                     onSwipeableClose={() => setIsSwipeableOpen(false)}
@@ -1535,13 +1562,35 @@ export default function SchedulePage() {
                       style={{ backgroundColor: config.color }}
                     />
 
-                    <TouchableOpacity
-                      onPress={() => toggleExpand(schedule._id)}
-                      activeOpacity={0.7}
-                    >
-                    <View className="p-5">
-                      <View className="flex-row justify-between items-start mb-4">
-                        <View className="flex-row items-center flex-1">
+                    <View className="flex-row">
+                      {/* Swipe Indicator - Left Edge */}
+                      {!isExpanded && (
+                        <LinearGradient
+                          colors={['#3b82f6', '#60a5fa', 'rgba(59, 130, 246, 0)']}
+                          start={{ x: 0, y: 0.5 }}
+                          end={{ x: 1, y: 0.5 }}
+                          style={{ width: 24, paddingVertical: 8, paddingHorizontal: 4 }}
+                          className="items-center justify-center"
+                        >
+                          <View className="items-center" style={{ gap: 8 }}>
+                            <View style={{ gap: 4 }}>
+                              <Ionicons name="chevron-forward" size={16} color="white" style={{ opacity: 0.5 }} />
+                              <Ionicons name="chevron-forward" size={16} color="white" style={{ opacity: 0.75 }} />
+                              <Ionicons name="chevron-forward" size={16} color="white" />
+                            </View>
+                            <Ionicons name="hand-left" size={18} color="white" style={{ opacity: 0.9 }} />
+                          </View>
+                        </LinearGradient>
+                      )}
+
+                      <TouchableOpacity
+                        onPress={() => toggleExpand(schedule._id)}
+                        activeOpacity={0.7}
+                        className="flex-1"
+                      >
+                      <View className="p-5">
+                        <View className="flex-row justify-between items-start mb-4">
+                          <View className="flex-row items-center flex-1">
                           <View
                             className="w-14 h-14 rounded-2xl items-center justify-center mr-4 shadow-sm"
                             style={{ backgroundColor: config.bgColor }}
@@ -1620,17 +1669,6 @@ export default function SchedulePage() {
                         </View>
                       </View>
 
-                      {/* User Hint */}
-                      {!isExpanded && (
-                        <View className="mt-3 mb-2 px-2">
-                          <View className="flex-row items-center justify-center bg-blue-50 rounded-lg py-2 px-3 border border-blue-100">
-                            <Ionicons name="information-circle" size={14} color="#3b82f6" />
-                            <Text className="text-xs text-blue-600 ml-2">
-                              Swipe → to update • Tap to view doses
-                            </Text>
-                          </View>
-                        </View>
-                      )}
 
                       {/* Enhanced Dose indicators */}
                       <View className="bg-gray-50 rounded-2xl p-4">
@@ -1710,13 +1748,56 @@ export default function SchedulePage() {
                       </View>
                       </View>
                     </TouchableOpacity>
+                    </View>
 
                       {/* Enhanced Expanded dose details */}
                       {isExpanded && (
                         <View className="mt-4 px-5 pb-5">
-                          <Text className="text-lg font-bold text-gray-800 mb-4">
+                          <View className="flex-row items-center justify-between mb-3">
+                            <Text className="text-lg font-bold text-gray-800">
                             Dose Details
                           </Text>
+                          </View>
+
+                          {/* Prominent Swipe Hints Banner */}
+                          {schedule.doses.some(d => d.status === 'scheduled' || d.status === 'missed') && (
+                            <View className="mb-4 rounded-2xl overflow-hidden shadow-md" style={{ elevation: 3 }}>
+                              <LinearGradient
+                                colors={['#eff6ff', '#f0f9ff', '#fef2f2']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                className="p-4"
+                              >
+                                <View className="flex-row items-center mb-3">
+                                  <View className="w-8 h-8 rounded-full bg-blue-500 items-center justify-center mr-2 shadow-sm">
+                                    <Ionicons name="hand-left" size={16} color="white" />
+                                  </View>
+                                  <Text className="text-sm font-bold text-gray-800">Swipe Gestures</Text>
+                                </View>
+                                <View className="flex-row items-center">
+                                  <View className="flex-1 mr-2">
+                                    <View className="bg-white rounded-xl p-3 border-2 border-green-300 shadow-sm">
+                                      <View className="flex-row items-center justify-center">
+                                        <Text className="text-xs font-bold text-green-700">Swipe </Text>
+                                        <Ionicons name="arrow-forward" size={16} color="#16a34a" />
+                                        <Text className="text-xs font-bold text-green-700 ml-1"> Complete</Text>
+                                      </View>
+                                    </View>
+                                  </View>
+                                  <View className="flex-1 ml-2">
+                                    <View className="bg-white rounded-xl p-3 border-2 border-red-300 shadow-sm">
+                                      <View className="flex-row items-center justify-center">
+                                        <Text className="text-xs font-bold text-red-700">Swipe </Text>
+                                        <Ionicons name="arrow-back" size={16} color="#ef4444" />
+                                        <Text className="text-xs font-bold text-red-700 ml-1"> Cancel</Text>
+                                      </View>
+                                    </View>
+                                  </View>
+                                </View>
+                              </LinearGradient>
+                            </View>
+                          )}
+
                           <View className="space-y-3">
                             {schedule.doses.map((dose, doseIndex) => {
                               const doseConfigItem = doseConfig[dose.status];
@@ -1730,11 +1811,12 @@ export default function SchedulePage() {
                                   renderRightActions={() => renderRightDoseActions(schedule, dose)}
                                   overshootLeft={false}
                                   overshootRight={false}
-                                  friction={2}
-                                  leftThreshold={40}
-                                  rightThreshold={40}
-                                  activeOffsetX={[-30, 30]}
-                                  failOffsetY={[-5, 5]}
+                                  overshootFriction={8}
+                                  friction={1.2}
+                                  leftThreshold={30}
+                                  rightThreshold={30}
+                                  activeOffsetX={[-35, 35]}
+                                  failOffsetY={[-12, 12]}
                                   onSwipeableWillOpen={() => setIsSwipeableOpen(true)}
                                   onSwipeableClose={() => setIsSwipeableOpen(false)}
                                 >
@@ -1782,20 +1864,6 @@ export default function SchedulePage() {
                                         }`}>
                                           {dose.status.charAt(0).toUpperCase() + dose.status.slice(1)}
                                         </Text>
-                                        {(dose.status === 'scheduled' || dose.status === 'missed') && (
-                                          <View className="flex-row items-center mt-1 flex-wrap">
-                                            <View className="flex-row items-center mr-3">
-                                              <Text className="text-xs font-semibold" style={{ color: '#10b981' }}>swipe </Text>
-                                              <Ionicons name="arrow-forward" size={10} color="#10b981" />
-                                              <Text className="text-xs font-semibold ml-1" style={{ color: '#10b981' }}>to complete</Text>
-                                            </View>
-                                            <View className="flex-row items-center">
-                                              <Text className="text-xs font-semibold" style={{ color: '#ef4444' }}>swipe </Text>
-                                              <Ionicons name="arrow-back" size={10} color="#ef4444" />
-                                              <Text className="text-xs font-semibold ml-1" style={{ color: '#ef4444' }}>to cancel</Text>
-                                            </View>
-                                          </View>
-                                        )}
                                       </View>
                                     </View>
                                     <View 
@@ -2982,6 +3050,90 @@ export default function SchedulePage() {
           icon={customAlert.icon}
           onClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
         />
+
+        {/* Swipe Tutorial Overlay */}
+        <Modal
+          visible={showSwipeTutorial}
+          transparent
+          animationType="fade"
+        >
+          <View className="flex-1 bg-black/70 justify-center items-center px-6">
+            <View className="bg-white rounded-3xl overflow-hidden w-full max-w-md shadow-2xl" style={{ elevation: 10 }}>
+              {/* Header */}
+              <LinearGradient
+                colors={['#1e40af', '#3b82f6', '#60a5fa']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                className="p-6"
+              >
+                <View className="items-center">
+                  <View className="w-16 h-16 rounded-full bg-white/20 items-center justify-center mb-3">
+                    <Ionicons name="hand-left" size={40} color="white" />
+                  </View>
+                  <Text className="text-2xl font-bold text-white text-center mb-2">
+                    Swipe Gestures
+                  </Text>
+                  <Text className="text-blue-100 text-sm text-center">
+                    Quick actions for faster management
+                  </Text>
+                </View>
+              </LinearGradient>
+
+              {/* Content */}
+              <View className="p-6">
+                {/* Schedule Swipe */}
+                <View className="mb-5">
+                  <Text className="text-base font-bold text-gray-800 mb-3">Schedule Cards</Text>
+                  <View className="bg-blue-50 rounded-2xl p-4 border-2 border-blue-200">
+                    <View className="flex-row items-center mb-2">
+                      <Ionicons name="calendar" size={20} color="#3b82f6" />
+                      <Text className="text-sm font-semibold text-gray-800 ml-2">On Schedule Cards:</Text>
+                    </View>
+                    <View className="flex-row items-center mb-1">
+                      <Ionicons name="arrow-forward" size={16} color="#3b82f6" />
+                      <Text className="text-sm text-gray-700 ml-2">Swipe right to Edit or Delete</Text>
+                    </View>
+                    <View className="flex-row items-center">
+                      <Ionicons name="hand-right" size={16} color="#6b7280" />
+                      <Text className="text-sm text-gray-700 ml-2">Tap to view dose details</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Dose Swipe */}
+                <View className="mb-6">
+                  <Text className="text-base font-bold text-gray-800 mb-3">Dose Items</Text>
+                  <View className="bg-gradient-to-r from-green-50 to-red-50 rounded-2xl p-4 border-2 border-gray-200">
+                    <View className="flex-row items-center mb-2">
+                      <Ionicons name="medical" size={20} color="#10b981" />
+                      <Text className="text-sm font-semibold text-gray-800 ml-2">On Dose Items:</Text>
+                    </View>
+                    <View className="flex-row items-center mb-1">
+                      <Ionicons name="arrow-forward" size={16} color="#10b981" />
+                      <Text className="text-sm text-green-700 ml-2 font-medium">Swipe right to mark Complete</Text>
+                    </View>
+                    <View className="flex-row items-center">
+                      <Ionicons name="arrow-back" size={16} color="#ef4444" />
+                      <Text className="text-sm text-red-700 ml-2 font-medium">Swipe left to Cancel dose</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Got It Button */}
+                <TouchableOpacity
+                  onPress={dismissTutorial}
+                  className="bg-blue-500 rounded-2xl py-4 items-center shadow-lg"
+                  style={{ elevation: 4 }}
+                >
+                  <View className="flex-row items-center">
+                    <Ionicons name="checkmark-circle" size={24} color="white" />
+                    <Text className="text-white font-bold text-lg ml-2">Got It!</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </View>
     </SafeAreaView>
     </GestureHandlerRootView>
