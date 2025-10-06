@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Modal,
   TextInput,
   StatusBar,
@@ -17,11 +16,14 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from 'expo-linear-gradient';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import userAPI, { User, Dependent } from "../api/userApi";
 import { router } from "expo-router";
 import UpdateProfile from "@/components/UpdateProfile";
 import DependentCard from "@/components/DependentCard";
 import DependentModal from "@/components/DependentModal";
+import CustomAlert from "../components/CustomAlert";
 
 export default function ProfilePage() {
   //State variables
@@ -59,6 +61,41 @@ export default function ProfilePage() {
     gender: "",
     dependentType: "",
   });
+
+  // Date picker state
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  // Custom alert state
+  const [customAlert, setCustomAlert] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    buttons: any[];
+    icon: 'success' | 'error' | 'warning' | 'info' | 'question';
+  }>({
+    visible: false,
+    title: '',
+    message: '',
+    buttons: [],
+    icon: 'info'
+  });
+
+  // Helper function to show custom alert
+  const showAlert = (
+    title: string,
+    message: string,
+    buttons: any[] = [{ text: 'OK' }],
+    icon: 'success' | 'error' | 'warning' | 'info' | 'question' = 'info'
+  ) => {
+    setCustomAlert({
+      visible: true,
+      title,
+      message,
+      buttons,
+      icon
+    });
+  };
 
   // Load user data
   useEffect(() => {
@@ -113,26 +150,42 @@ export default function ProfilePage() {
   };
 
   const handleLogout = async () => {
-    try {
-      await userAPI.logout();
-      //navigate to login page
-      Alert.alert(
-        "Logout Successful",
-        "You have been logged out successfully!",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              // Navigate to login page
-              router.replace("/login"); // or router.push('/login')
-            },
+    showAlert(
+      "Confirm Logout",
+      "Are you sure you want to sign out?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await userAPI.logout();
+              showAlert(
+                "Logout Successful",
+                "You have been logged out successfully!",
+                [
+                  {
+                    text: "OK",
+                    onPress: () => {
+                      router.replace("/login");
+                    },
+                  },
+                ],
+                'success'
+              );
+            } catch (error) {
+              console.error("Logout Failed: ", error);
+              showAlert("Logout Failed", "Please try again...", [{ text: "OK" }], 'error');
+            }
           },
-        ]
-      );
-    } catch (error) {
-      console.error("Logout Failed: ", error);
-      Alert.alert("Logout failed, please try again...");
-    }
+        },
+      ],
+      'question'
+    );
   };
 
   // Optional: Refresh dependents from server after adding
@@ -176,13 +229,13 @@ export default function ProfilePage() {
         !dependentForm.gender.trim() ||
         !dependentForm.dependentType.trim()
       ) {
-        Alert.alert("Error", "Please fill in all required fields");
+        showAlert("Error", "Please fill in all required fields", [{ text: "OK" }], 'warning');
         return;
       }
 
       //Ensure user exists
       if (!user?._id) {
-        Alert.alert("Error", "User information not available");
+        showAlert("Error", "User information not available", [{ text: "OK" }], 'error');
         return;
       }
 
@@ -209,11 +262,11 @@ export default function ProfilePage() {
         dependentType: "",
       });
 
-      Alert.alert("Success", "Dependent added successfully.");
+      showAlert("Success", "Dependent added successfully.", [{ text: "OK" }], 'success');
       await refreshDependents();
     } catch (error: any) {
       console.error("Error adding dependent: ", error);
-      Alert.alert("Error", error.message || "Failed to add dependent");
+      showAlert("Error", error.message || "Failed to add dependent", [{ text: "OK" }], 'error');
     } finally {
       setLoading(false);
     }
@@ -277,209 +330,289 @@ export default function ProfilePage() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+    <SafeAreaView className="flex-1" edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 pt-6 pb-8">
-          <View className="flex-row items-center justify-between mb-6">
-            <View>
-              <Text className="text-white text-2xl font-bold">My Profile</Text>
-              <Text className="text-blue-100 text-sm">
-                Manage your account and dependents
-              </Text>
-            </View>
+      <ScrollView 
+        className="flex-1 bg-gray-50" 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+      >
+        {/* Blue Gradient Header */}
+        <LinearGradient
+          colors={['#1e40af', '#3b82f6', '#60a5fa']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="px-6 pt-4 pb-6"
+        >
+          {/* Small Title Bar */}
+          <View className="flex-row items-center justify-between mb-4">
+            <Text className="text-white text-lg font-semibold">Account</Text>
             <TouchableOpacity
               onPress={handleEditProfile}
-              className="bg-black/50 rounded-full p-3"
+              className="bg-white rounded-xl px-5 py-2.5 flex-row items-center shadow-lg"
+              style={{
+                elevation: 4,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.25,
+                shadowRadius: 3.84,
+              }}
             >
-              <Ionicons name="create-outline" size={20} color="white" />
+              <Ionicons name="create" size={18} color="#1e40af" />
+              <Text className="text-blue-600 font-bold ml-2 text-base">Edit Profile</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Profile Card */}
-          <View className="bg-white rounded-2xl p-6 shadow-lg">
-            <View className="flex-row items-center mb-4">
-              <View className="w-16 h-16 bg-blue-100 rounded-full items-center justify-center mr-4">
-                {user?.avatar ? (
-                  <Image
-                    source={{ uri: user.avatar }}
-                    className="w-16 h-16 rounded-full"
-                  />
-                ) : (
-                  <Ionicons name="person" size={32} color="#175593" />
-                )}
+          {/* Large Profile Card */}
+          <View className="bg-white rounded-3xl p-6 shadow-2xl" style={{ elevation: 8 }}>
+            <View className="items-center mb-5">
+              {/* Larger Avatar */}
+              <View className="relative mb-3">
+                <View className="w-24 h-24 bg-blue-100 rounded-full items-center justify-center shadow-lg" style={{ elevation: 4 }}>
+                  {user?.avatar ? (
+                    <Image
+                      source={{ uri: user.avatar }}
+                      className="w-24 h-24 rounded-full"
+                    />
+                  ) : (
+                    <Ionicons name="person" size={48} color="#1e40af" />
+                  )}
+                </View>
+                <View className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-2 border-4 border-white">
+                  <Ionicons name="checkmark" size={12} color="white" />
+                </View>
               </View>
-              <View className="flex-1">
-                <Text className="text-xl font-bold text-gray-800">
-                  {user?.firstName} {user?.lastName}
-                </Text>
-                <Text className="text-gray-600">@{user?.username}</Text>
-                <Text className="text-sm text-gray-500">
-                  {user && calculateAge(user.dateOfBirth)} years old
+
+              <Text className="text-2xl font-bold text-gray-800 text-center">
+                {user?.firstName} {user?.lastName}
+              </Text>
+              <Text className="text-blue-600 text-base font-medium">@{user?.username}</Text>
+              <View className="bg-blue-50 rounded-full px-4 py-2 mt-2">
+                <Text className="text-blue-700 text-sm font-semibold">
+                  {user && calculateAge(user.dateOfBirth)} years old • {user?.gender}
                 </Text>
               </View>
             </View>
 
-            <View className="flex-row justify-between">
+            {/* Horizontal Stats Bar */}
+            <View className="bg-gray-50 rounded-2xl p-4 flex-row justify-around">
               <View className="items-center">
+                <View className="flex-row items-center mb-1">
+                  <Ionicons name="people" size={18} color="#1e40af" />
+                </View>
                 <Text className="text-2xl font-bold text-blue-600">
                   {dependents.length}
                 </Text>
-                <Text className="text-sm text-gray-600">Dependents</Text>
+                <Text className="text-xs text-gray-600 font-medium">Family Members</Text>
               </View>
+
+              <View className="w-px bg-gray-300" />
+
               <View className="items-center">
-                <Text className="text-2xl font-bold text-green-600">8</Text>
-                <Text className="text-sm text-gray-600">Vaccines</Text>
+                <View className="flex-row items-center mb-1">
+                  <Ionicons name="shield-checkmark" size={18} color="#10b981" />
+                </View>
+                <Text className="text-2xl font-bold text-green-600">
+                  {dependents.length + 1}
+                </Text>
+                <Text className="text-xs text-gray-600 font-medium">Health Records</Text>
               </View>
+
+              <View className="w-px bg-gray-300" />
+
               <View className="items-center">
-                <Text className="text-2xl font-bold text-purple-600">92%</Text>
-                <Text className="text-sm text-gray-600">Compliance</Text>
+                <View className="flex-row items-center mb-1">
+                  <Ionicons name="time" size={18} color="#f59e0b" />
+                </View>
+                <Text className="text-2xl font-bold text-orange-600">
+                  {(() => {
+                    const joined = new Date(user?.createdAt || new Date());
+                    const months = Math.floor((new Date().getTime() - joined.getTime()) / (1000 * 60 * 60 * 24 * 30));
+                    return months > 0 ? months : 1;
+                  })()}mo
+                </Text>
+                <Text className="text-xs text-gray-600 font-medium">Member Since</Text>
               </View>
             </View>
           </View>
-        </View>
+        </LinearGradient>
+
+        {/* Content Container */}
+        <View className="flex-1 bg-gray-50 -mt-3">
 
         {/* Personal Information */}
-        <View className="px-6 py-6">
-          <Text className="text-lg font-bold text-gray-800 mb-4">
-            Personal Information
-          </Text>
-
-          <View className="bg-gray-50 rounded-2xl p-4 mb-4">
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="mail-outline" size={20} color="#6b7280" />
-              <Text className="text-gray-600 ml-3">Email</Text>
-            </View>
-            <Text className="text-gray-800 font-medium">{user?.email}</Text>
-          </View>
-
-          <View className="bg-gray-50 rounded-2xl p-4 mb-4">
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="call-outline" size={20} color="#6b7280" />
-              <Text className="text-gray-600 ml-3">Phone</Text>
-            </View>
-            <Text className="text-gray-800 font-medium">{user?.phone}</Text>
-          </View>
-
-          <View className="bg-gray-50 rounded-2xl p-4 mb-4">
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="calendar-outline" size={20} color="#6b7280" />
-              <Text className="text-gray-600 ml-3">Date of Birth</Text>
-            </View>
-            <Text className="text-gray-800 font-medium">
-              {user && formatDate(user.dateOfBirth)}
+        <View className="pt-6 px-4">
+          <View className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mb-4">
+            <Text className="text-lg font-bold text-gray-800 mb-4">
+              Personal Information
             </Text>
-          </View>
 
-          <View className="bg-gray-50 rounded-2xl p-4 mb-4">
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="person-outline" size={20} color="#6b7280" />
-              <Text className="text-gray-600 ml-3">Gender</Text>
-            </View>
-            <Text className="text-gray-800 font-medium">{user?.gender}</Text>
-          </View>
+            <View className="space-y-3">
+              <View className="flex-row items-center bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <View className="bg-blue-100 rounded-lg p-2 mr-3">
+                  <Ionicons name="mail" size={20} color="#3b82f6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs text-gray-500 mb-1">Email</Text>
+                  <Text className="text-gray-800 font-semibold">{user?.email}</Text>
+                </View>
+              </View>
 
-          <View className="bg-gray-50 rounded-2xl p-4 mb-6">
-            <View className="flex-row items-center mb-3">
-              <Ionicons name="water-outline" size={20} color="#6b7280" />
-              <Text className="text-gray-600 ml-3">Blood Type</Text>
+              <View className="flex-row items-center bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <View className="bg-green-100 rounded-lg p-2 mr-3">
+                  <Ionicons name="call" size={20} color="#10b981" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs text-gray-500 mb-1">Phone</Text>
+                  <Text className="text-gray-800 font-semibold">{user?.phone}</Text>
+                </View>
+              </View>
+
+              <View className="flex-row items-center bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <View className="bg-purple-100 rounded-lg p-2 mr-3">
+                  <Ionicons name="calendar" size={20} color="#8b5cf6" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs text-gray-500 mb-1">Date of Birth</Text>
+                  <Text className="text-gray-800 font-semibold">
+                    {user && formatDate(user.dateOfBirth)}
+                  </Text>
+                </View>
+              </View>
+
+              <View className="flex-row items-center bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <View className="bg-orange-100 rounded-lg p-2 mr-3">
+                  <Ionicons name="person" size={20} color="#f59e0b" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs text-gray-500 mb-1">Gender</Text>
+                  <Text className="text-gray-800 font-semibold">{user?.gender}</Text>
+                </View>
+              </View>
+
+              <View className="flex-row items-center bg-gray-50 rounded-xl p-4 border border-gray-200">
+                <View className="bg-red-100 rounded-lg p-2 mr-3">
+                  <Ionicons name="water" size={20} color="#ef4444" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-xs text-gray-500 mb-1">Blood Type</Text>
+                  <Text className="text-gray-800 font-semibold">{user?.bloodType || 'Not specified'}</Text>
+                </View>
+              </View>
             </View>
-            <Text className="text-gray-800 font-medium">{user?.bloodType}</Text>
           </View>
         </View>
 
         {/* Dependents Section */}
-        <View className="px-6 pb-6">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-lg font-bold text-gray-800">Dependents</Text>
-            <TouchableOpacity
-              onPress={() => setShowAddDependentModal(true)}
-              className="bg-blue-500 rounded-lg px-4 py-2 flex-row items-center"
-            >
-              <Ionicons name="add" size={16} color="white" />
-              <Text className="text-white font-medium ml-1">Add</Text>
-            </TouchableOpacity>
-          </View>
+        <View className="px-4 pb-6">
+          <View className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <View className="flex-row items-center justify-between mb-4">
+              <View>
+                <Text className="text-lg font-bold text-gray-800">Family Members</Text>
+                <Text className="text-sm text-gray-500">{dependents.length} dependent{dependents.length !== 1 ? 's' : ''}</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowAddDependentModal(true)}
+                className="bg-blue-500 rounded-xl px-4 py-3 flex-row items-center shadow-lg"
+                style={{ elevation: 4 }}
+              >
+                <Ionicons name="add-circle" size={18} color="white" />
+                <Text className="text-white font-semibold ml-2">Add</Text>
+              </TouchableOpacity>
+            </View>
 
-          {dependents.length === 0 ? (
-            <View className="bg-gray-50 rounded-2xl p-8 items-center">
-              <Ionicons name="people-outline" size={48} color="#9ca3af" />
-              <Text className="text-gray-600 text-center mt-4">
-                No dependents added yet
-              </Text>
-              <Text className="text-gray-500 text-sm text-center mt-2">
-                Add family members to manage their health records
-              </Text>
-            </View>
-          ) : (
-            <View className="space-y-3">
-              {dependents.map((dependent) => (
-                <DependentCard
-                  key={dependent._id}
-                  dependent={dependent}
-                  onPress={handleDependentPress}
-                />
-              ))}
-            </View>
-          )}
+            {dependents.length === 0 ? (
+              <View className="bg-blue-50 rounded-2xl p-8 items-center border border-blue-100">
+                <View className="bg-blue-100 rounded-full p-4 mb-3">
+                  <Ionicons name="people" size={48} color="#3b82f6" />
+                </View>
+                <Text className="text-gray-800 font-semibold text-center">
+                  No dependents added yet
+                </Text>
+                <Text className="text-gray-600 text-sm text-center mt-2 mb-4">
+                  Add family members to manage their vaccination records
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowAddDependentModal(true)}
+                  className="bg-blue-500 rounded-xl px-6 py-3"
+                >
+                  <Text className="text-white font-semibold">Add First Dependent</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View className="space-y-3">
+                {dependents.map((dependent) => (
+                  <DependentCard
+                    key={dependent._id}
+                    dependent={dependent}
+                    onPress={handleDependentPress}
+                  />
+                ))}
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Account Settings */}
-        <View className="px-6 pb-8">
-          <Text className="text-lg font-bold text-gray-800 mb-4">
-            Account Settings
-          </Text>
+        <View className="px-4 pb-8">
+          <View className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+            <Text className="text-lg font-bold text-gray-800 mb-4">
+              Account Settings
+            </Text>
 
-          <TouchableOpacity className="bg-white rounded-2xl p-4 border border-gray-200 mb-3 flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <Ionicons
-                name="shield-checkmark-outline"
-                size={20}
-                color="#6b7280"
-              />
-              <Text className="text-gray-800 font-medium ml-3">
-                Privacy & Security
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
-          </TouchableOpacity>
+            <View className="space-y-2">
+              <TouchableOpacity className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex-row items-center justify-between">
+                <View className="flex-row items-center flex-1">
+                  <View className="bg-purple-100 rounded-lg p-2 mr-3">
+                    <Ionicons name="shield-checkmark" size={20} color="#8b5cf6" />
+                  </View>
+                  <Text className="text-gray-800 font-semibold">
+                    Privacy & Security
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+              </TouchableOpacity>
 
-          <TouchableOpacity className="bg-white rounded-2xl p-4 border border-gray-200 mb-3 flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <Ionicons
-                name="notifications-outline"
-                size={20}
-                color="#6b7280"
-              />
-              <Text className="text-gray-800 font-medium ml-3">
-                Notifications
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
-          </TouchableOpacity>
+              <TouchableOpacity className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex-row items-center justify-between">
+                <View className="flex-row items-center flex-1">
+                  <View className="bg-orange-100 rounded-lg p-2 mr-3">
+                    <Ionicons name="notifications" size={20} color="#f59e0b" />
+                  </View>
+                  <Text className="text-gray-800 font-semibold">
+                    Notifications
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+              </TouchableOpacity>
 
-          <TouchableOpacity className="bg-white rounded-2xl p-4 border border-gray-200 mb-3 flex-row items-center justify-between">
-            <View className="flex-row items-center">
-              <Ionicons name="help-circle-outline" size={20} color="#6b7280" />
-              <Text className="text-gray-800 font-medium ml-3">
-                Help & Support
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={16} color="#9ca3af" />
-          </TouchableOpacity>
+              <TouchableOpacity className="bg-gray-50 rounded-xl p-4 border border-gray-200 mb-3 flex-row items-center justify-between">
+                <View className="flex-row items-center flex-1">
+                  <View className="bg-blue-100 rounded-lg p-2 mr-3">
+                    <Ionicons name="help-circle" size={20} color="#3b82f6" />
+                  </View>
+                  <Text className="text-gray-800 font-semibold">
+                    Help & Support
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={handleLogout}
-            className="bg-red-50 rounded-2xl p-4 border border-red-200 flex-row items-center justify-between"
-          >
-            <View className="flex-row items-center">
-              <Ionicons name="log-out-outline" size={20} color="#ef4444" />
-              <Text className="text-red-600 font-medium ml-3">Sign Out</Text>
+              <TouchableOpacity
+                onPress={handleLogout}
+                className="bg-red-50 rounded-xl p-4 border-2 border-red-200 flex-row items-center justify-between mt-2"
+              >
+                <View className="flex-row items-center flex-1">
+                  <View className="bg-red-100 rounded-lg p-2 mr-3">
+                    <Ionicons name="log-out" size={20} color="#ef4444" />
+                  </View>
+                  <Text className="text-red-600 font-bold">Sign Out</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#ef4444" />
+              </TouchableOpacity>
             </View>
-            <Ionicons name="chevron-forward" size={16} color="#ef4444" />
-          </TouchableOpacity>
+          </View>
+        </View>
         </View>
       </ScrollView>
 
@@ -507,137 +640,302 @@ export default function ProfilePage() {
         >
           <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
             <View className="flex-1 bg-black/50 justify-end">
-              <View className="bg-white rounded-t-3xl max-h-4/5">
-                <View className="p-6 border-b border-gray-100">
-                  <View className="flex-row justify-between items-center">
-                    <Text className="text-xl font-bold text-gray-800">
-                      Add Dependent
-                    </Text>
+              <View className="bg-white rounded-t-3xl max-h-4/5 overflow-hidden">
+                {/* Gradient Header */}
+                <LinearGradient
+                  colors={['#1e40af', '#3b82f6', '#60a5fa']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  className="px-6 py-8"
+                >
+                  <View className="flex-row justify-between items-start">
+                    <View className="flex-1">
+                      <View className="flex-row items-center mb-3">
+                        <View className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-lg items-center justify-center mr-4 shadow-lg">
+                          <Ionicons name="person-add" size={28} color="white" />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-2xl font-bold text-white">
+                            Add Family Member
+                          </Text>
+                          <Text className="text-blue-100 text-sm mt-1">
+                            Add a new dependent to your profile
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
                     <TouchableOpacity
                       onPress={() => setShowAddDependentModal(false)}
-                      className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
+                      className="w-11 h-11 rounded-full bg-white/20 backdrop-blur-lg items-center justify-center shadow-lg"
                     >
-                      <Ionicons name="close" size={24} color="#64748b" />
+                      <Ionicons name="close" size={24} color="white" />
                     </TouchableOpacity>
                   </View>
-                </View>
+                </LinearGradient>
 
                 <ScrollView
-                  className="p-6"
+                  className="p-6 bg-gray-50"
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                   contentContainerStyle={{ paddingBottom: 20 }}
                 >
-                  <View className="space-y-4">
+                  <View className="space-y-6">
+                    {/* Personal Information Section */}
                     <View>
-                      <Text className="text-sm font-medium text-gray-700 mb-2">
-                        First Name *
-                      </Text>
-                      <TextInput
-                        className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                        placeholder="Enter first name"
-                        value={dependentForm.firstName}
-                        onChangeText={(text) =>
-                          setDependentForm({
-                            ...dependentForm,
-                            firstName: text,
-                          })
-                        }
-                        placeholderTextColor="#9ca3af"
-                        returnKeyType="next"
-                        blurOnSubmit={false}
-                      />
-                    </View>
+                      <View className="flex-row items-center mb-4">
+                        <View className="w-10 h-10 rounded-xl bg-blue-100 items-center justify-center mr-3">
+                          <Ionicons name="person" size={20} color="#3b82f6" />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-lg font-bold text-gray-800">
+                            Personal Details
+                          </Text>
+                          <Text className="text-xs text-gray-500">
+                            Basic information about the dependent
+                          </Text>
+                        </View>
+                      </View>
 
-                    <View>
-                      <Text className="text-sm font-medium text-gray-700 mb-2">
-                        Last Name *
-                      </Text>
-                      <TextInput
-                        className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                        placeholder="Enter last name"
-                        value={dependentForm.lastName}
-                        onChangeText={(text) =>
-                          setDependentForm({ ...dependentForm, lastName: text })
-                        }
-                        placeholderTextColor="#9ca3af"
-                        returnKeyType="next"
-                        blurOnSubmit={false}
-                      />
-                    </View>
-
-                    <View>
-                      <Text className="text-sm font-medium text-gray-700 mb-2">
-                        Date of Birth *
-                      </Text>
-                      <TextInput
-                        className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                        placeholder="YYYY-MM-DD"
-                        value={dependentForm.dateOfBirth}
-                        onChangeText={(text) =>
-                          setDependentForm({
-                            ...dependentForm,
-                            dateOfBirth: text,
-                          })
-                        }
-                        placeholderTextColor="#9ca3af"
-                        returnKeyType="done"
-                        onSubmitEditing={() => Keyboard.dismiss()}
-                      />
-                    </View>
-
-                    <View>
-                      <Text className="text-sm font-medium text-gray-700 mb-2">
-                        Gender *
-                      </Text>
-                      <View className="flex-row justify-between">
-                        {genderOptions.map((option) => (
-                          <TouchableOpacity
-                            key={option}
-                            onPress={() =>
+                      {/* First Name */}
+                      <View className="mb-4">
+                        <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                          FIRST NAME *
+                        </Text>
+                        <View className="flex-row items-center bg-white rounded-xl p-4 border-2 border-blue-100 shadow-sm">
+                          <View className="w-10 h-10 rounded-lg bg-blue-100 items-center justify-center mr-3">
+                            <Ionicons name="person" size={20} color="#3b82f6" />
+                          </View>
+                          <TextInput
+                            className="flex-1 text-gray-800 font-medium text-base"
+                            placeholder="Enter first name"
+                            value={dependentForm.firstName}
+                            onChangeText={(text) =>
                               setDependentForm({
                                 ...dependentForm,
-                                gender: option,
+                                firstName: text,
                               })
                             }
-                            className="flex-row items-center"
-                          >
-                            <View className="w-5 h-5 rounded-full border-2 border-blue-500 items-center justify-center mr-2">
-                              {dependentForm.gender === option && (
-                                <View className="w-3 h-3 rounded-full bg-blue-500" />
-                              )}
+                            placeholderTextColor="#9ca3af"
+                            returnKeyType="next"
+                            blurOnSubmit={false}
+                          />
+                        </View>
+                      </View>
+
+                      {/* Last Name */}
+                      <View className="mb-4">
+                        <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                          LAST NAME *
+                        </Text>
+                        <View className="flex-row items-center bg-white rounded-xl p-4 border-2 border-blue-100 shadow-sm">
+                          <View className="w-10 h-10 rounded-lg bg-blue-100 items-center justify-center mr-3">
+                            <Ionicons name="person-outline" size={20} color="#3b82f6" />
+                          </View>
+                          <TextInput
+                            className="flex-1 text-gray-800 font-medium text-base"
+                            placeholder="Enter last name"
+                            value={dependentForm.lastName}
+                            onChangeText={(text) =>
+                              setDependentForm({ ...dependentForm, lastName: text })
+                            }
+                            placeholderTextColor="#9ca3af"
+                            returnKeyType="next"
+                            blurOnSubmit={false}
+                          />
+                        </View>
+                      </View>
+
+                      {/* Date of Birth */}
+                      <View className="mb-4">
+                        <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                          DATE OF BIRTH *
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => setShowDatePicker(true)}
+                          className="bg-white rounded-xl p-4 flex-row items-center justify-between border-2 border-blue-100 shadow-sm"
+                        >
+                          <View className="flex-row items-center flex-1">
+                            <View className="w-10 h-10 rounded-lg bg-purple-100 items-center justify-center mr-3">
+                              <Ionicons name="calendar" size={20} color="#8b5cf6" />
                             </View>
-                            <Text className="text-gray-800 text-base">
-                              {option}
+                            <Text className={`font-medium text-base ${dependentForm.dateOfBirth ? 'text-gray-800' : 'text-gray-400'}`}>
+                              {dependentForm.dateOfBirth 
+                                ? new Date(dependentForm.dateOfBirth).toLocaleDateString('en-US', { 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                  })
+                                : 'Tap to select date'}
                             </Text>
-                          </TouchableOpacity>
-                        ))}
+                          </View>
+                          <Ionicons name="chevron-forward" size={20} color="#3b82f6" />
+                        </TouchableOpacity>
+
+                      {/* Native Date Picker */}
+                      {showDatePicker && Platform.OS === 'ios' && (
+                        <Modal
+                          transparent
+                          animationType="slide"
+                          visible={showDatePicker}
+                          onRequestClose={() => setShowDatePicker(false)}
+                        >
+                          <View className="flex-1 bg-black/50 justify-end">
+                            <View className="bg-white rounded-t-3xl p-4">
+                              <View className="flex-row justify-between items-center mb-4">
+                                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                                  <Text className="text-blue-500 text-lg">Cancel</Text>
+                                </TouchableOpacity>
+                                <Text className="text-lg font-semibold text-gray-800">Select Date</Text>
+                                <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                                  <Text className="text-blue-500 text-lg font-semibold">Done</Text>
+                                </TouchableOpacity>
+                              </View>
+                              <DateTimePicker
+                                value={selectedDate}
+                                mode="date"
+                                display="spinner"
+                                onChange={(_event: any, date?: Date) => {
+                                  if (date) {
+                                    setSelectedDate(date);
+                                    setDependentForm({
+                                      ...dependentForm,
+                                      dateOfBirth: date.toISOString().split('T')[0],
+                                    });
+                                  }
+                                }}
+                                maximumDate={new Date()}
+                              />
+                            </View>
+                          </View>
+                        </Modal>
+                      )}
+                      {showDatePicker && Platform.OS === 'android' && (
+                        <DateTimePicker
+                          value={selectedDate}
+                          mode="date"
+                          display="default"
+                          onChange={(_event: any, date?: Date) => {
+                            setShowDatePicker(false);
+                            if (date) {
+                              setSelectedDate(date);
+                              setDependentForm({
+                                ...dependentForm,
+                                dateOfBirth: date.toISOString().split('T')[0],
+                              });
+                            }
+                          }}
+                          maximumDate={new Date()}
+                        />
+                      )}
+                    </View>
+
+                      {/* Gender */}
+                      <View className="mb-4">
+                        <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                          GENDER *
+                        </Text>
+                        <View className="flex-row justify-between">
+                          {genderOptions.map((option) => {
+                            const isSelected = dependentForm.gender === option;
+                            const iconMap: any = { 'Male': 'male', 'Female': 'female', 'Other': 'transgender' };
+                            return (
+                              <TouchableOpacity
+                                key={option}
+                                onPress={() =>
+                                  setDependentForm({
+                                    ...dependentForm,
+                                    gender: option,
+                                  })
+                                }
+                                className="flex-1 mx-1"
+                              >
+                                {isSelected ? (
+                                  <LinearGradient
+                                    colors={['#3b82f6', '#2563eb']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 0, y: 1 }}
+                                    style={{
+                                      padding: 16,
+                                      borderRadius: 12,
+                                      borderWidth: 2,
+                                      borderColor: '#3b82f6',
+                                    }}
+                                  >
+                                    <View className="items-center">
+                                      <Ionicons 
+                                        name={iconMap[option]} 
+                                        size={24} 
+                                        color="white"
+                                      />
+                                      <Text className="text-center font-bold mt-2 text-white">
+                                        {option}
+                                      </Text>
+                                    </View>
+                                  </LinearGradient>
+                                ) : (
+                                  <View className="p-4 rounded-xl border-2 border-gray-200 bg-white shadow-sm">
+                                    <View className="items-center">
+                                      <Ionicons 
+                                        name={iconMap[option]} 
+                                        size={24} 
+                                        color="#6b7280"
+                                      />
+                                      <Text className="text-center font-bold mt-2 text-gray-700">
+                                        {option}
+                                      </Text>
+                                    </View>
+                                  </View>
+                                )}
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
                       </View>
                     </View>
 
+                    {/* Relationship Section */}
                     <View>
-                      <Text className="text-sm font-medium text-gray-700 mb-2">
-                        Relationship *
-                      </Text>
+                      <View className="flex-row items-center mb-4">
+                        <View className="w-10 h-10 rounded-xl bg-green-100 items-center justify-center mr-3">
+                          <Ionicons name="people" size={20} color="#10b981" />
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-lg font-bold text-gray-800">
+                            Relationship
+                          </Text>
+                          <Text className="text-xs text-gray-500">
+                            How they are related to you
+                          </Text>
+                        </View>
+                      </View>
+
                       <View>
+                        <Text className="text-xs font-semibold text-gray-600 mb-2 ml-1">
+                          RELATIONSHIP *
+                        </Text>
                         <TouchableOpacity
                           onPress={() =>
                             setShowRelationshipDropdown(
                               !showRelationshipDropdown
                             )
                           }
-                          className="bg-gray-50 rounded-lg p-3 border border-gray-200 flex-row justify-between items-center"
+                          className="bg-white rounded-xl p-4 border-2 border-blue-100 shadow-sm flex-row justify-between items-center"
                         >
-                          <Text
-                            className={`${
-                              dependentForm.dependentType
-                                ? "text-gray-800"
-                                : "text-gray-500"
-                            }`}
-                          >
-                            {dependentForm.dependentType ||
-                              "Select relationship"}
-                          </Text>
+                          <View className="flex-row items-center flex-1">
+                            <View className="w-10 h-10 rounded-lg bg-green-100 items-center justify-center mr-3">
+                              <Ionicons name="people" size={20} color="#10b981" />
+                            </View>
+                            <Text
+                              className={`font-medium text-base ${
+                                dependentForm.dependentType
+                                  ? "text-gray-800"
+                                  : "text-gray-400"
+                              }`}
+                            >
+                              {dependentForm.dependentType ||
+                                "Select relationship"}
+                            </Text>
+                          </View>
                           <Ionicons
                             name={
                               showRelationshipDropdown
@@ -645,12 +943,12 @@ export default function ProfilePage() {
                                 : "chevron-down"
                             }
                             size={20}
-                            color="#6b7280"
+                            color="#3b82f6"
                           />
                         </TouchableOpacity>
 
                         {showRelationshipDropdown && (
-                          <View className="bg-white border border-gray-200 rounded-lg mt-1 shadow-sm">
+                          <View className="bg-white border-2 border-blue-200 rounded-xl mt-2 shadow-lg overflow-hidden">
                             {dependentTypeOptions.map((option, index) => (
                               <TouchableOpacity
                                 key={option}
@@ -661,13 +959,24 @@ export default function ProfilePage() {
                                   });
                                   setShowRelationshipDropdown(false);
                                 }}
-                                className={`px-3 py-3 ${
+                                className={`px-4 py-3 flex-row items-center ${
                                   index < dependentTypeOptions.length - 1
                                     ? "border-b border-gray-100"
                                     : ""
+                                } ${
+                                  dependentForm.dependentType === option
+                                    ? "bg-blue-50"
+                                    : "bg-white"
                                 }`}
                               >
-                                <Text className="text-gray-800">{option}</Text>
+                                {dependentForm.dependentType === option && (
+                                  <Ionicons name="checkmark-circle" size={20} color="#3b82f6" className="mr-2" />
+                                )}
+                                <Text className={`font-medium ${
+                                  dependentForm.dependentType === option
+                                    ? "text-blue-600"
+                                    : "text-gray-700"
+                                }`}>{option}</Text>
                               </TouchableOpacity>
                             ))}
                           </View>
@@ -676,15 +985,8 @@ export default function ProfilePage() {
                     </View>
                   </View>
 
-                  <View className="flex-row space-x-4 mt-8 px-2">
-                    <TouchableOpacity
-                      onPress={() => setShowAddDependentModal(false)}
-                      className="flex-1 bg-gray-500 rounded-lg py-4 items-center mx-1"
-                    >
-                      <Text className="text-white font-medium text-base">
-                        Cancel
-                      </Text>
-                    </TouchableOpacity>
+                  {/* Action Buttons */}
+                  <View className="mt-8 mb-4">
                     <TouchableOpacity
                       onPress={handleAddDependent}
                       disabled={
@@ -693,22 +995,40 @@ export default function ProfilePage() {
                         !dependentForm.lastName.trim() ||
                         !dependentForm.dateOfBirth.trim()
                       }
-                      className={`flex-1 rounded-lg py-4 items-center mx-1 ${
+                      className={`rounded-2xl py-5 items-center shadow-xl mb-3 ${
                         loading ||
                         !dependentForm.firstName.trim() ||
                         !dependentForm.lastName.trim() ||
                         !dependentForm.dateOfBirth.trim()
-                          ? "bg-gray-400"
+                          ? "bg-gray-300"
                           : "bg-blue-500"
                       }`}
+                      style={{
+                        shadowColor: loading || !dependentForm.firstName.trim() || !dependentForm.lastName.trim() || !dependentForm.dateOfBirth.trim() ? '#9ca3af' : '#3b82f6',
+                        shadowOffset: { width: 0, height: 4 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 8,
+                        elevation: 8,
+                      }}
                     >
                       {loading ? (
                         <ActivityIndicator size="small" color="white" />
                       ) : (
-                        <Text className="text-white font-medium text-base">
-                          Add Dependent
-                        </Text>
+                        <View className="flex-row items-center">
+                          <Ionicons name="person-add" size={24} color="white" />
+                          <Text className="text-white font-bold text-lg ml-2">Add Family Member</Text>
+                        </View>
                       )}
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      onPress={() => setShowAddDependentModal(false)}
+                      className="bg-white rounded-2xl py-4 items-center border-2 border-gray-200"
+                    >
+                      <View className="flex-row items-center">
+                        <Ionicons name="close-circle-outline" size={22} color="#6b7280" />
+                        <Text className="text-gray-700 font-semibold text-base ml-2">Cancel</Text>
+                      </View>
                     </TouchableOpacity>
                   </View>
                 </ScrollView>
@@ -724,6 +1044,16 @@ export default function ProfilePage() {
         dependent={selectedDependent}
         onClose={handleModalClose}
         onDependentDeleted={handleDependentDeleted}
+      />
+
+      {/* Custom Alert */}
+      <CustomAlert
+        visible={customAlert.visible}
+        title={customAlert.title}
+        message={customAlert.message}
+        buttons={customAlert.buttons}
+        icon={customAlert.icon}
+        onClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
       />
     </SafeAreaView>
   );
