@@ -1,5 +1,6 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../types';
 export declare class GeminiController {
-    static generateVaccineInstructions(req: Request, res: Response): Promise<void>;
+    static generateVaccineInstructions(req: AuthRequest, res: Response): Promise<void>;
 }
 //# sourceMappingURL=geminiController.d.ts.map

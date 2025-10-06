@@ -16,9 +16,9 @@ const getAuthToken = async (): Promise<string | null> => {
 const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}): Promise<Response> => {
   const token = await getAuthToken();
   
-  const headers = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...options.headers as Record<string, string>,
   };
 
   if (token) {
@@ -43,6 +43,7 @@ export interface HealthCardVaccination {
   certificateNumber?: string;
   notes?: string;
   vaccinationType?: "routine" | "travel" | "occupational" | "emergency";
+  status?: "completed" | "cancelled";
 }
 
 export interface HealthCard {
@@ -239,11 +240,11 @@ const healthCardAPI = {
   groupVaccinationsByName(vaccinations: HealthCardVaccination[]): any[] {
     const grouped: { [key: string]: any } = {};
 
-    vaccinations.forEach((vaccination) => {
+    vaccinations.forEach((vaccination, idx) => {
       const key = vaccination.vaccineName;
       if (!grouped[key]) {
         grouped[key] = {
-          id: key.toLowerCase().replace(/\s+/g, "-"),
+          id: `${key.toLowerCase().replace(/\s+/g, "-")}-${idx}`,
           name: vaccination.vaccineName,
           doses: [],
           totalDoses: vaccination.totalDoses,
@@ -255,15 +256,21 @@ const healthCardAPI = {
         };
       }
 
+      // Check if dose already exists (prevent duplicates)
+      const doseExists = grouped[key].doses.some((d: any) => d.doseNumber === vaccination.doseNumber);
+      
+      if (!doseExists) {
       grouped[key].doses.push({
         doseNumber: vaccination.doseNumber,
-        date: new Date(vaccination.dateCompleted).toLocaleDateString(),
+        date: vaccination.dateCompleted, // Keep as ISO string or Date object for proper parsing
         batch: vaccination.certificateNumber || "N/A",
         provider: vaccination.administeredBy || "Unknown",
-        verified: true, // All completed vaccinations are verified
+        verified: vaccination.status !== 'cancelled', // Cancelled doses are not verified
         facility: vaccination.facility,
         notes: vaccination.notes,
+        status: vaccination.status || 'completed', // Default to completed for backward compatibility
       });
+      }
     });
 
     return Object.values(grouped);
