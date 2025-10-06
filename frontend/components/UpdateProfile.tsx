@@ -25,6 +25,7 @@ interface EditForm {
   phone: string;
   dateOfBirth: string;
   gender: string;
+  bloodType: string;
   avatar?: string;
 }
 
@@ -41,6 +42,7 @@ export default function UpdateProfile({
     phone: "",
     dateOfBirth: "",
     gender: "",
+    bloodType: "",
   });
 
   //Initialize form when user data changes
@@ -52,6 +54,7 @@ export default function UpdateProfile({
         phone: user.phone,
         dateOfBirth: user.dateOfBirth,
         gender: user.gender,
+        bloodType: user.bloodType || "",
         avatar: user.avatar || "",
       });
     }
@@ -83,6 +86,7 @@ export default function UpdateProfile({
         phone: editForm.phone.trim(),
         dateOfBirth: editForm.dateOfBirth,
         gender: editForm.gender,
+        bloodType: editForm.bloodType,
       };
 
       //Call backend API
@@ -110,6 +114,7 @@ export default function UpdateProfile({
       phone: user.phone,
       dateOfBirth: user.dateOfBirth,
       gender: user.gender,
+      bloodType: user.bloodType || "",
     });
     onClose();
   };
@@ -256,6 +261,50 @@ export default function UpdateProfile({
                   placeholderTextColor="#9ca3af"
                   editable={!loading}
                 />
+              </View>
+
+              {/* Blood Type */}
+              <View>
+                <Text className="text-sm font-medium text-gray-700 mb-2">
+                  Blood Type *
+                </Text>
+                <View className="flex-row flex-wrap">
+                  {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map(
+                    (type) => (
+                      <TouchableOpacity
+                        key={type}
+                        onPress={() =>
+                          setEditForm({ ...editForm, bloodType: type })
+                        }
+                        disabled={loading}
+                        style={{
+                          borderWidth: 1,
+                          borderColor:
+                            editForm.bloodType === type ? "#3b82f6" : "#d1d5db",
+                          backgroundColor:
+                            editForm.bloodType === type
+                              ? "#3b82f6"
+                              : "transparent",
+                          borderRadius: 6,
+                          padding: 8,
+                          margin: 4,
+                          minWidth: 50,
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontSize: 14,
+                            color:
+                              editForm.bloodType === type ? "#fff" : "#374151",
+                          }}
+                        >
+                          {type}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  )}
+                </View>
               </View>
             </View>
 

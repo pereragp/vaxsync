@@ -9,17 +9,19 @@ import {
   TextInput,
   StatusBar,
   ActivityIndicator,
-  Dimensions,
   Image,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import userAPI, { User, Dependent } from "../api/userApi";
 import { router } from "expo-router";
 import UpdateProfile from "@/components/UpdateProfile";
-
-const { width } = Dimensions.get("window");
+import DependentCard from "@/components/DependentCard";
+import DependentModal from "@/components/DependentModal";
 
 export default function ProfilePage() {
   //State variables
@@ -27,6 +29,13 @@ export default function ProfilePage() {
   const [dependents, setDependents] = useState<Dependent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Modal states
+  const [selectedDependent, setSelectedDependent] = useState<Dependent | null>(
+    null
+  );
+  const [showDependentModal, setShowDependentModal] = useState<boolean>(false);
+
   const genderOptions = ["Male", "Female", "Other"];
   const dependentTypeOptions = [
     "Child",
@@ -39,6 +48,8 @@ export default function ProfilePage() {
   // Modal states
   const [showUpdateProfile, setShowUpdateProfile] = useState(false);
   const [showAddDependentModal, setShowAddDependentModal] = useState(false);
+  const [showRelationshipDropdown, setShowRelationshipDropdown] =
+    useState(false);
 
   // Add dependent form states
   const [dependentForm, setDependentForm] = useState({
@@ -134,6 +145,23 @@ export default function ProfilePage() {
         console.error("Error refreshing dependents:", error);
       }
     }
+  };
+
+  // Handle dependent card press to show modal
+  const handleDependentPress = (dependent: Dependent) => {
+    setSelectedDependent(dependent);
+    setShowDependentModal(true);
+  };
+
+  // Handle modal close
+  const handleModalClose = () => {
+    setShowDependentModal(false);
+    setSelectedDependent(null);
+  };
+
+  // Handle dependent deleted from modal
+  const handleDependentDeleted = () => {
+    refreshDependents();
   };
 
   const handleAddDependent = async () => {
@@ -345,12 +373,20 @@ export default function ProfilePage() {
             </Text>
           </View>
 
-          <View className="bg-gray-50 rounded-2xl p-4 mb-6">
+          <View className="bg-gray-50 rounded-2xl p-4 mb-4">
             <View className="flex-row items-center mb-3">
               <Ionicons name="person-outline" size={20} color="#6b7280" />
               <Text className="text-gray-600 ml-3">Gender</Text>
             </View>
             <Text className="text-gray-800 font-medium">{user?.gender}</Text>
+          </View>
+
+          <View className="bg-gray-50 rounded-2xl p-4 mb-6">
+            <View className="flex-row items-center mb-3">
+              <Ionicons name="water-outline" size={20} color="#6b7280" />
+              <Text className="text-gray-600 ml-3">Blood Type</Text>
+            </View>
+            <Text className="text-gray-800 font-medium">{user?.bloodType}</Text>
           </View>
         </View>
 
@@ -380,35 +416,11 @@ export default function ProfilePage() {
           ) : (
             <View className="space-y-3">
               {dependents.map((dependent) => (
-                <View
+                <DependentCard
                   key={dependent._id}
-                  className="bg-white rounded-2xl p-4 border border-gray-200"
-                >
-                  <View className="flex-row items-center">
-                    <View className="w-12 h-12 bg-green-100 rounded-full items-center justify-center mr-4">
-                      <Ionicons name="person" size={20} color="#10b981" />
-                    </View>
-                    <View className="flex-1">
-                      <Text className="font-bold text-gray-800">
-                        {dependent.firstName} {dependent.lastName}
-                      </Text>
-                      <Text className="text-gray-600 text-sm">
-                        {dependent.dependentType} •{" "}
-                        {calculateAge(dependent.dateOfBirth)} years old
-                      </Text>
-                      <Text className="text-gray-500 text-xs">
-                        Added {formatDate(dependent.createdAt)}
-                      </Text>
-                    </View>
-                    <TouchableOpacity className="p-2">
-                      <Ionicons
-                        name="chevron-forward"
-                        size={16}
-                        color="#9ca3af"
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
+                  dependent={dependent}
+                  onPress={handleDependentPress}
+                />
               ))}
             </View>
           )}
@@ -488,172 +500,231 @@ export default function ProfilePage() {
         animationType="slide"
         onRequestClose={() => setShowAddDependentModal(false)}
       >
-        <View className="flex-1 bg-black/50 justify-end">
-          <View className="bg-white rounded-t-3xl max-h-5/6">
-            <View className="p-6 border-b border-gray-100">
-              <View className="flex-row justify-between items-center">
-                <Text className="text-xl font-bold text-gray-800">
-                  Add Dependent
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setShowAddDependentModal(false)}
-                  className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
-                >
-                  <Ionicons name="close" size={24} color="#64748b" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
-              <View className="space-y-4">
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    First Name *
-                  </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="Enter first name"
-                    value={dependentForm.firstName}
-                    onChangeText={(text) =>
-                      setDependentForm({ ...dependentForm, firstName: text })
-                    }
-                    placeholderTextColor="#9ca3af"
-                  />
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Last Name *
-                  </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="Enter last name"
-                    value={dependentForm.lastName}
-                    onChangeText={(text) =>
-                      setDependentForm({ ...dependentForm, lastName: text })
-                    }
-                    placeholderTextColor="#9ca3af"
-                  />
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Date of Birth *
-                  </Text>
-                  <TextInput
-                    className="bg-gray-50 rounded-lg p-3 text-gray-800"
-                    placeholder="YYYY-MM-DD"
-                    value={dependentForm.dateOfBirth}
-                    onChangeText={(text) =>
-                      setDependentForm({ ...dependentForm, dateOfBirth: text })
-                    }
-                    placeholderTextColor="#9ca3af"
-                  />
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Gender *
-                  </Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    {genderOptions.map((option) => (
-                      <TouchableOpacity
-                        key={option}
-                        onPress={() =>
-                          setDependentForm({ ...dependentForm, gender: option })
-                        }
-                        className={`px-4 py-2 rounded-lg border ${
-                          dependentForm.gender === option
-                            ? "bg-blue-100 border-blue-500"
-                            : "bg-gray-50 border-gray-300"
-                        }`}
-                      >
-                        <Text
-                          className={`${
-                            dependentForm.gender === option
-                              ? "text-blue-700"
-                              : "text-gray-700"
-                          }`}
-                        >
-                          {option}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                <View>
-                  <Text className="text-sm font-medium text-gray-700 mb-2">
-                    Relationship *
-                  </Text>
-                  <View className="flex-row flex-wrap gap-2">
-                    {dependentTypeOptions.map((option) => (
-                      <TouchableOpacity
-                        key={option}
-                        onPress={() =>
-                          setDependentForm({
-                            ...dependentForm,
-                            dependentType: option,
-                          })
-                        }
-                        className={`px-4 py-2 rounded-lg border ${
-                          dependentForm.dependentType === option
-                            ? "bg-blue-100 border-blue-500"
-                            : "bg-gray-50 border-gray-300"
-                        }`}
-                      >
-                        <Text
-                          className={`${
-                            dependentForm.dependentType === option
-                              ? "text-blue-700"
-                              : "text-gray-700"
-                          }`}
-                        >
-                          {option}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-              </View>
-
-              <View className="flex-row space-x-3 mt-6">
-                <TouchableOpacity
-                  onPress={() => setShowAddDependentModal(false)}
-                  className="flex-1 bg-gray-500 rounded-lg py-3 items-center"
-                >
-                  <Text className="text-white font-medium">Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={handleAddDependent}
-                  disabled={
-                    loading ||
-                    !dependentForm.firstName.trim() ||
-                    !dependentForm.lastName.trim() ||
-                    !dependentForm.dateOfBirth.trim()
-                  }
-                  className={`flex-1 rounded-lg py-3 items-center ${
-                    loading ||
-                    !dependentForm.firstName.trim() ||
-                    !dependentForm.lastName.trim() ||
-                    !dependentForm.dateOfBirth.trim()
-                      ? "bg-gray-400"
-                      : "bg-blue-500"
-                  }`}
-                >
-                  {loading ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Text className="text-white font-medium">
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View className="flex-1 bg-black/50 justify-end">
+              <View className="bg-white rounded-t-3xl max-h-4/5">
+                <View className="p-6 border-b border-gray-100">
+                  <View className="flex-row justify-between items-center">
+                    <Text className="text-xl font-bold text-gray-800">
                       Add Dependent
                     </Text>
-                  )}
-                </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setShowAddDependentModal(false)}
+                      className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center"
+                    >
+                      <Ionicons name="close" size={24} color="#64748b" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <ScrollView
+                  className="p-6"
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  contentContainerStyle={{ paddingBottom: 20 }}
+                >
+                  <View className="space-y-4">
+                    <View>
+                      <Text className="text-sm font-medium text-gray-700 mb-2">
+                        First Name *
+                      </Text>
+                      <TextInput
+                        className="bg-gray-50 rounded-lg p-3 text-gray-800"
+                        placeholder="Enter first name"
+                        value={dependentForm.firstName}
+                        onChangeText={(text) =>
+                          setDependentForm({
+                            ...dependentForm,
+                            firstName: text,
+                          })
+                        }
+                        placeholderTextColor="#9ca3af"
+                        returnKeyType="next"
+                        blurOnSubmit={false}
+                      />
+                    </View>
+
+                    <View>
+                      <Text className="text-sm font-medium text-gray-700 mb-2">
+                        Last Name *
+                      </Text>
+                      <TextInput
+                        className="bg-gray-50 rounded-lg p-3 text-gray-800"
+                        placeholder="Enter last name"
+                        value={dependentForm.lastName}
+                        onChangeText={(text) =>
+                          setDependentForm({ ...dependentForm, lastName: text })
+                        }
+                        placeholderTextColor="#9ca3af"
+                        returnKeyType="next"
+                        blurOnSubmit={false}
+                      />
+                    </View>
+
+                    <View>
+                      <Text className="text-sm font-medium text-gray-700 mb-2">
+                        Date of Birth *
+                      </Text>
+                      <TextInput
+                        className="bg-gray-50 rounded-lg p-3 text-gray-800"
+                        placeholder="YYYY-MM-DD"
+                        value={dependentForm.dateOfBirth}
+                        onChangeText={(text) =>
+                          setDependentForm({
+                            ...dependentForm,
+                            dateOfBirth: text,
+                          })
+                        }
+                        placeholderTextColor="#9ca3af"
+                        returnKeyType="done"
+                        onSubmitEditing={() => Keyboard.dismiss()}
+                      />
+                    </View>
+
+                    <View>
+                      <Text className="text-sm font-medium text-gray-700 mb-2">
+                        Gender *
+                      </Text>
+                      <View className="flex-row justify-between">
+                        {genderOptions.map((option) => (
+                          <TouchableOpacity
+                            key={option}
+                            onPress={() =>
+                              setDependentForm({
+                                ...dependentForm,
+                                gender: option,
+                              })
+                            }
+                            className="flex-row items-center"
+                          >
+                            <View className="w-5 h-5 rounded-full border-2 border-blue-500 items-center justify-center mr-2">
+                              {dependentForm.gender === option && (
+                                <View className="w-3 h-3 rounded-full bg-blue-500" />
+                              )}
+                            </View>
+                            <Text className="text-gray-800 text-base">
+                              {option}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+
+                    <View>
+                      <Text className="text-sm font-medium text-gray-700 mb-2">
+                        Relationship *
+                      </Text>
+                      <View>
+                        <TouchableOpacity
+                          onPress={() =>
+                            setShowRelationshipDropdown(
+                              !showRelationshipDropdown
+                            )
+                          }
+                          className="bg-gray-50 rounded-lg p-3 border border-gray-200 flex-row justify-between items-center"
+                        >
+                          <Text
+                            className={`${
+                              dependentForm.dependentType
+                                ? "text-gray-800"
+                                : "text-gray-500"
+                            }`}
+                          >
+                            {dependentForm.dependentType ||
+                              "Select relationship"}
+                          </Text>
+                          <Ionicons
+                            name={
+                              showRelationshipDropdown
+                                ? "chevron-up"
+                                : "chevron-down"
+                            }
+                            size={20}
+                            color="#6b7280"
+                          />
+                        </TouchableOpacity>
+
+                        {showRelationshipDropdown && (
+                          <View className="bg-white border border-gray-200 rounded-lg mt-1 shadow-sm">
+                            {dependentTypeOptions.map((option, index) => (
+                              <TouchableOpacity
+                                key={option}
+                                onPress={() => {
+                                  setDependentForm({
+                                    ...dependentForm,
+                                    dependentType: option,
+                                  });
+                                  setShowRelationshipDropdown(false);
+                                }}
+                                className={`px-3 py-3 ${
+                                  index < dependentTypeOptions.length - 1
+                                    ? "border-b border-gray-100"
+                                    : ""
+                                }`}
+                              >
+                                <Text className="text-gray-800">{option}</Text>
+                              </TouchableOpacity>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    </View>
+                  </View>
+
+                  <View className="flex-row space-x-4 mt-8 px-2">
+                    <TouchableOpacity
+                      onPress={() => setShowAddDependentModal(false)}
+                      className="flex-1 bg-gray-500 rounded-lg py-4 items-center mx-1"
+                    >
+                      <Text className="text-white font-medium text-base">
+                        Cancel
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={handleAddDependent}
+                      disabled={
+                        loading ||
+                        !dependentForm.firstName.trim() ||
+                        !dependentForm.lastName.trim() ||
+                        !dependentForm.dateOfBirth.trim()
+                      }
+                      className={`flex-1 rounded-lg py-4 items-center mx-1 ${
+                        loading ||
+                        !dependentForm.firstName.trim() ||
+                        !dependentForm.lastName.trim() ||
+                        !dependentForm.dateOfBirth.trim()
+                          ? "bg-gray-400"
+                          : "bg-blue-500"
+                      }`}
+                    >
+                      {loading ? (
+                        <ActivityIndicator size="small" color="white" />
+                      ) : (
+                        <Text className="text-white font-medium text-base">
+                          Add Dependent
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                </ScrollView>
               </View>
-            </ScrollView>
-          </View>
-        </View>
+            </View>
+          </TouchableWithoutFeedback>
+        </KeyboardAvoidingView>
       </Modal>
+
+      {/* Dependent Details Modal */}
+      <DependentModal
+        visible={showDependentModal}
+        dependent={selectedDependent}
+        onClose={handleModalClose}
+        onDependentDeleted={handleDependentDeleted}
+      />
     </SafeAreaView>
   );
 }
