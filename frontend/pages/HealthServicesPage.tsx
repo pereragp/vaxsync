@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function HealthServicesPage() {
   const router = useRouter();
@@ -14,9 +15,12 @@ export default function HealthServicesPage() {
           style={styles.card}
           onPress={() => router.push('/doctor-finder')}
         >
+          <View style={styles.iconContainer}>
+            <MaterialCommunityIcons name="doctor" size={32} color="#175593" />
+          </View>
           <Text style={styles.cardTitle}>Find a Doctor</Text>
           <Text style={styles.cardSubtitle}>
-            Search for nearby doctors by specialty and availability.
+            Search for nearby doctors by specialty, availability and Book Appoinments.
           </Text>
         </TouchableOpacity>
 
@@ -24,9 +28,12 @@ export default function HealthServicesPage() {
           style={styles.card}
           onPress={() => router.push('/vaccination-center')}
         >
+          <View style={styles.iconContainer}>
+            <MaterialCommunityIcons name="needle" size={32} color="#175593" />
+          </View>
           <Text style={styles.cardTitle}>Find a Vaccination Center</Text>
           <Text style={styles.cardSubtitle}>
-            Locate vaccination centers by type, date, and location.
+            Locate vaccination centers by type and location.
           </Text>
         </TouchableOpacity>
       </View>
@@ -35,19 +42,51 @@ export default function HealthServicesPage() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'flex-start', alignItems: 'center', padding: 16 },
-  title: { fontSize: 24, fontWeight: 'bold', marginVertical: 24 },
-  cardContainer: { width: '100%', gap: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: '#F0F4F7', 
+    padding: 20,
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#175593',
+    textAlign: 'center',
+    marginBottom: 40,
+  },
+  cardContainer: {
+    width: '100%',
+    gap: 20, // Increased gap for better spacing
+  },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 16,
+    padding: 30,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  cardTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 6, color: '#175593' },
-  cardSubtitle: { fontSize: 14, color: '#555' },
+  iconContainer: {
+    marginBottom: 15,
+    backgroundColor: '#E6F0F8',
+    borderRadius: 50,
+    padding: 15,
+  },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+    color: '#175593',
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    color: '#555',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
 });

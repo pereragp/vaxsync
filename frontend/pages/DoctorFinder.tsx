@@ -18,6 +18,7 @@ import {
   ScrollView,
 } from 'react-native';
 import doctorApi, { Doctor, ApiError } from '../api/doctorApi';
+import { Ionicons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get('window');
 
@@ -161,7 +162,7 @@ export default function DoctorFinder() {
       {/* Search Input with Filter Button */}
       <View style={styles.searchRow}>
         <View style={styles.searchInputWrapper}>
-          <Text style={styles.searchIcon}>🔍</Text>
+          <Ionicons name="search-outline" size={20} color="#64748B" style={{ marginRight: 12 }} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search centers, districts..."
@@ -176,7 +177,7 @@ export default function DoctorFinder() {
           style={styles.filterToggle}
           onPress={() => setShowFilters(!showFilters)}
         >
-          <Text style={styles.filterIcon}>☰</Text>
+          <Ionicons name="filter-outline" size={24} color="#2563EB" />
         </TouchableOpacity>
       </View>
 
@@ -185,7 +186,9 @@ export default function DoctorFinder() {
         <View style={styles.filtersContainer}>
           {/* Location Filter */}
           <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>📍 Location</Text>
+            <Text style={styles.filterTitle}>
+              <Ionicons name="location-outline" size={18} color="#2563EB" /> Location
+            </Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -206,7 +209,9 @@ export default function DoctorFinder() {
 
           {/* Specialty Filter */}
           <View style={styles.filterSection}>
-            <Text style={styles.filterTitle}>🩺 Specialty</Text>
+            <Text style={styles.filterTitle}>
+              <Ionicons name="medkit-outline" size={18} color="#2563EB" /> Specialty
+            </Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -240,7 +245,8 @@ export default function DoctorFinder() {
             }}
             style={styles.clearFilters}
           >
-            <Text style={styles.clearFiltersText}>✕ Clear filters</Text>
+            <Ionicons name="close-circle-outline" size={16} color="#2563EB" />
+            <Text style={styles.clearFiltersText}>× Clear filters</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -287,7 +293,7 @@ export default function DoctorFinder() {
             <View style={styles.cardHeader}>
               <Text style={styles.cardName} numberOfLines={1}>{item.name}</Text>
               <View style={styles.ratingContainer}>
-                <Text style={styles.ratingText}>⭐</Text>
+              <Ionicons name="star" size={14} color="#F59E0B" style={{ marginRight: 4 }} />
                 <Text style={styles.ratingValue}>{item.rating.toFixed(1)}</Text>
               </View>
             </View>
@@ -296,14 +302,14 @@ export default function DoctorFinder() {
 
             <View style={styles.cardInfo}>
               <View style={styles.infoItem}>
-                <Text style={styles.infoIcon}>🏥</Text>
+              <Ionicons name="business-outline" size={14} color="#64748B" style={{ marginRight: 8 }} />
                 <Text style={styles.infoText} numberOfLines={1}>
                   {item.hospitals.slice(0, 2).join(', ')}
                   {item.hospitals.length > 2 && ` +${item.hospitals.length - 2} more`}
                 </Text>
               </View>
               <View style={styles.infoItem}>
-                <Text style={styles.infoIcon}>🕐</Text>
+                <Ionicons name="time-outline" size={14} color="#059669" style={{ marginRight: 8 }} />
                 <Text style={styles.availabilityText} numberOfLines={1}>{item.availability}</Text>
               </View>
             </View>
@@ -353,7 +359,7 @@ export default function DoctorFinder() {
             <View style={styles.infoCard}>
               <View style={styles.infoRow}>
                 <View style={styles.infoIconContainer}>
-                  <Text style={styles.modalInfoIcon}>🏥</Text>
+                  <Ionicons name="business-outline" size={20} color="#2563EB" />
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Hospitals</Text>
@@ -363,7 +369,7 @@ export default function DoctorFinder() {
               
               <View style={styles.infoRow}>
                 <View style={styles.infoIconContainer}>
-                  <Text style={styles.modalInfoIcon}>⭐</Text>
+                  <Ionicons name="star" size={20} color="#F59E0B" />
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Rating</Text>
@@ -376,7 +382,7 @@ export default function DoctorFinder() {
                 onPress={() => handlePhoneCall(phoneNumber)}
               >
                 <View style={styles.infoIconContainer}>
-                  <Text style={styles.modalInfoIcon}>📞</Text>
+                  <Ionicons name="call-outline" size={20} color="#2563EB" />
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Phone Number</Text>
@@ -386,7 +392,7 @@ export default function DoctorFinder() {
 
               <View style={styles.infoRow}>
                 <View style={styles.infoIconContainer}>
-                  <Text style={styles.modalInfoIcon}>🕐</Text>
+                  <Ionicons name="time-outline" size={20} color="#2563EB" />
                 </View>
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Availability</Text>
@@ -396,6 +402,7 @@ export default function DoctorFinder() {
             </View>
 
             <TouchableOpacity style={styles.bookButton} onPress={handleBookAppointment}>
+              <Ionicons name="calendar-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
               <Text style={styles.bookButtonText}>Book Appointment</Text>
             </TouchableOpacity>
           </View>
@@ -420,7 +427,7 @@ export default function DoctorFinder() {
       {/* Refresh Button */}
       {loading && (
         <View style={styles.refreshContainer}>
-          <ActivityIndicator size="small" color="#4F46E5" />
+          <ActivityIndicator size="small" color="#2563EB" />
           <Text style={styles.refreshText}>Refreshing...</Text>
         </View>
       )}
@@ -433,7 +440,7 @@ export default function DoctorFinder() {
         {filteredDoctors.length === 0 ? (
           !loading && (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>👨‍⚕️</Text>
+              <Text style={styles.emptyIcon}>⚕</Text>
               <Text style={styles.emptyTitle}>No doctors found</Text>
               <Text style={styles.emptyText}>Try adjusting your search or filters</Text>
             </View>
@@ -459,9 +466,9 @@ export default function DoctorFinder() {
               onPress={() => setSelectedDoctor(null)}
               style={styles.closeButton}
             >
-              <Text style={styles.closeButtonText}>✕</Text>
+              <Ionicons name="close" size={20} color="#64748B" />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>👨‍⚕️ Doctor Profile</Text>
+            <Text style={styles.modalTitle}><Ionicons name="medkit-outline" size={18} color="#2563EB" /> Doctor Profile</Text>
             <View style={{ width: 32 }} />
           </View>
 
@@ -473,7 +480,7 @@ export default function DoctorFinder() {
       {loading && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#4F46E5" />
+            <ActivityIndicator size="large" color="#2563EB" />
             <Text style={styles.loadingText}>Loading...</Text>
           </View>
         </View>
@@ -482,7 +489,8 @@ export default function DoctorFinder() {
       {/* Error Message */}
       {error && (
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>⚠️ {error}</Text>
+          <Ionicons name="alert-circle-outline" size={18} color="#DC2626" style={{ marginRight: 8 }} />
+          <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity
             style={styles.retryButton}
             onPress={() => {
@@ -490,7 +498,7 @@ export default function DoctorFinder() {
               fetchDoctors();
             }}
           >
-            <Text style={styles.retryText}>🔄 Retry</Text>
+            <Text style={styles.retryText}>↻ Retry</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -546,6 +554,7 @@ const styles = StyleSheet.create({
   searchIcon: {
     fontSize: 18,
     marginRight: 12,
+    color: '#64748B',
   },
   searchInput: {
     flex: 1,
@@ -556,13 +565,13 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 16,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#DBEAFE',
     justifyContent: 'center',
     alignItems: 'center',
   },
   filterIcon: {
     fontSize: 24,
-    color: '#4F46E5',
+    color: '#2563EB',
     fontWeight: '600',
   },
 
@@ -595,8 +604,8 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
   },
   filterChipSelected: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
   },
   filterChipText: {
     fontSize: 14,
@@ -627,7 +636,7 @@ const styles = StyleSheet.create({
   refreshText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#4F46E5',
+    color: '#2563EB',
     fontWeight: '500',
   },
   resultsCount: {
@@ -641,7 +650,7 @@ const styles = StyleSheet.create({
   },
   clearFiltersText: {
     fontSize: 14,
-    color: '#4F46E5',
+    color: '#2563EB',
     fontWeight: '500',
   },
 
@@ -717,6 +726,7 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 12,
     marginRight: 4,
+    color: '#F59E0B',
   },
   ratingValue: {
     fontSize: 14,
@@ -725,7 +735,7 @@ const styles = StyleSheet.create({
   },
   cardSpecialty: {
     fontSize: 15,
-    color: '#4F46E5',
+    color: '#2563EB',
     fontWeight: '600',
     marginBottom: 12,
   },
@@ -740,6 +750,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginRight: 8,
     width: 16,
+    color: '#64748B',
   },
   infoText: {
     fontSize: 14,
@@ -776,7 +787,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeButtonText: {
-    fontSize: 16,
+    fontSize: 20,
     color: '#64748B',
     fontWeight: '600',
   },
@@ -814,14 +825,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   specialtyBadge: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#DBEAFE',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
   },
   modalSpecialty: {
     fontSize: 16,
-    color: '#4F46E5',
+    color: '#2563EB',
     fontWeight: '600',
   },
   modalInfoSection: {
@@ -849,6 +860,7 @@ const styles = StyleSheet.create({
   },
   modalInfoIcon: {
     fontSize: 18,
+    color: '#2563EB',
   },
   infoContent: {
     flex: 1,
@@ -870,7 +882,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   bookButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 16,
@@ -892,6 +904,7 @@ const styles = StyleSheet.create({
   emptyIcon: {
     fontSize: 64,
     marginBottom: 16,
+    color: '#94A3B8',
   },
   emptyTitle: {
     fontSize: 20,
