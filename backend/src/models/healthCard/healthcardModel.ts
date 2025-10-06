@@ -106,6 +106,11 @@ const healthCardSchema = new Schema<IHealthCard>(
         trim: true,
         maxlength: [500, "Notes cannot exceed 500 characters"],
       },
+      status: {
+        type: String,
+        enum: ["completed", "cancelled"],
+        default: "completed",
+      },
     }],
   },
   { timestamps: true }

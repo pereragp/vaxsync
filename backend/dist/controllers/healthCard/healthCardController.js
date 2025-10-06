@@ -18,11 +18,13 @@ const syncVaccinesToHealthCard = async (scheduleId) => {
             return;
         }
         const completedDoses = schedule.doses.filter(dose => dose.status === 'completed');
-        if (completedDoses.length === 0) {
-            console.log(`No completed doses found in schedule ${scheduleId}`);
+        const cancelledDoses = schedule.doses.filter(dose => dose.status === 'cancelled');
+        if (completedDoses.length === 0 && cancelledDoses.length === 0) {
+            console.log(`No completed or cancelled doses found in schedule ${scheduleId}`);
             return;
         }
-        const vaccinationData = completedDoses.map(dose => ({
+        const activeDoses = schedule.totalDoses - cancelledDoses.length;
+        const completedVaccinationData = completedDoses.map(dose => ({
             vaccineName: schedule.vaccineName,
             manufacturer: schedule.vaccineId?.manufacturer || 'Unknown',
             doseNumber: dose.doseNumber,
@@ -31,8 +33,22 @@ const syncVaccinesToHealthCard = async (scheduleId) => {
             administeredBy: schedule.healthcareProvider?.name || 'Unknown',
             facility: 'Health Center',
             certificateNumber: `CERT-${Date.now()}-${dose.doseNumber}`,
-            notes: dose.notes || ''
+            notes: dose.notes || '',
+            status: 'completed'
         }));
+        const cancelledVaccinationData = cancelledDoses.map(dose => ({
+            vaccineName: schedule.vaccineName,
+            manufacturer: schedule.vaccineId?.manufacturer || 'Unknown',
+            doseNumber: dose.doseNumber,
+            totalDoses: schedule.totalDoses,
+            dateCompleted: new Date(dose.dateScheduled),
+            administeredBy: schedule.healthcareProvider?.name || 'Unknown',
+            facility: 'Health Center',
+            certificateNumber: `CANCELLED-${Date.now()}-${dose.doseNumber}`,
+            notes: dose.notes || 'Dose cancelled',
+            status: 'cancelled'
+        }));
+        const vaccinationData = [...completedVaccinationData, ...cancelledVaccinationData];
         const isUserSchedule = !schedule.dependentIds || schedule.dependentIds.length === 0;
         if (isUserSchedule) {
             const userHealthCard = await healthcardModel_1.default.findOne({
@@ -41,11 +57,20 @@ const syncVaccinesToHealthCard = async (scheduleId) => {
             });
             if (userHealthCard) {
                 const existingVaccinations = userHealthCard.completedVaccinations || [];
-                const newVaccinations = vaccinationData.filter(newVaccine => !existingVaccinations.some(existing => existing.vaccineName === newVaccine.vaccineName &&
-                    existing.doseNumber === newVaccine.doseNumber));
-                userHealthCard.completedVaccinations = [...existingVaccinations, ...newVaccinations];
+                const updatedVaccinations = [...existingVaccinations];
+                vaccinationData.forEach(newVaccine => {
+                    const existingIndex = existingVaccinations.findIndex(existing => existing.vaccineName === newVaccine.vaccineName &&
+                        existing.doseNumber === newVaccine.doseNumber);
+                    if (existingIndex >= 0) {
+                        updatedVaccinations[existingIndex] = newVaccine;
+                    }
+                    else {
+                        updatedVaccinations.push(newVaccine);
+                    }
+                });
+                userHealthCard.completedVaccinations = updatedVaccinations;
                 await userHealthCard.save();
-                console.log(`Synced ${newVaccinations.length} vaccines to user health card ${userHealthCard._id}`);
+                console.log(`Synced ${vaccinationData.length} vaccines to user health card ${userHealthCard._id}`);
             }
         }
         else {
@@ -56,11 +81,20 @@ const syncVaccinesToHealthCard = async (scheduleId) => {
                 });
                 if (dependentHealthCard) {
                     const existingVaccinations = dependentHealthCard.completedVaccinations || [];
-                    const newVaccinations = vaccinationData.filter(newVaccine => !existingVaccinations.some(existing => existing.vaccineName === newVaccine.vaccineName &&
-                        existing.doseNumber === newVaccine.doseNumber));
-                    dependentHealthCard.completedVaccinations = [...existingVaccinations, ...newVaccinations];
+                    const updatedVaccinations = [...existingVaccinations];
+                    vaccinationData.forEach(newVaccine => {
+                        const existingIndex = existingVaccinations.findIndex(existing => existing.vaccineName === newVaccine.vaccineName &&
+                            existing.doseNumber === newVaccine.doseNumber);
+                        if (existingIndex >= 0) {
+                            updatedVaccinations[existingIndex] = newVaccine;
+                        }
+                        else {
+                            updatedVaccinations.push(newVaccine);
+                        }
+                    });
+                    dependentHealthCard.completedVaccinations = updatedVaccinations;
                     await dependentHealthCard.save();
-                    console.log(`Synced ${newVaccinations.length} vaccines to dependent health card ${dependentHealthCard._id}`);
+                    console.log(`Synced ${vaccinationData.length} vaccines to dependent health card ${dependentHealthCard._id}`);
                 }
             }
         }
@@ -268,7 +302,10 @@ const getHealthCardByDependentId = async (req, res) => {
 exports.getHealthCardByDependentId = getHealthCardByDependentId;
 const getAllHealthCardsByUserId = async (req, res) => {
     try {
-        const { userId } = req.params;
+        const userId = req.user?._id;
+        if (!userId) {
+            return res.status(401).json({ message: "User not authenticated" });
+        }
         const user = await user_1.default.findById(userId);
         if (!user) {
             return res.status(404).json({ message: "User not found" });
@@ -321,11 +358,12 @@ const syncCompletedVaccinesToHealthCard = async (req, res) => {
                 cardType: "user"
             });
             if (userHealthCard) {
-                const completedVaccines = [];
+                const allVaccines = [];
                 for (const schedule of userSchedules) {
                     const completedDoses = schedule.doses.filter(dose => dose.status === 'completed');
+                    const cancelledDoses = schedule.doses.filter(dose => dose.status === 'cancelled');
                     for (const dose of completedDoses) {
-                        completedVaccines.push({
+                        allVaccines.push({
                             vaccineName: schedule.vaccineName,
                             manufacturer: schedule.vaccineId?.manufacturer || 'Unknown',
                             doseNumber: dose.doseNumber,
@@ -334,16 +372,31 @@ const syncCompletedVaccinesToHealthCard = async (req, res) => {
                             administeredBy: schedule.healthcareProvider?.name || 'Unknown',
                             facility: 'Health Center',
                             certificateNumber: `CERT-${Date.now()}-${dose.doseNumber}`,
-                            notes: dose.notes || ''
+                            notes: dose.notes || '',
+                            status: 'completed'
+                        });
+                    }
+                    for (const dose of cancelledDoses) {
+                        allVaccines.push({
+                            vaccineName: schedule.vaccineName,
+                            manufacturer: schedule.vaccineId?.manufacturer || 'Unknown',
+                            doseNumber: dose.doseNumber,
+                            totalDoses: schedule.totalDoses,
+                            dateCompleted: new Date(dose.dateScheduled),
+                            administeredBy: schedule.healthcareProvider?.name || 'Unknown',
+                            facility: 'Health Center',
+                            certificateNumber: `CANCELLED-${Date.now()}-${dose.doseNumber}`,
+                            notes: dose.notes || 'Dose cancelled',
+                            status: 'cancelled'
                         });
                     }
                 }
-                userHealthCard.completedVaccinations = completedVaccines;
+                userHealthCard.completedVaccinations = allVaccines;
                 await userHealthCard.save();
                 syncResults.push({
                     cardType: 'user',
                     cardId: userHealthCard._id,
-                    vaccinesAdded: completedVaccines.length
+                    vaccinesAdded: allVaccines.length
                 });
             }
         }
@@ -356,9 +409,10 @@ const syncCompletedVaccinesToHealthCard = async (req, res) => {
                 });
                 if (dependentHealthCard) {
                     const completedDoses = schedule.doses.filter(dose => dose.status === 'completed');
-                    const completedVaccines = [];
+                    const cancelledDosesArr = schedule.doses.filter(dose => dose.status === 'cancelled');
+                    const allVaccines = [];
                     for (const dose of completedDoses) {
-                        completedVaccines.push({
+                        allVaccines.push({
                             vaccineName: schedule.vaccineName,
                             manufacturer: schedule.vaccineId?.manufacturer || 'Unknown',
                             doseNumber: dose.doseNumber,
@@ -367,16 +421,31 @@ const syncCompletedVaccinesToHealthCard = async (req, res) => {
                             administeredBy: schedule.healthcareProvider?.name || 'Unknown',
                             facility: 'Health Center',
                             certificateNumber: `CERT-${Date.now()}-${dose.doseNumber}`,
-                            notes: dose.notes || ''
+                            notes: dose.notes || '',
+                            status: 'completed'
                         });
                     }
-                    dependentHealthCard.completedVaccinations = completedVaccines;
+                    for (const dose of cancelledDosesArr) {
+                        allVaccines.push({
+                            vaccineName: schedule.vaccineName,
+                            manufacturer: schedule.vaccineId?.manufacturer || 'Unknown',
+                            doseNumber: dose.doseNumber,
+                            totalDoses: schedule.totalDoses,
+                            dateCompleted: new Date(dose.dateScheduled),
+                            administeredBy: schedule.healthcareProvider?.name || 'Unknown',
+                            facility: 'Health Center',
+                            certificateNumber: `CANCELLED-${Date.now()}-${dose.doseNumber}`,
+                            notes: dose.notes || 'Dose cancelled',
+                            status: 'cancelled'
+                        });
+                    }
+                    dependentHealthCard.completedVaccinations = allVaccines;
                     await dependentHealthCard.save();
                     syncResults.push({
                         cardType: 'dependent',
                         cardId: dependentHealthCard._id,
                         dependentId: dependentId,
-                        vaccinesAdded: completedVaccines.length
+                        vaccinesAdded: allVaccines.length
                     });
                 }
             }
@@ -466,6 +535,21 @@ exports.deleteVaccinationFromHealthCard = deleteVaccinationFromHealthCard;
 const downloadVaccinationCertificate = async (req, res) => {
     try {
         const { cardId } = req.params;
+        const { token } = req.query;
+        if (token && typeof token === 'string') {
+            const jwt = require('jsonwebtoken');
+            try {
+                const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            }
+            catch (tokenError) {
+                return res.status(401).json({ message: "Invalid or expired token" });
+            }
+        }
+        else if (req.user) {
+        }
+        else {
+            return res.status(401).json({ message: "Authentication required" });
+        }
         const healthCard = await healthcardModel_1.default.findById(cardId);
         if (!healthCard) {
             return res.status(404).json({ message: "Health card not found" });

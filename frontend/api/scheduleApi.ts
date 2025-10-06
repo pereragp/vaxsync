@@ -271,6 +271,29 @@ const scheduleAPI = {
     return data.data;
   },
 
+  // Add a new dose to existing schedule
+  async addDoseToSchedule(
+    scheduleId: string,
+    intervalDays: number,
+    notes?: string
+  ): Promise<VaccineSchedule> {
+    const response = await makeAuthenticatedRequest(
+      `${API_BASE_URL}/api/v1/schedule/${scheduleId}/doses`,
+      {
+        method: "POST",
+        body: JSON.stringify({ intervalDays, notes }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || `Failed to add dose: ${response.statusText}`);
+    }
+
+    const data: ScheduleResponse = await response.json();
+    return data.data;
+  },
+
   // Delete vaccine schedule
   async deleteSchedule(scheduleId: string): Promise<void> {
     const response = await makeAuthenticatedRequest(
@@ -370,12 +393,20 @@ const scheduleAPI = {
     return nextDose ? new Date(nextDose.dateScheduled) : null;
   },
 
-  // Helper function to calculate completion percentage
+  // Helper function to calculate completion percentage (excluding cancelled doses)
   getCompletionPercentage(schedule: VaccineSchedule): number {
     const completedDoses = schedule.doses.filter(
       (dose) => dose.status === "completed"
     ).length;
-    return Math.round((completedDoses / schedule.totalDoses) * 100);
+    const cancelledDoses = schedule.doses.filter(
+      (dose) => dose.status === "cancelled"
+    ).length;
+    const activeDoses = schedule.totalDoses - cancelledDoses;
+    
+    // If all doses are cancelled, return 0
+    if (activeDoses === 0) return 0;
+    
+    return Math.round((completedDoses / activeDoses) * 100);
   },
 
   // Helper function to check if schedule is overdue
