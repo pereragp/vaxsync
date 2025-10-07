@@ -24,6 +24,7 @@ import { router } from "expo-router";
 import DependentCard from "@/components/DependentCard";
 import DependentModal from "@/components/DependentModal";
 import CustomAlert from "../components/CustomAlert";
+import NotificationSettings from "../components/NotificationSettings";
 
 export default function ProfilePage() {
   //State variables
@@ -53,6 +54,7 @@ export default function ProfilePage() {
     useState(false);
   const [currentDependentStep, setCurrentDependentStep] = useState(1);
   const [showQuickEditModal, setShowQuickEditModal] = useState(false);
+  const [showNotificationSettings, setShowNotificationSettings] = useState(false);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [quickEditValue, setQuickEditValue] = useState<any>({
     firstName: '',
@@ -148,7 +150,7 @@ export default function ProfilePage() {
       
       if (editingField === 'name') {
         if (!quickEditValue.firstName.trim() || !quickEditValue.lastName.trim()) {
-          showAlert('Validation Error', 'Please enter both first and last name', [{ text: 'OK' }], 'warning');
+          showAlert('Please enter both first and last name', 'Validation error', [{ text: 'OK' }], 'warning');
           setLoading(false);
           return;
         }
@@ -295,22 +297,22 @@ export default function ProfilePage() {
       case 1:
         // Step 1: Personal Details
         if (!dependentForm.firstName.trim() || !dependentForm.lastName.trim()) {
-          showAlert('Validation Error', 'Please enter first and last name', [{ text: 'OK' }], 'warning');
+          showAlert('Please enter first and last name', 'Validation error', [{ text: 'OK' }], 'warning');
           return false;
         }
         if (!dependentForm.dateOfBirth) {
-          showAlert('Validation Error', 'Please select date of birth', [{ text: 'OK' }], 'warning');
+          showAlert('Please select date of birth', 'Validation error', [{ text: 'OK' }], 'warning');
           return false;
         }
         if (!dependentForm.gender) {
-          showAlert('Validation Error', 'Please select a gender', [{ text: 'OK' }], 'warning');
+          showAlert('Please select a gender', 'Validation error', [{ text: 'OK' }], 'warning');
           return false;
         }
         return true;
       case 2:
         // Step 2: Relationship
         if (!dependentForm.dependentType) {
-          showAlert('Validation Error', 'Please select a relationship', [{ text: 'OK' }], 'warning');
+          showAlert('Please select a relationship', 'Validation error', [{ text: 'OK' }], 'warning');
           return false;
         }
         return true;
@@ -807,7 +809,10 @@ export default function ProfilePage() {
                 <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
               </TouchableOpacity>
 
-              <TouchableOpacity className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex-row items-center justify-between">
+              <TouchableOpacity 
+                className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex-row items-center justify-between"
+                onPress={() => setShowNotificationSettings(true)}
+              >
                 <View className="flex-row items-center flex-1">
                   <View className="bg-orange-100 rounded-lg p-2 mr-3">
                     <Ionicons name="notifications" size={20} color="#f59e0b" />
@@ -1697,6 +1702,11 @@ export default function ProfilePage() {
         buttons={customAlert.buttons}
         icon={customAlert.icon}
         onClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
+      />
+      {/* Notification Settings Modal */}
+      <NotificationSettings
+        visible={showNotificationSettings}
+        onClose={() => setShowNotificationSettings(false)}
       />
     </SafeAreaView>
   );

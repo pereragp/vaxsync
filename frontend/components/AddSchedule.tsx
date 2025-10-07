@@ -90,25 +90,25 @@ export default function AddSchedule({
       case 1:
         // Step 1: Vaccine Selection
         if (!selectedVaccine) {
-          showAlert("Validation Error", "Please select a vaccine to continue", [{ text: 'OK' }], 'warning');
+          showAlert("Please select a vaccine to continue", "Validation error", [{ text: 'OK' }], 'warning');
           return false;
         }
         return true;
       case 2:
         // Step 2: Schedule Details
         if (!scheduleDate.trim()) {
-          showAlert("Validation Error", "Please select a schedule date", [{ text: 'OK' }], 'warning');
+          showAlert("Please select a schedule date", "Validation error", [{ text: 'OK' }], 'warning');
           return false;
         }
         const doses = parseInt(totalDoses);
         if (isNaN(doses) || doses < 1 || doses > 10) {
-          showAlert("Validation Error", "Please select number of doses (1-10)", [{ text: 'OK' }], 'warning');
+          showAlert("Please select number of doses (1-10)", "Validation error", [{ text: 'OK' }], 'warning');
           return false;
         }
         if (doses > 1) {
           const intervalDays = parseInt(interval);
           if (isNaN(intervalDays) || intervalDays < 1 || intervalDays > 365) {
-            showAlert("Validation Error", "Please select a valid interval between doses", [{ text: 'OK' }], 'warning');
+            showAlert("Please select a valid interval between doses", "Validation error", [{ text: 'OK' }], 'warning');
             return false;
           }
         }

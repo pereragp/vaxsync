@@ -133,7 +133,7 @@ const DependentModal: React.FC<DependentModalProps> = ({
       
       if (editingField === 'name') {
         if (!quickEditValue.firstName.trim() || !quickEditValue.lastName.trim()) {
-          showAlert('Validation Error', 'Please enter both first and last name', [{ text: 'OK' }], 'warning');
+          showAlert('Please enter both first and last name', 'Validation error', [{ text: 'OK' }], 'warning');
           setIsUpdating(false);
           return;
         }
