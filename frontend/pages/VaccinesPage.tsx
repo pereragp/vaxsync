@@ -1401,7 +1401,7 @@ export default function VaxCardScreen() {
                 </TouchableOpacity>
               </View>
             ) : (
-              filteredVaccines.map((vaccine, index) => {
+              filteredVaccines.slice(0, 5).map((vaccine, index) => {
                 const completedDoses = vaccine.doses.filter((d) => d.status === 'completed' || d.verified);
                 const cancelledDoses = vaccine.doses.filter((d) => d.status === 'cancelled');
                 const activeDoses = vaccine.totalDoses - cancelledDoses.length;
@@ -1946,6 +1946,21 @@ export default function VaxCardScreen() {
                     </View>
                   );
                 })}
+                
+                {/* Show More Indicator */}
+                {filteredVaccines.length > 5 && (
+                  <View className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 mx-4 mb-4">
+                    <View className="flex-row items-center justify-center">
+                      <Ionicons name="information-circle" size={20} color="#3b82f6" />
+                      <Text className="text-sm font-semibold text-blue-700 ml-2">
+                        Showing 5 of {filteredVaccines.length} recent activities
+                      </Text>
+                    </View>
+                    <Text className="text-xs text-center text-gray-600 mt-2">
+                      Use search or filters to find specific vaccines
+                    </Text>
+                  </View>
+                )}
             </View>
           </ScrollView>
         </Animated.View>

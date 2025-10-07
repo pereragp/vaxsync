@@ -31,6 +31,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomAlert from '../components/CustomAlert';
 import AddSchedule from '../components/AddSchedule';
+import * as VaccineNotifications from '../services/vaccineNotificationService';
+import { sendScheduleCreatedNotification, sendScheduleUpdatedNotification, sendScheduleCancelledNotification } from '../services/vaccineNotificationHelpers';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -128,6 +130,11 @@ export default function SchedulePage() {
   const [showUpdateDatePicker, setShowUpdateDatePicker] = useState(false);
   const [newDoseInterval, setNewDoseInterval] = useState("");
   const [doseIntervals, setDoseIntervals] = useState<{[key: number]: string}>({});
+  const [doseDates, setDoseDates] = useState<{[key: number]: Date}>({});
+  const [showDoseDatePicker, setShowDoseDatePicker] = useState<{[key: number]: boolean}>({});
+  const [newDoseDate, setNewDoseDate] = useState<Date | null>(null);
+  const [showNewDoseDatePicker, setShowNewDoseDatePicker] = useState(false);
+  const [tempAddedDoses, setTempAddedDoses] = useState<any[]>([]);
 
   // Add dependent form state
   const [dependentForm, setDependentForm] = useState({
@@ -328,6 +335,14 @@ export default function SchedulePage() {
       
       setSchedules(filteredSchedules);
 
+      // Check for overdue doses and send notifications
+      try {
+        await VaccineNotifications.checkOverdueDoses(allSchedules);
+      } catch (error) {
+        console.error('Error checking overdue doses:', error);
+        // Don't throw - this shouldn't prevent schedule loading
+      }
+
     } catch (error: any) {
       console.error('Error loading schedules:', error);
       setError(error.message || 'Failed to load schedules');
@@ -485,22 +500,22 @@ export default function SchedulePage() {
       case 1:
         // Step 1: Personal Details
         if (!dependentForm.firstName.trim() || !dependentForm.lastName.trim()) {
-          showAlert('Validation Error', 'Please enter first and last name', [{ text: 'OK' }], 'warning');
+          showAlert('Please enter first and last name', 'Validation error', [{ text: 'OK' }], 'warning');
           return false;
         }
         if (!dependentForm.dateOfBirth) {
-          showAlert('Validation Error', 'Please select date of birth', [{ text: 'OK' }], 'warning');
+          showAlert('Please select date of birth', 'Validation error', [{ text: 'OK' }], 'warning');
           return false;
         }
         if (!dependentForm.gender) {
-          showAlert('Validation Error', 'Please select a gender', [{ text: 'OK' }], 'warning');
+          showAlert('Please select a gender', 'Validation error', [{ text: 'OK' }], 'warning');
           return false;
         }
         return true;
       case 2:
         // Step 2: Relationship
         if (!dependentForm.dependentType) {
-          showAlert('Validation Error', 'Please select a relationship', [{ text: 'OK' }], 'warning');
+          showAlert('Please select a relationship', 'Validation error', [{ text: 'OK' }], 'warning');
           return false;
         }
         return true;
@@ -627,7 +642,26 @@ export default function SchedulePage() {
       };
 
       // Create schedule
-      await scheduleAPI.createSchedule(scheduleData);
+      const createdSchedule = await scheduleAPI.createSchedule(scheduleData);
+
+      // Schedule notifications for the vaccine doses
+      try {
+        let dependentName: string | undefined;
+        if (profile?.isDependent) {
+          dependentName = profile.name;
+        }
+        await VaccineNotifications.scheduleVaccineScheduleNotifications(
+          createdSchedule,
+          dependentName
+        );
+        console.log('Notifications scheduled for new vaccine schedule');
+        
+        // Send schedule created notification
+        await sendScheduleCreatedNotification(createdSchedule, dependentName);
+      } catch (error) {
+        console.error('Error scheduling notifications:', error);
+        // Don't throw - schedule was created successfully
+      }
 
       // Reload schedules
       await loadSchedules();
@@ -638,7 +672,7 @@ export default function SchedulePage() {
       // Close modal
       setShowCreateModal(false);
 
-      showAlert('Success', 'Vaccine schedule created successfully!', [{ text: 'OK' }], 'success');
+      showAlert('Success', 'Vaccine schedule created successfully! You will receive reminders for each dose.', [{ text: 'OK' }], 'success');
 
     } catch (error: any) {
       console.error('Error creating schedule:', error);
@@ -680,6 +714,17 @@ export default function SchedulePage() {
       }
 
       await scheduleAPI.updateDoseStatus(scheduleId, doseNumber, updateData);
+
+      // Cancel notifications for this dose if completed or cancelled
+      if (newStatus === 'completed' || newStatus === 'cancelled') {
+        try {
+          await VaccineNotifications.cancelDoseNotifications(scheduleId, doseNumber);
+          console.log(`Cancelled notifications for dose ${doseNumber}`);
+        } catch (error) {
+          console.error('Error cancelling dose notifications:', error);
+          // Don't throw - dose was updated successfully
+        }
+      }
 
       // Reload schedules
       await loadSchedules();
@@ -824,7 +869,7 @@ export default function SchedulePage() {
         scheduleDate: updateScheduleDate,
       };
 
-      // Always recalculate dose dates if schedule date or intervals changed
+      // Recalculate dose dates based on user selections
       const updatedDoses = selectedSchedule.doses.map((dose, index) => {
         if (index === 0) {
           // First dose uses the schedule date
@@ -833,26 +878,60 @@ export default function SchedulePage() {
             dateScheduled: new Date(updateScheduleDate)
           };
         } else {
-          // Calculate date based on custom interval from the dose intervals state
-          const customInterval = parseInt(doseIntervals[dose.doseNumber]);
-          if (customInterval && customInterval > 0) {
-            const prevDate = new Date(selectedSchedule.doses[index - 1].dateScheduled);
-            const newDate = new Date(prevDate);
-            newDate.setDate(newDate.getDate() + customInterval);
-            
+          // Use the selected date from date picker if available
+          if (doseDates[dose.doseNumber]) {
             return {
               ...dose,
-              dateScheduled: newDate
+              dateScheduled: doseDates[dose.doseNumber]
             };
           }
-          // If no custom interval, keep the existing dose date
+          // Otherwise keep the existing dose date
           return dose;
         }
       });
 
       updateData.doses = updatedDoses;
 
-      await scheduleAPI.updateSchedule(selectedSchedule._id, updateData);
+      const updatedSchedule = await scheduleAPI.updateSchedule(selectedSchedule._id, updateData);
+
+      // Add any temporarily added doses to the backend
+      if (tempAddedDoses.length > 0) {
+        for (const tempDose of tempAddedDoses) {
+          try {
+            const prevDose = tempDose.doseNumber === 2 
+              ? updatedSchedule.doses[0] 
+              : updatedSchedule.doses[tempDose.doseNumber - 2];
+            
+            const intervalDays = Math.floor(
+              (new Date(tempDose.dateScheduled).getTime() - new Date(prevDose.dateScheduled).getTime()) 
+              / (1000 * 60 * 60 * 24)
+            );
+            
+            await scheduleAPI.addDoseToSchedule(selectedSchedule._id, intervalDays);
+          } catch (error) {
+            console.error(`Error adding dose ${tempDose.doseNumber}:`, error);
+          }
+        }
+      }
+
+      // Reschedule notifications with updated dates
+      try {
+        let dependentName: string | undefined;
+        if (profile?.isDependent) {
+          dependentName = profile.name;
+        }
+        await VaccineNotifications.rescheduleVaccineScheduleNotifications(
+          updatedSchedule,
+          dependentName
+        );
+        console.log('Rescheduled notifications for updated schedule');
+        
+        // Send schedule updated notification
+        await sendScheduleUpdatedNotification(updatedSchedule, dependentName);
+      } catch (error) {
+        console.error('Error rescheduling notifications:', error);
+        // Don't throw - schedule was updated successfully
+      }
 
       // Reload schedules
       await loadSchedules();
@@ -865,11 +944,17 @@ export default function SchedulePage() {
       setUpdateScheduleDate("");
       setNewDoseInterval("");
       setDoseIntervals({});
+      setDoseDates({});
+      setNewDoseDate(null);
+      setTempAddedDoses([]);
 
       // Close modal
       setShowUpdateScheduleModal(false);
 
-      showAlert('Success', 'Schedule updated successfully!', [{ text: 'OK' }], 'success');
+      const message = tempAddedDoses.length > 0 
+        ? `Schedule updated successfully! ${tempAddedDoses.length} new dose${tempAddedDoses.length > 1 ? 's' : ''} added.`
+        : 'Schedule updated successfully!';
+      showAlert('Success', message, [{ text: 'OK' }], 'success');
 
     } catch (error: any) {
       console.error('Error updating schedule:', error);
@@ -892,6 +977,23 @@ export default function SchedulePage() {
             try {
               setLoading(true);
               await scheduleAPI.deleteSchedule(scheduleId);
+              
+              // Cancel all notifications for this schedule
+              try {
+                await VaccineNotifications.cancelScheduleNotifications(scheduleId);
+                console.log('Cancelled notifications for deleted schedule');
+                
+                // Send schedule cancelled notification
+                let dependentName: string | undefined;
+                if (profile?.isDependent) {
+                  dependentName = profile.name;
+                }
+                await sendScheduleCancelledNotification(vaccineName, dependentName);
+              } catch (error) {
+                console.error('Error cancelling schedule notifications:', error);
+                // Don't throw - schedule was deleted successfully
+              }
+              
               await loadSchedules();
               showAlert('Success', 'Schedule deleted successfully!', [{ text: 'OK' }], 'success');
             } catch (error: any) {
@@ -1012,28 +1114,61 @@ export default function SchedulePage() {
 
   // Render left swipe actions for schedule cards (Edit/Delete)
   const renderLeftActions = (schedule: VaccineSchedule) => (
-    <View className="flex-col justify-center" style={{ width: 80 }}>
+    <View className="flex-col justify-center mr-2" style={{ width: 100 }}>
+      {/* Edit Action */}
       <TouchableOpacity
         onPress={() => {
           setIsSwipeableOpen(false);
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
           handleUpdateSchedule(schedule);
         }}
-        className="bg-blue-500 justify-center items-center flex-1 rounded-tl-2xl"
+        className="flex-1 mb-1 rounded-tl-2xl overflow-hidden"
+        style={{
+          elevation: 3,
+          shadowColor: '#3b82f6',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.2,
+          shadowRadius: 2,
+        }}
       >
-        <Ionicons name="create-outline" size={24} color="white" />
-        <Text className="text-white text-xs font-semibold mt-1">Edit</Text>
+        <LinearGradient
+          colors={['#3b82f6', '#2563eb']}
+          className="flex-1 justify-center items-center"
+        >
+          <View className="bg-white/25 rounded-full p-2.5 mb-1">
+            <Ionicons name="create-outline" size={24} color="white" />
+          </View>
+          <Text className="text-white text-xs font-bold tracking-wider">EDIT</Text>
+          <Text className="text-white/90 text-[10px] mt-0.5">Modify</Text>
+        </LinearGradient>
       </TouchableOpacity>
+
+      {/* Delete Action */}
       <TouchableOpacity
         onPress={() => {
           setIsSwipeableOpen(false);
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           handleDeleteSchedule(schedule._id, schedule.vaccineName);
         }}
-        className="bg-red-500 justify-center items-center flex-1 rounded-bl-2xl"
+        className="flex-1 mt-1 rounded-bl-2xl overflow-hidden"
+        style={{
+          elevation: 3,
+          shadowColor: '#ef4444',
+          shadowOffset: { width: 0, height: 1 },
+          shadowOpacity: 0.2,
+          shadowRadius: 2,
+        }}
       >
-        <Ionicons name="trash-outline" size={24} color="white" />
-        <Text className="text-white text-xs font-semibold mt-1">Delete</Text>
+        <LinearGradient
+          colors={['#ef4444', '#dc2626']}
+          className="flex-1 justify-center items-center"
+        >
+          <View className="bg-white/25 rounded-full p-2.5 mb-1">
+            <Ionicons name="trash-outline" size={24} color="white" />
+          </View>
+          <Text className="text-white text-xs font-bold tracking-wider">DELETE</Text>
+          <Text className="text-white/90 text-[10px] mt-0.5">Remove</Text>
+        </LinearGradient>
       </TouchableOpacity>
     </View>
   );
@@ -1672,6 +1807,22 @@ export default function SchedulePage() {
 
                       {/* Enhanced Dose indicators */}
                       <View className="bg-gray-50 rounded-2xl p-4">
+                        {/* Enhanced Interactive Hints */}
+                        <View className="flex-row items-center justify-between mb-3">
+                          <View className="flex-row items-center bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200">
+                            <Ionicons name="swap-horizontal" size={14} color="#3b82f6" />
+                            <Text className="text-xs font-medium text-blue-700 ml-1.5">
+                              Swipe for actions
+                            </Text>
+                          </View>
+                          <View className="flex-row items-center bg-purple-50 px-2.5 py-1.5 rounded-lg border border-purple-200">
+                            <Ionicons name="touch" size={14} color="#8b5cf6" />
+                            <Text className="text-xs font-medium text-purple-700 ml-1.5">
+                              Tap to expand
+                            </Text>
+                          </View>
+                        </View>
+
                         <View className="flex-row items-center justify-between mb-3">
                           <Text className="text-sm font-semibold text-gray-700">
                             Dose Progress
@@ -1759,45 +1910,6 @@ export default function SchedulePage() {
                           </Text>
                           </View>
 
-                          {/* Prominent Swipe Hints Banner */}
-                          {schedule.doses.some(d => d.status === 'scheduled' || d.status === 'missed') && (
-                            <View className="mb-4 rounded-2xl overflow-hidden shadow-md" style={{ elevation: 3 }}>
-                              <LinearGradient
-                                colors={['#eff6ff', '#f0f9ff', '#fef2f2']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                className="p-4"
-                              >
-                                <View className="flex-row items-center mb-3">
-                                  <View className="w-8 h-8 rounded-full bg-blue-500 items-center justify-center mr-2 shadow-sm">
-                                    <Ionicons name="hand-left" size={16} color="white" />
-                                  </View>
-                                  <Text className="text-sm font-bold text-gray-800">Swipe Gestures</Text>
-                                </View>
-                                <View className="flex-row items-center">
-                                  <View className="flex-1 mr-2">
-                                    <View className="bg-white rounded-xl p-3 border-2 border-green-300 shadow-sm">
-                                      <View className="flex-row items-center justify-center">
-                                        <Text className="text-xs font-bold text-green-700">Swipe </Text>
-                                        <Ionicons name="arrow-forward" size={16} color="#16a34a" />
-                                        <Text className="text-xs font-bold text-green-700 ml-1"> Complete</Text>
-                                      </View>
-                                    </View>
-                                  </View>
-                                  <View className="flex-1 ml-2">
-                                    <View className="bg-white rounded-xl p-3 border-2 border-red-300 shadow-sm">
-                                      <View className="flex-row items-center justify-center">
-                                        <Text className="text-xs font-bold text-red-700">Swipe </Text>
-                                        <Ionicons name="arrow-back" size={16} color="#ef4444" />
-                                        <Text className="text-xs font-bold text-red-700 ml-1"> Cancel</Text>
-                                      </View>
-                                    </View>
-                                  </View>
-                                </View>
-                              </LinearGradient>
-                            </View>
-                          )}
-
                           <View className="space-y-3">
                             {schedule.doses.map((dose, doseIndex) => {
                               const doseConfigItem = doseConfig[dose.status];
@@ -1829,54 +1941,74 @@ export default function SchedulePage() {
                                       : 'bg-yellow-50 border-yellow-200 shadow-sm'
                                   }`}
                                 >
-                                  <View className="flex-row justify-between items-start mb-4">
-                                    <View className="flex-row items-center">
-                                      <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
-                                        dose.status === 'completed' ? 'bg-green-100' : 
-                                        dose.status === 'scheduled' ? 'bg-blue-100' : 'bg-yellow-100'
-                                      }`}>
-                                        <Ionicons 
-                                          name={
-                                            dose.status === 'completed' ? 'checkmark' :
-                                            dose.status === 'scheduled' ? 'calendar' :
-                                            dose.status === 'missed' ? 'warning' :
-                                            'close'
-                                          } 
-                                          size={20} 
-                                          color={
-                                            dose.status === 'completed' ? '#16a34a' :
-                                            dose.status === 'scheduled' ? '#3b82f6' :
-                                            dose.status === 'missed' ? '#f59e0b' :
-                                            '#ef4444'
-                                          } 
-                                        />
-                                      </View>
-                                      <View>
-                                        <Text className={`text-lg font-bold ${
-                                          dose.status === 'completed' ? 'text-gray-800' : 
-                                          dose.status === 'scheduled' ? 'text-blue-800' : 'text-yellow-800'
+                                  <View className="mb-3">
+                                    <View className="flex-row justify-between items-start mb-2">
+                                      <View className="flex-row items-center flex-1">
+                                        <View className={`w-10 h-10 rounded-full items-center justify-center mr-3 ${
+                                          dose.status === 'completed' ? 'bg-green-100' : 
+                                          dose.status === 'scheduled' ? 'bg-blue-100' : 'bg-yellow-100'
                                         }`}>
-                                          Dose {dose.doseNumber}
-                                        </Text>
-                                        <Text className={`text-sm ${
-                                          dose.status === 'completed' ? 'text-green-600' :
-                                          dose.status === 'scheduled' ? 'text-blue-600' : 'text-yellow-600'
-                                        }`}>
-                                          {dose.status.charAt(0).toUpperCase() + dose.status.slice(1)}
-                                        </Text>
+                                          <Ionicons 
+                                            name={
+                                              dose.status === 'completed' ? 'checkmark' :
+                                              dose.status === 'scheduled' ? 'calendar' :
+                                              dose.status === 'missed' ? 'warning' :
+                                              'close'
+                                            } 
+                                            size={20} 
+                                            color={
+                                              dose.status === 'completed' ? '#16a34a' :
+                                              dose.status === 'scheduled' ? '#3b82f6' :
+                                              dose.status === 'missed' ? '#f59e0b' :
+                                              '#ef4444'
+                                            } 
+                                          />
+                                        </View>
+                                        <View className="flex-1">
+                                          <Text className={`text-lg font-bold ${
+                                            dose.status === 'completed' ? 'text-gray-800' : 
+                                            dose.status === 'scheduled' ? 'text-blue-800' : 'text-yellow-800'
+                                          }`}>
+                                            Dose {dose.doseNumber}
+                                          </Text>
+                                          <Text className={`text-sm ${
+                                            dose.status === 'completed' ? 'text-green-600' :
+                                            dose.status === 'scheduled' ? 'text-blue-600' : 'text-yellow-600'
+                                          }`}>
+                                            {dose.status.charAt(0).toUpperCase() + dose.status.slice(1)}
+                                          </Text>
+                                        </View>
                                       </View>
-                                    </View>
-                                    <View 
-                                      className="px-3 py-1 rounded-full"
-                                      style={{ backgroundColor: doseConfigItem.bgColor }}
-                                    >
-                                      <Text 
-                                        className="text-xs font-medium capitalize"
-                                        style={{ color: doseConfigItem.color }}
+                                      <View 
+                                        className="px-3 py-1 rounded-full"
+                                        style={{ backgroundColor: doseConfigItem.bgColor }}
                                       >
-                                        {dose.status}
-                                      </Text>
+                                        <Text 
+                                          className="text-xs font-medium capitalize"
+                                          style={{ color: doseConfigItem.color }}
+                                        >
+                                          {dose.status}
+                                        </Text>
+                                      </View>
                                     </View>
+                                    
+                                    {/* Swipe Action Hints */}
+                                    {dose.status === 'scheduled' && (
+                                      <View className="flex-row items-center justify-between px-2">
+                                        <View className="flex-row items-center bg-green-50 px-3 py-1.5 rounded-lg border border-green-200">
+                                          <Ionicons name="arrow-forward" size={12} color="#16a34a" />
+                                          <Text className="text-xs font-medium text-green-700 ml-1">
+                                            Swipe to complete
+                                          </Text>
+                                        </View>
+                                        <View className="flex-row items-center bg-red-50 px-3 py-1.5 rounded-lg border border-red-200">
+                                          <Ionicons name="arrow-back" size={12} color="#dc2626" />
+                                          <Text className="text-xs font-medium text-red-700 ml-1">
+                                            Swipe to cancel
+                                          </Text>
+                                        </View>
+                                      </View>
+                                    )}
                                   </View>
                                   
                                   {/* Enhanced Dose Information Grid */}
@@ -2082,71 +2214,88 @@ export default function SchedulePage() {
             setSelectedSchedule(null);
             setNewDoseInterval("");
             setDoseIntervals({});
+            setDoseDates({});
+            setNewDoseDate(null);
+            setTempAddedDoses([]);
           }}
         >
           <View className="flex-1 bg-black/50 justify-end">
-            <View className="bg-white rounded-t-3xl max-h-5/6">
-                          <View className="p-6 border-b border-gray-100">
-                            <View className="flex-row justify-between items-center">
-                  <View className="flex-row items-center">
-                    <View className="w-12 h-12 rounded-2xl bg-green-100 items-center justify-center mr-4">
-                      <Ionicons name="create" size={24} color="#16a34a" />
-                            </View>
-                    <View>
-                      <Text className="text-xl font-bold text-gray-800">Update Schedule</Text>
-                      <Text className="text-gray-600 text-sm">
-                        Edit {selectedSchedule?.vaccineName || 'this schedule'}
-                                      </Text>
-                              </View>
-                              </View>
-                                    <TouchableOpacity
+            <View className="bg-white rounded-t-3xl" style={{ height: '85%' }}>
+              {/* Enhanced Header */}
+              <LinearGradient
+                colors={['#3b82f6', '#2563eb']}
+                className="px-6 pt-6 pb-5 rounded-t-3xl"
+              >
+                <View className="flex-row justify-between items-start">
+                  <View className="flex-row items-center flex-1">
+                    <View className="w-12 h-12 rounded-xl bg-white/25 backdrop-blur items-center justify-center mr-3">
+                      <Ionicons name="create" size={24} color="white" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-xl font-bold text-white">Update Schedule</Text>
+                      <Text className="text-white/90 text-sm mt-0.5">
+                        {selectedSchedule?.vaccineName || 'Edit this schedule'}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
                     onPress={() => {
                       setShowUpdateScheduleModal(false);
                       setSelectedSchedule(null);
                       setNewDoseInterval("");
                       setDoseIntervals({});
+                      setDoseDates({});
+                      setNewDoseDate(null);
+                      setTempAddedDoses([]);
                     }}
-                    className="w-12 h-12 rounded-full bg-gray-100 items-center justify-center"
+                    className="w-10 h-10 rounded-full bg-white/25 backdrop-blur items-center justify-center"
+                    style={{
+                      elevation: 2,
+                      shadowColor: '#000',
+                      shadowOffset: { width: 0, height: 1 },
+                      shadowOpacity: 0.2,
+                      shadowRadius: 2,
+                    }}
                   >
-                    <Ionicons name="close" size={24} color="#64748b" />
-                                    </TouchableOpacity>
-                              </View>
-                            </View>
+                    <Ionicons name="close" size={22} color="white" />
+                  </TouchableOpacity>
+                </View>
+              </LinearGradient>
 
             <ScrollView className="p-6" showsVerticalScrollIndicator={false}>
-              {/* Schedule Details */}
-              <View className="mb-6">
-                <Text className="text-lg font-semibold text-gray-800 mb-3">Schedule Details</Text>
+              {/* Schedule Details - Compact */}
+              <View className="mb-4">
+                <Text className="text-base font-semibold text-gray-800 mb-2.5">Schedule Details</Text>
                 
-                <View className="space-y-4">
+                <View className="space-y-3">
                   {/* Vaccine Name */}
                   <View>
-                    <Text className="text-sm font-medium text-gray-700 mb-2">Vaccine Name *</Text>
-                    <View className="flex-row items-center bg-gray-50 rounded-lg p-3 border-2 border-gray-200">
-                      <Ionicons name="medical" size={20} color="#6b7280" />
-                    <TextInput
-                        className="flex-1 ml-3 text-gray-800"
-                      placeholder="Enter vaccine name"
-                      value={updateVaccineName}
-                      onChangeText={setUpdateVaccineName}
-                      placeholderTextColor="#9ca3af"
-                    />
-                            </View>
-                          </View>
+                    <Text className="text-xs font-medium text-gray-600 mb-1.5">Vaccine Name *</Text>
+                    <View className="flex-row items-center bg-gray-50 rounded-lg p-2.5 border border-gray-300">
+                      <Ionicons name="medical" size={18} color="#6b7280" />
+                      <TextInput
+                        className="flex-1 ml-2.5 text-gray-800 text-sm"
+                        placeholder="Vaccine name"
+                        value={updateVaccineName}
+                        onChangeText={setUpdateVaccineName}
+                        placeholderTextColor="#9ca3af"
+                      />
+                    </View>
+                  </View>
 
                   {/* Healthcare Provider */}
                   <View>
-                    <Text className="text-sm font-medium text-gray-700 mb-2">Healthcare Provider (Optional)</Text>
-                    <View className="flex-row items-center bg-gray-50 rounded-lg p-3 border-2 border-gray-200">
-                      <Ionicons name="person" size={20} color="#6b7280" />
-                    <TextInput
-                        className="flex-1 ml-3 text-gray-800"
-                      placeholder="e.g., Dr. Smith, City Hospital"
-                      value={updateHealthcareProvider}
-                      onChangeText={setUpdateHealthcareProvider}
-                      placeholderTextColor="#9ca3af"
-                    />
-                        </View>
+                    <Text className="text-xs font-medium text-gray-600 mb-1.5">Healthcare Provider</Text>
+                    <View className="flex-row items-center bg-gray-50 rounded-lg p-2.5 border border-gray-300">
+                      <Ionicons name="person" size={18} color="#6b7280" />
+                      <TextInput
+                        className="flex-1 ml-2.5 text-gray-800 text-sm"
+                        placeholder="Provider name (optional)"
+                        value={updateHealthcareProvider}
+                        onChangeText={setUpdateHealthcareProvider}
+                        placeholderTextColor="#9ca3af"
+                      />
+                    </View>
                   </View>
 
                   {/* Schedule Date with Native Picker */}
@@ -2226,283 +2375,306 @@ export default function SchedulePage() {
                     )}
                             </View>
 
-                  {/* Enhanced Current Doses Section */}
+                  {/* Simplified Dose Management */}
                   {selectedSchedule && (
-                    <View className="bg-gradient-to-br from-purple-50 to-blue-50 border-2 border-purple-200 rounded-xl p-4 mb-4">
-                      {/* Header */}
-                      <View className="flex-row items-center justify-between mb-2">
-                              <View className="flex-row items-center">
-                          <View className="bg-purple-500 rounded-lg p-2 mr-3">
-                            <Ionicons name="list" size={20} color="white" />
-                              </View>
-                  <View>
-                            <Text className="text-lg font-bold text-gray-800">Current Doses</Text>
-                            <Text className="text-xs text-purple-700">
-                              {selectedSchedule.doses.length} dose{selectedSchedule.doses.length !== 1 ? 's' : ''} scheduled
-                            </Text>
+                    <View className="mb-4">
+                      <Text className="text-base font-semibold text-gray-800 mb-2.5">Dose Schedule</Text>
+                      
+                      {/* First Dose Info */}
+                      <View className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-3">
+                        <View className="flex-row items-center justify-between">
+                          <View className="flex-row items-center flex-1">
+                            <View className="bg-blue-500 rounded-lg p-2 mr-3">
+                              <Ionicons name="play-circle" size={18} color="white" />
+                            </View>
+                            <View className="flex-1">
+                              <Text className="text-sm font-bold text-gray-800">Dose 1 (First Dose)</Text>
+                              <Text className="text-xs text-blue-700">
+                                Date: {updateScheduleDate ? new Date(updateScheduleDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Set above'}
+                              </Text>
                             </View>
                           </View>
-                  </View>
-
-                      {/* Instructions */}
-                      <View className="bg-white/60 rounded-lg p-3 mb-3 border border-purple-200">
-                        <View className="flex-row items-start">
-                          <Ionicons name="information-circle" size={18} color="#7c3aed" />
-                          <View className="flex-1 ml-2">
-                            <Text className="text-xs font-semibold text-purple-900 mb-1">How to adjust intervals:</Text>
-                            <Text className="text-xs text-gray-700">
-                              • First dose uses the schedule date above{'\n'}
-                              • Edit interval days to reschedule doses{'\n'}
-                              • Changes apply when you click Update Schedule
+                          {tempAddedDoses.length > 0 && (
+                            <View className="bg-blue-500 rounded-full px-2 py-1">
+                              <Text className="text-[10px] font-bold text-white">
+                                {selectedSchedule.doses.length + tempAddedDoses.length} total
                               </Text>
+                            </View>
+                          )}
                         </View>
                       </View>
-                    </View>
 
-                      {/* Doses List */}
-                      <View className="space-y-2">
-                        {selectedSchedule.doses.map((dose, index) => {
-                          const doseStatusConfig = {
-                            scheduled: { color: '#3b82f6', bgColor: '#dbeafe', icon: 'calendar', label: 'Scheduled' },
-                            completed: { color: '#10b981', bgColor: '#d1fae5', icon: 'checkmark-circle', label: 'Completed' },
-                            missed: { color: '#f59e0b', bgColor: '#fef3c7', icon: 'warning', label: 'Missed' },
-                            cancelled: { color: '#ef4444', bgColor: '#fee2e2', icon: 'close-circle', label: 'Cancelled' }
-                          }[dose.status];
+                      {/* Remaining Doses */}
+                      {[...selectedSchedule.doses.slice(1), ...tempAddedDoses].map((dose, index) => {
+                        const isNewDose = index >= selectedSchedule.doses.length - 1;
+                        const actualIndex = index + 1;
+                        const allDoses = [...selectedSchedule.doses, ...tempAddedDoses];
+                        const prevDose = actualIndex === 1 
+                          ? new Date(updateScheduleDate || selectedSchedule.doses[0].dateScheduled)
+                          : doseDates[allDoses[actualIndex - 1].doseNumber] 
+                            || new Date(allDoses[actualIndex - 1].dateScheduled);
+                        
+                        const selectedDate = doseDates[dose.doseNumber] || new Date(dose.dateScheduled);
+                        const calculatedInterval = Math.floor(
+                          (selectedDate.getTime() - prevDose.getTime()) / (1000 * 60 * 60 * 24)
+                        );
 
-                          const currentInterval = index > 0 ? Math.floor(
-                            (new Date(dose.dateScheduled).getTime() - new Date(selectedSchedule.doses[index - 1].dateScheduled).getTime()) 
-                            / (1000 * 60 * 60 * 24)
-                          ) : 0;
-
-                          return (
-                            <View key={dose.doseNumber} className="bg-white rounded-xl p-4 border-2 border-gray-200 shadow-sm">
-                              {/* Dose Header */}
-                              <View className="flex-row items-center justify-between mb-3">
-                                <View className="flex-row items-center flex-1">
-                                  <View 
-                                    className="w-12 h-12 rounded-xl items-center justify-center mr-3"
-                                    style={{ backgroundColor: doseStatusConfig.bgColor }}
-                        >
-                          <Ionicons 
-                                      name={doseStatusConfig.icon as any} 
-                            size={20} 
-                                      color={doseStatusConfig.color} 
-                                    />
-                                  </View>
-                                  <View className="flex-1">
-                                    <Text className="text-base font-bold text-gray-800">Dose {dose.doseNumber}</Text>
-                                    <View 
-                                      className="px-2 py-1 rounded-full mt-1 self-start"
-                                      style={{ backgroundColor: doseStatusConfig.bgColor }}
-                                    >
-                                      <Text className="text-xs font-semibold" style={{ color: doseStatusConfig.color }}>
-                                        {doseStatusConfig.label}
-                          </Text>
-                                    </View>
-                                  </View>
+                        return (
+                          <View key={dose.doseNumber} className={`rounded-xl p-3 border mb-2 ${
+                            isNewDose ? 'bg-green-50 border-green-300' : 'bg-white border-gray-200'
+                          }`}>
+                            <View className="flex-row items-center justify-between">
+                              <View className="flex-row items-center flex-1">
+                                <View className={`rounded-lg p-2 mr-2 ${
+                                  isNewDose ? 'bg-green-500' : 'bg-gray-100'
+                                }`}>
+                                  <Text className={`text-sm font-bold ${
+                                    isNewDose ? 'text-white' : 'text-gray-700'
+                                  }`}>#{dose.doseNumber}</Text>
                                 </View>
-                                <View className="items-end">
-                                  <Text className="text-xs text-gray-500 mb-1">Scheduled</Text>
-                                  <Text className="text-sm font-bold text-gray-800">
-                                    {new Date(dose.dateScheduled).toLocaleDateString('en-US', { 
-                                      month: 'short', 
-                                      day: 'numeric',
-                                      year: 'numeric'
-                                    })}
+                                <View className="flex-1">
+                                  <View className="flex-row items-center">
+                                    <Text className="text-sm font-semibold text-gray-800">Dose {dose.doseNumber}</Text>
+                                    {isNewDose && (
+                                      <View className="bg-green-500 rounded px-2 py-0.5 ml-2">
+                                        <Text className="text-[10px] font-bold text-white">NEW</Text>
+                                      </View>
+                                    )}
+                                  </View>
+                                  <TouchableOpacity
+                                    onPress={() => {
+                                      setShowDoseDatePicker(prev => ({ ...prev, [dose.doseNumber]: true }));
+                                    }}
+                                    className="bg-blue-50 rounded-lg p-2 mt-1.5 border border-blue-200"
+                                  >
+                                    <View className="flex-row items-center">
+                                      <Ionicons name="calendar" size={14} color="#3b82f6" />
+                                      <Text className="text-xs text-blue-700 font-semibold ml-1.5">
+                                        {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                      </Text>
+                                    </View>
+                                  </TouchableOpacity>
+                                  <Text className="text-[10px] text-gray-500 mt-1">
+                                    ⏱️ {calculatedInterval} days after Dose {actualIndex}
                                   </Text>
                                 </View>
                               </View>
-
-                              {/* Interval Editor (for doses after first) */}
-                              {index > 0 && (
-                                <View className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                  <View className="flex-row items-center justify-between mb-2">
-                                    <Text className="text-xs font-semibold text-gray-700">Adjust Interval:</Text>
-                                    <Text className="text-xs text-gray-500">
-                                      Current: {currentInterval} days
-                          </Text>
-                      </View>
-                      
-                                  <View className="flex-row items-center">
-                                    <Ionicons name="time-outline" size={16} color="#6b7280" />
-                    <TextInput
-                                      className="flex-1 ml-2 bg-white rounded-lg px-3 py-2 text-sm text-gray-800 border-2 border-blue-200 font-semibold"
-                                      placeholder={currentInterval.toString()}
-                                      keyboardType="numeric"
-                                      value={doseIntervals[dose.doseNumber] || ''}
-                                      onChangeText={(text) => {
-                                        setDoseIntervals(prev => ({
-                                          ...prev,
-                                          [dose.doseNumber]: text
-                                        }));
-                                      }}
-                                    />
-                                    <Text className="text-sm text-gray-600 ml-2 font-medium">days</Text>
-                                  </View>
-
-                                  {/* Preview new date */}
-                                  {doseIntervals[dose.doseNumber] && parseInt(doseIntervals[dose.doseNumber]) > 0 && (
-                                    <View className="mt-2 bg-blue-50 rounded-lg p-2 border border-blue-200">
-                                      <View className="flex-row items-center">
-                                        <Ionicons name="arrow-forward" size={14} color="#3b82f6" />
-                                        <Text className="text-xs text-blue-700 ml-1 font-semibold">
-                                          New date: {(() => {
-                                            const prevDate = new Date(selectedSchedule.doses[index - 1].dateScheduled);
-                                            const newDate = new Date(prevDate);
-                                            newDate.setDate(newDate.getDate() + parseInt(doseIntervals[dose.doseNumber]));
-                                            return newDate.toLocaleDateString('en-US', { 
-                                              month: 'short', 
-                                              day: 'numeric',
-                                              year: 'numeric'
-                                            });
-                                          })()}
-                          </Text>
-                                      </View>
-                                    </View>
-                                  )}
-                                </View>
-                              )}
-
-                              {/* First dose note */}
-                              {index === 0 && (
-                                <View className="bg-green-50 rounded-lg p-2 border border-green-200">
-                                  <View className="flex-row items-center">
-                                    <Ionicons name="shield-checkmark" size={14} color="#10b981" />
-                                    <Text className="text-xs text-green-700 ml-1 font-medium">
-                                      First dose - uses schedule date above
-                          </Text>
-                      </View>
-                    </View>
-                              )}
                             </View>
-                          );
-                        })}
-                      </View>
-                    </View>
-                  )}
 
-                  {/* Add Another Dose */}
-                  {selectedSchedule && (
-                    <View className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
-                      <View className="flex-row items-center mb-3">
-                        <View className="bg-blue-500 rounded-lg p-2">
-                          <Ionicons name="add-circle" size={20} color="white" />
-                        </View>
-                        <View className="ml-3">
-                          <Text className="text-base font-semibold text-gray-800">Add Another Dose</Text>
-                          <Text className="text-xs text-blue-700">
-                            Current: {selectedSchedule.doses.length} doses • Add dose #{selectedSchedule.doses.length + 1}
-                    </Text>
-                        </View>
-                  </View>
-
-                  <View>
-                        <Text className="text-sm font-medium text-gray-700 mb-2">
-                          Days from last dose *
-                        </Text>
-                        <View className="flex-row items-center space-x-2">
-                          <View className="flex-1 flex-row items-center bg-white rounded-lg p-3 border-2 border-blue-300">
-                            <Ionicons name="time" size={20} color="#3b82f6" />
-                    <TextInput
-                              className="flex-1 ml-2 text-gray-800"
-                      placeholder="28"
-                              value={newDoseInterval}
-                      keyboardType="numeric"
-                      placeholderTextColor="#9ca3af"
-                              onChangeText={setNewDoseInterval}
-                    />
-                            <Text className="text-gray-500 text-sm">days</Text>
-                  </View>
-                          <TouchableOpacity
-                            onPress={async () => {
-                              const customInterval = parseInt(newDoseInterval) || 28;
-                              if (customInterval > 0) {
-                                const newDoseNumber = selectedSchedule.doses.length + 1;
-                                const lastDose = selectedSchedule.doses[selectedSchedule.doses.length - 1];
-                                const lastDoseDate = new Date(lastDose.dateScheduled);
-                                const newDoseDate = new Date(lastDoseDate);
-                                newDoseDate.setDate(newDoseDate.getDate() + customInterval);
-                                
-                                showAlert(
-                                  'Add New Dose',
-                                  `This will add Dose ${newDoseNumber} scheduled for ${newDoseDate.toLocaleDateString()}\n\n${customInterval} days after last dose`,
-                                  [
-                                    { text: 'Cancel', style: 'cancel' },
-                                    {
-                                      text: 'Add Dose',
-                                      onPress: async () => {
-                                        try {
-                                          setLoading(true);
-                                          await scheduleAPI.addDoseToSchedule(
-                                            selectedSchedule._id,
-                                            customInterval
-                                          );
-                                          
-                                          // Reload schedules to show the new dose
-                                          await loadSchedules();
-                                          
-                                          // Clear the input and close modal
-                                          setNewDoseInterval("");
-                                          setShowUpdateScheduleModal(false);
-                                          setSelectedSchedule(null);
-                                          
-                                          showAlert('Success', `Dose ${newDoseNumber} added successfully!`, [{ text: 'OK' }], 'success');
-                                        } catch (error: any) {
-                                          console.error('Error adding dose:', error);
-                                          showAlert('Error', error.message || 'Failed to add dose. Please try again.', [{ text: 'OK' }], 'error');
-                                        } finally {
-                                          setLoading(false);
+                            {/* Date Picker for this dose */}
+                            {showDoseDatePicker[dose.doseNumber] && Platform.OS === 'ios' && (
+                              <Modal transparent animationType="slide" visible={true}>
+                                <View className="flex-1 bg-black/50 justify-end">
+                                  <View className="bg-white rounded-t-3xl p-4">
+                                    <View className="flex-row justify-between items-center mb-4">
+                                      <TouchableOpacity onPress={() => setShowDoseDatePicker(prev => ({ ...prev, [dose.doseNumber]: false }))}>
+                                        <Text className="text-blue-500 text-base">Cancel</Text>
+                                      </TouchableOpacity>
+                                      <Text className="text-base font-semibold text-gray-800">Select Dose {dose.doseNumber} Date</Text>
+                                      <TouchableOpacity onPress={() => setShowDoseDatePicker(prev => ({ ...prev, [dose.doseNumber]: false }))}>
+                                        <Text className="text-blue-500 text-base font-semibold">Done</Text>
+                                      </TouchableOpacity>
+                                    </View>
+                                    <DateTimePicker
+                                      value={selectedDate}
+                                      mode="date"
+                                      display="spinner"
+                                      onChange={(_event: any, date?: Date) => {
+                                        if (date) {
+                                          setDoseDates(prev => ({ ...prev, [dose.doseNumber]: date }));
                                         }
-                                      }
-                                    }
-                                  ],
-                                  'question'
-                                );
-                              } else {
-                                showAlert('Error', 'Please enter a valid number of days', [{ text: 'OK' }], 'warning');
-                              }
-                            }}
-                            className="bg-blue-500 rounded-lg px-4 py-3"
-                            disabled={loading}
-                          >
-                            {loading ? (
-                              <ActivityIndicator size="small" color="white" />
-                            ) : (
-                              <Ionicons name="add" size={20} color="white" />
+                                      }}
+                                      minimumDate={prevDose}
+                                    />
+                                  </View>
+                                </View>
+                              </Modal>
                             )}
-                          </TouchableOpacity>
+                            {showDoseDatePicker[dose.doseNumber] && Platform.OS === 'android' && (
+                              <DateTimePicker
+                                value={selectedDate}
+                                mode="date"
+                                display="default"
+                                onChange={(_event: any, date?: Date) => {
+                                  setShowDoseDatePicker(prev => ({ ...prev, [dose.doseNumber]: false }));
+                                  if (date) {
+                                    setDoseDates(prev => ({ ...prev, [dose.doseNumber]: date }));
+                                  }
+                                }}
+                                minimumDate={prevDose}
+                              />
+                            )}
+                          </View>
+                        );
+                      })}
+
+                      {/* Pending Changes Indicator */}
+                      {tempAddedDoses.length > 0 && (
+                        <View className="bg-yellow-50 border border-yellow-300 rounded-xl p-3 mb-3">
+                          <View className="flex-row items-center">
+                            <Ionicons name="alert-circle" size={18} color="#f59e0b" />
+                            <Text className="text-xs text-yellow-800 font-semibold ml-2">
+                              {tempAddedDoses.length} new dose{tempAddedDoses.length > 1 ? 's' : ''} added • Click "Update" to save
+                            </Text>
+                          </View>
                         </View>
-                    <Text className="text-xs text-gray-500 mt-1">
-                          Last dose date: {new Date(selectedSchedule.doses[selectedSchedule.doses.length - 1].dateScheduled).toLocaleDateString()}
-                    </Text>
-                  </View>
+                      )}
+
+                      {/* Add Another Dose Option */}
+                      <TouchableOpacity
+                        onPress={() => {
+                          const allDoses = [...selectedSchedule.doses, ...tempAddedDoses];
+                          const lastDose = allDoses[allDoses.length - 1];
+                          const lastDate = doseDates[lastDose.doseNumber] || new Date(lastDose.dateScheduled);
+                          const suggestedDate = new Date(lastDate);
+                          suggestedDate.setDate(suggestedDate.getDate() + 28);
+                          setNewDoseDate(newDoseDate || suggestedDate);
+                          setShowNewDoseDatePicker(true);
+                        }}
+                        className="bg-green-50 border-2 border-green-300 rounded-xl p-4 mt-2"
+                        style={{
+                          elevation: 2,
+                          shadowColor: '#10b981',
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.1,
+                          shadowRadius: 2,
+                        }}
+                      >
+                        <View className="flex-row items-center justify-center">
+                          <View className="bg-green-500 rounded-full p-2 mr-3">
+                            <Ionicons name="add" size={20} color="white" />
+                          </View>
+                          <Text className="text-base font-bold text-green-700">Add Another Dose</Text>
+                        </View>
+                        <Text className="text-xs text-center text-gray-600 mt-2">
+                          Tap to select date for next dose
+                        </Text>
+                      </TouchableOpacity>
+
+                      {/* Date Picker for New Dose */}
+                      {showNewDoseDatePicker && Platform.OS === 'ios' && (
+                        <Modal transparent animationType="slide" visible={true}>
+                          <View className="flex-1 bg-black/50 justify-end">
+                            <View className="bg-white rounded-t-3xl p-4">
+                              <View className="flex-row justify-between items-center mb-4">
+                                <TouchableOpacity onPress={() => {
+                                  setShowNewDoseDatePicker(false);
+                                  setNewDoseDate(null);
+                                }}>
+                                  <Text className="text-gray-500 text-base">Cancel</Text>
+                                </TouchableOpacity>
+                                <Text className="text-base font-semibold text-gray-800">Select New Dose Date</Text>
+                                <TouchableOpacity onPress={() => {
+                                  if (newDoseDate) {
+                                    const allDoses = [...selectedSchedule.doses, ...tempAddedDoses];
+                                    const lastDose = allDoses[allDoses.length - 1];
+                                    const lastDate = doseDates[lastDose.doseNumber] || new Date(lastDose.dateScheduled);
+                                    const intervalDays = Math.floor((newDoseDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+                                    
+                                    if (intervalDays < 1) {
+                                      showAlert('Date must be after last dose', 'Validation error', [{ text: 'OK' }], 'warning');
+                                      return;
+                                    }
+
+                                    // Add dose to temporary state
+                                    const newDoseNumber = allDoses.length + 1;
+                                    const newDose = {
+                                      doseNumber: newDoseNumber,
+                                      dateScheduled: newDoseDate,
+                                      status: 'scheduled',
+                                      isTemp: true,
+                                    };
+
+                                    setTempAddedDoses([...tempAddedDoses, newDose]);
+                                    setDoseDates(prev => ({ ...prev, [newDoseNumber]: newDoseDate }));
+                                    setNewDoseDate(null);
+                                    setShowNewDoseDatePicker(false);
+                                    
+                                    // Show success feedback
+                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                  }
+                                }}>
+                                  <Text className="text-green-500 text-base font-semibold">Add</Text>
+                                </TouchableOpacity>
+                              </View>
+                              <DateTimePicker
+                                value={newDoseDate || new Date()}
+                                mode="date"
+                                display="spinner"
+                                onChange={(_event: any, date?: Date) => {
+                                  if (date) {
+                                    setNewDoseDate(date);
+                                  }
+                                }}
+                                minimumDate={doseDates[selectedSchedule.doses[selectedSchedule.doses.length - 1].doseNumber] || new Date(selectedSchedule.doses[selectedSchedule.doses.length - 1].dateScheduled)}
+                              />
+                            </View>
+                          </View>
+                        </Modal>
+                      )}
+                      {showNewDoseDatePicker && Platform.OS === 'android' && (
+                        <DateTimePicker
+                          value={newDoseDate || new Date()}
+                          mode="date"
+                          display="default"
+                          onChange={(_event: any, date?: Date) => {
+                            setShowNewDoseDatePicker(false);
+                            if (date) {
+                              const allDoses = [...selectedSchedule.doses, ...tempAddedDoses];
+                              const lastDose = allDoses[allDoses.length - 1];
+                              const lastDate = doseDates[lastDose.doseNumber] || new Date(lastDose.dateScheduled);
+                              const intervalDays = Math.floor((date.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+                              
+                              if (intervalDays < 1) {
+                                showAlert('Date must be after last dose', 'Validation error', [{ text: 'OK' }], 'warning');
+                                return;
+                              }
+
+                              // Add dose to temporary state
+                              const newDoseNumber = allDoses.length + 1;
+                              const newDose = {
+                                doseNumber: newDoseNumber,
+                                dateScheduled: date,
+                                status: 'scheduled',
+                                isTemp: true,
+                              };
+
+                              setTempAddedDoses([...tempAddedDoses, newDose]);
+                              setDoseDates(prev => ({ ...prev, [newDoseNumber]: date }));
+                              setNewDoseDate(null);
+                              
+                              // Show success feedback
+                              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            }
+                          }}
+                          minimumDate={doseDates[selectedSchedule.doses[selectedSchedule.doses.length - 1].doseNumber] || new Date(selectedSchedule.doses[selectedSchedule.doses.length - 1].dateScheduled)}
+                        />
+                      )}
                     </View>
                   )}
 
-                  {/* Notes */}
+
+                  {/* Notes - Compact */}
                   <View>
                     <Text className="text-sm font-medium text-gray-700 mb-2">Notes (Optional)</Text>
-                    <View className="bg-gray-50 rounded-lg border-2 border-gray-200">
-                      <View className="flex-row items-start p-3 border-b border-gray-200">
-                        <Ionicons name="document-text" size={20} color="#6b7280" />
-                        <Text className="ml-2 text-gray-600 text-sm">Additional information</Text>
-                      </View>
-                    <TextInput
-                        className="p-3 text-gray-800"
-                        placeholder="Enter any additional notes about this schedule..."
-                      value={updateNotes}
-                      onChangeText={setUpdateNotes}
-                      multiline
-                      numberOfLines={3}
-                      placeholderTextColor="#9ca3af"
-                        style={{ minHeight: 80 }}
-                    />
+                    <View className="bg-gray-50 rounded-lg border-2 border-gray-200 flex-row items-center p-3">
+                      <Ionicons name="document-text" size={18} color="#6b7280" />
+                      <TextInput
+                        className="flex-1 ml-3 text-gray-800"
+                        placeholder="Add notes..."
+                        value={updateNotes}
+                        onChangeText={setUpdateNotes}
+                        multiline
+                        numberOfLines={2}
+                        placeholderTextColor="#9ca3af"
+                        style={{ maxHeight: 60 }}
+                      />
+                    </View>
                   </View>
                 </View>
               </View>
-                  </View>
 
-              {/* Action Buttons */}
+              {/* Enhanced Action Buttons */}
               <View className="flex-row space-x-3 mb-6">
                 <TouchableOpacity
                   onPress={() => {
@@ -2510,22 +2682,53 @@ export default function SchedulePage() {
                     setSelectedSchedule(null);
                     setNewDoseInterval("");
                     setDoseIntervals({});
+                    setDoseDates({});
+                    setNewDoseDate(null);
+                    setTempAddedDoses([]);
                   }}
-                  className="flex-1 bg-gray-500 rounded-lg py-3 items-center"
+                  className="flex-1 bg-gray-100 rounded-xl py-3.5 items-center border-2 border-gray-300"
+                  style={{
+                    elevation: 1,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 1 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 2,
+                  }}
                 >
-                  <Text className="text-white font-medium">Cancel</Text>
+                  <View className="flex-row items-center">
+                    <Ionicons name="close-circle-outline" size={18} color="#6b7280" />
+                    <Text className="text-gray-700 font-semibold ml-2">Cancel</Text>
+                  </View>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleUpdateScheduleSubmit}
                   disabled={loading || !updateVaccineName.trim() || !updateScheduleDate}
-                  className={`flex-1 rounded-lg py-3 items-center ${
-                    loading || !updateVaccineName.trim() || !updateScheduleDate ? 'bg-gray-400' : 'bg-blue-500'
+                  className={`flex-1 rounded-xl py-3.5 items-center ${
+                    loading || !updateVaccineName.trim() || !updateScheduleDate ? 'bg-gray-400' : ''
                   }`}
+                  style={
+                    !(loading || !updateVaccineName.trim() || !updateScheduleDate) ? {
+                      elevation: 3,
+                      shadowColor: '#3b82f6',
+                      shadowOffset: { width: 0, height: 2 },
+                      shadowOpacity: 0.3,
+                      shadowRadius: 4,
+                    } : {}
+                  }
                 >
+                  {!(loading || !updateVaccineName.trim() || !updateScheduleDate) && (
+                    <LinearGradient
+                      colors={['#3b82f6', '#2563eb']}
+                      className="absolute inset-0 rounded-xl"
+                    />
+                  )}
                   {loading ? (
                     <ActivityIndicator size="small" color="white" />
                   ) : (
-                    <Text className="text-white font-medium">Update Schedule</Text>
+                    <View className="flex-row items-center">
+                      <Ionicons name="checkmark-circle" size={18} color="white" />
+                      <Text className="text-white font-semibold ml-2">Update</Text>
+                    </View>
                   )}
                 </TouchableOpacity>
               </View>
