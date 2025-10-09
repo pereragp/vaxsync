@@ -23,6 +23,7 @@ import userAPI, { User, Dependent } from "../api/userApi";
 import { router } from "expo-router";
 import DependentCard from "@/components/DependentCard";
 import DependentModal from "@/components/DependentModal";
+import ChangePassword from "../components/ChangePassword";
 import CustomAlert from "../components/CustomAlert";
 import NotificationSettings from "../components/NotificationSettings";
 
@@ -38,6 +39,8 @@ export default function ProfilePage() {
     null
   );
   const [showDependentModal, setShowDependentModal] = useState<boolean>(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] =
+    useState<boolean>(false);
 
   const genderOptions = ["Male", "Female", "Other"];
   const dependentTypeOptions = [
@@ -954,6 +957,22 @@ export default function ProfilePage() {
                   <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
                 </TouchableOpacity>
 
+                {/* Change Password Button */}
+                <TouchableOpacity
+                  onPress={() => setShowChangePasswordModal(true)}
+                  className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex-row items-center justify-between"
+                >
+                  <View className="flex-row items-center flex-1">
+                    <View className="bg-green-100 rounded-lg p-2 mr-3">
+                      <Ionicons name="key" size={20} color="#10b981" />
+                    </View>
+                    <Text className="text-gray-800 font-semibold">
+                      Change Password
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+                </TouchableOpacity>
+
                 <TouchableOpacity
                   className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex-row items-center justify-between"
                   onPress={() => setShowNotificationSettings(true)}
@@ -967,7 +986,7 @@ export default function ProfilePage() {
                       />
                     </View>
                     <Text className="text-gray-800 font-semibold">
-                      Notifications
+                      Notification Settings
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
@@ -2132,6 +2151,12 @@ export default function ProfilePage() {
       <NotificationSettings
         visible={showNotificationSettings}
         onClose={() => setShowNotificationSettings(false)}
+      />
+
+      {/* Change Password Modal */}
+      <ChangePassword
+        visible={showChangePasswordModal}
+        onClose={() => setShowChangePasswordModal(false)}
       />
     </SafeAreaView>
   );
