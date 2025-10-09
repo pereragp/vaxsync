@@ -1,4 +1,4 @@
-const BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
+const BASE_URL = "http://192.168.1.6:5000"; //Pramod URL
 
 // Types
 export interface Doctor {
@@ -26,7 +26,11 @@ export interface ApiResponse<T = any> {
 
 // Enhanced error handling
 class ApiError extends Error {
-  constructor(message: string, public status?: number, public code?: string) {
+  constructor(
+    message: string,
+    public status?: number,
+    public code?: string
+  ) {
     super(message);
     this.name = "ApiError";
   }
