@@ -1,26 +1,30 @@
 //const API_BASE_URL = "http://192.168.1.3:5000";
-const API_BASE_URL = "http://192.168.1.32:5000";
+const API_BASE_URL = "http://192.168.1.6:5000";
 
 // Helper function to get authentication token
 const getAuthToken = async (): Promise<string | null> => {
   try {
-    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-    return await AsyncStorage.getItem('userToken');
+    const AsyncStorage =
+      require("@react-native-async-storage/async-storage").default;
+    return await AsyncStorage.getItem("userToken");
   } catch (error) {
-    console.error('Error getting auth token:', error);
+    console.error("Error getting auth token:", error);
     return null;
   }
 };
 
 // Helper function to make authenticated requests
-const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}): Promise<Response> => {
+const makeAuthenticatedRequest = async (
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> => {
   const token = await getAuthToken();
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
   return fetch(url, {
     ...options,

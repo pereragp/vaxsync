@@ -1,30 +1,34 @@
 //const API_BASE_URL = "http://192.168.1.3:5000"; //Pramod URL
 //const API_BASE_URL = 'http://192.168.1.3:5000/api/users'; // Mishen URL
-const API_BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
-//const API_BASE_URL = 'http://192.168.1.32:5000/api/users'; // Mishen URL
+const API_BASE_URL = "http://192.168.1.6:5000"; //Pramod URL
+//const API_BASE_URL = 'http://192.168.1.6:5000/api/users'; // Mishen URL
 
 // Helper function to get authentication token
 const getAuthToken = async (): Promise<string | null> => {
   try {
-    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-    return await AsyncStorage.getItem('userToken');
+    const AsyncStorage =
+      require("@react-native-async-storage/async-storage").default;
+    return await AsyncStorage.getItem("userToken");
   } catch (error) {
-    console.error('Error getting auth token:', error);
+    console.error("Error getting auth token:", error);
     return null;
   }
 };
 
 // Helper function to make authenticated requests
-const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}): Promise<Response> => {
+const makeAuthenticatedRequest = async (
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> => {
   const token = await getAuthToken();
-  
+
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...options.headers as Record<string, string>,
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
   };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   return fetch(url, {
@@ -259,19 +263,21 @@ const healthCardAPI = {
       }
 
       // Check if dose already exists (prevent duplicates)
-      const doseExists = grouped[key].doses.some((d: any) => d.doseNumber === vaccination.doseNumber);
-      
+      const doseExists = grouped[key].doses.some(
+        (d: any) => d.doseNumber === vaccination.doseNumber
+      );
+
       if (!doseExists) {
-      grouped[key].doses.push({
-        doseNumber: vaccination.doseNumber,
-        date: vaccination.dateCompleted, // Keep as ISO string or Date object for proper parsing
-        batch: vaccination.certificateNumber || "N/A",
-        provider: vaccination.administeredBy || "Unknown",
-        verified: vaccination.status !== 'cancelled', // Cancelled doses are not verified
-        facility: vaccination.facility,
-        notes: vaccination.notes,
-        status: vaccination.status || 'completed', // Default to completed for backward compatibility
-      });
+        grouped[key].doses.push({
+          doseNumber: vaccination.doseNumber,
+          date: vaccination.dateCompleted, // Keep as ISO string or Date object for proper parsing
+          batch: vaccination.certificateNumber || "N/A",
+          provider: vaccination.administeredBy || "Unknown",
+          verified: vaccination.status !== "cancelled", // Cancelled doses are not verified
+          facility: vaccination.facility,
+          notes: vaccination.notes,
+          status: vaccination.status || "completed", // Default to completed for backward compatibility
+        });
       }
     });
 
