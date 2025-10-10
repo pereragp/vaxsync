@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL = "http://192.168.1.32:5000/api/users"; // Pramod URL
+const API_BASE_URL = "http://192.168.1.6:5000/api/users"; // Pramod URL
 
 export interface User {
   _id: string;
@@ -297,6 +297,27 @@ class UserAPI {
       );
     } catch (error) {
       console.error("Error removing dependent: ", error);
+      throw error;
+    }
+  }
+
+  //Reset passwrod
+  async changePassword(passwordData: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<{ message: string }> {
+    try {
+      const response = await this.makeAuthenticatedRequest<{ message: string }>(
+        "/change-password",
+        {
+          method: "PUT",
+          body: JSON.stringify(passwordData),
+        }
+      );
+      return response;
+    } catch (error) {
+      console.error("Error changing password: ", error);
       throw error;
     }
   }
