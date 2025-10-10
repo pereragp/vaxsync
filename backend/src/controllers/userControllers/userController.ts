@@ -84,13 +84,18 @@ const registerUser = async (req: Request, res: Response) => {
         dateOfBirth: savedUser.dateOfBirth,
         userId: savedUser._id,
         cardType: "user",
-        dependents: [] // Will be empty initially
+        dependents: [], // Will be empty initially
       });
-      
+
       await userHealthCard.save();
-      console.log(`Health card automatically created for user: ${savedUser._id}`);
+      console.log(
+        `Health card automatically created for user: ${savedUser._id}`
+      );
     } catch (healthCardError) {
-      console.error("Error creating health card during registration:", healthCardError);
+      console.error(
+        "Error creating health card during registration:",
+        healthCardError
+      );
       // Don't fail the registration if health card creation fails
     }
 
@@ -316,6 +321,77 @@ const updateProfile = async (req: AuthenticatedRequest, res: Response) => {
   }
 };
 
+//Reset Password Controller
+const changePassword = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    //Basic validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({
+        message: "All the fields are required",
+      });
+    }
+
+    //Check if new password and confirm password match
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({
+        message: "New password and confirm password fields doesn't match",
+      });
+    }
+
+    //Check password strength
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        message: "New password must be atleast 6 characters long.",
+      });
+    }
+
+    //Get the current user
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    //Verify current password
+    const isCurrentPasswordValid = await bcrypt.compare(
+      currentPassword,
+      user.password
+    );
+    if (!isCurrentPasswordValid) {
+      return res.status(400).json({
+        message: "Current passwrod is incorrect",
+      });
+    }
+
+    //Check new password is different from existing passwrod
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({
+        message: "New password must be different from the existing password",
+      });
+    }
+
+    //Hashing new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedNewPassword = await bcrypt.hash(newPassword, salt);
+
+    //Update existing password
+    await User.findByIdAndUpdate(
+      req.user._id,
+      { password: hashedNewPassword, updatedAt: new Date() },
+      { new: true }
+    );
+
+    return res.status(200).json({
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    console.error("Error changing password: ", error);
+    return res.status(500).json({ message: "Server error", error });
+  }
+};
+
 export {
   registerUser,
   getUserById,
@@ -323,4 +399,5 @@ export {
   getMyProfile,
   logoutUser,
   updateProfile,
+  changePassword,
 };
