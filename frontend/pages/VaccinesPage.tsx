@@ -24,8 +24,12 @@ import healthCardAPI, {
   HealthCard,
   HealthCardVaccination,
 } from "../api/healthCardApi";
-import { downloadAsync, documentDirectory, cacheDirectory } from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import {
+  downloadAsync,
+  documentDirectory,
+  cacheDirectory,
+} from "expo-file-system/legacy";
+import * as Sharing from "expo-sharing";
 
 const API_BASE_URL = "http://192.168.1.32:5000";
 import InstructionsPopup from "../components/InstructionsPopup";
@@ -123,28 +127,28 @@ export default function VaxCardScreen() {
     title: string;
     message: string;
     buttons: any[];
-    icon: 'success' | 'error' | 'warning' | 'info' | 'question';
+    icon: "success" | "error" | "warning" | "info" | "question";
   }>({
     visible: false,
-    title: '',
-    message: '',
+    title: "",
+    message: "",
     buttons: [],
-    icon: 'info'
+    icon: "info",
   });
 
   // Helper function to show custom alert
   const showAlert = (
     title: string,
     message: string,
-    buttons: any[] = [{ text: 'OK' }],
-    icon: 'success' | 'error' | 'warning' | 'info' | 'question' = 'info'
+    buttons: any[] = [{ text: "OK" }],
+    icon: "success" | "error" | "warning" | "info" | "question" = "info"
   ) => {
     setCustomAlert({
       visible: true,
       title,
       message,
       buttons,
-      icon
+      icon,
     });
   };
 
@@ -160,8 +164,8 @@ export default function VaxCardScreen() {
       // Load health card data after getting user
       loadAllHealthCards();
     } catch (error: any) {
-      console.error('Error loading current user:', error);
-      setError('Failed to load user data. Please log in again.');
+      console.error("Error loading current user:", error);
+      setError("Failed to load user data. Please log in again.");
     }
   };
 
@@ -234,10 +238,11 @@ export default function VaxCardScreen() {
             {
               text: "Create Health Card",
               onPress: () =>
-                currentUser && createHealthCard(currentUser._id, profileIndex, isDependent),
+                currentUser &&
+                createHealthCard(currentUser._id, profileIndex, isDependent),
             },
           ],
-          'question'
+          "question"
         );
       } else {
         setError(error.message || "Failed to load vaccination data");
@@ -245,7 +250,7 @@ export default function VaxCardScreen() {
           "Error Loading Data",
           error.message || "Failed to load vaccination data from server.",
           [{ text: "OK" }],
-          'error'
+          "error"
         );
       }
     } finally {
@@ -286,7 +291,7 @@ export default function VaxCardScreen() {
         "Success",
         `Health card created successfully for ${profiles[profileIndex].name}`,
         [{ text: "OK" }],
-        'success'
+        "success"
       );
     } catch (error: any) {
       console.error("Error creating health card:", error);
@@ -295,7 +300,7 @@ export default function VaxCardScreen() {
         "Error Creating Health Card",
         error.message || "Failed to create health card. Please try again.",
         [{ text: "OK" }],
-        'error'
+        "error"
       );
     } finally {
       setLoading(false);
@@ -358,7 +363,7 @@ export default function VaxCardScreen() {
               onPress: () => createAllHealthCards(),
             },
           ],
-          'question'
+          "question"
         );
       } else {
         setError(error.message || "Failed to load health cards");
@@ -376,7 +381,7 @@ export default function VaxCardScreen() {
 
       const userIdToUse = userId || currentUser?._id;
       if (!userIdToUse) {
-        setError('No user ID available');
+        setError("No user ID available");
         return;
       }
 
@@ -389,7 +394,7 @@ export default function VaxCardScreen() {
         "Success",
         "Health cards created successfully for user and dependents.",
         [{ text: "OK" }],
-        'success'
+        "success"
       );
     } catch (error: any) {
       console.error("Error creating all health cards:", error);
@@ -398,7 +403,7 @@ export default function VaxCardScreen() {
         "Error Creating Health Cards",
         error.message || "Failed to create health cards. Please try again.",
         [{ text: "OK" }],
-        'error'
+        "error"
       );
     } finally {
       setLoading(false);
@@ -582,7 +587,7 @@ export default function VaxCardScreen() {
             },
           },
         ],
-        'warning'
+        "warning"
       );
     } finally {
       setGeneratingInstructions(false);
@@ -637,7 +642,12 @@ export default function VaxCardScreen() {
   const handleDownload = async () => {
     const currentProfile = profiles[selectedIdx];
     if (!currentProfile?.healthCard) {
-      showAlert("No Data", "No health card data available to download", [{ text: "OK" }], 'warning');
+      showAlert(
+        "No Data",
+        "No health card data available to download",
+        [{ text: "OK" }],
+        "warning"
+      );
       return;
     }
 
@@ -651,7 +661,7 @@ export default function VaxCardScreen() {
         "No Vaccinations",
         "No completed vaccinations found to generate certificate.",
         [{ text: "OK" }],
-        'info'
+        "info"
       );
       return;
     }
@@ -660,11 +670,17 @@ export default function VaxCardScreen() {
       setLoading(true);
 
       // Get auth token for the download URL
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      const token = await AsyncStorage.getItem('userToken');
-      
+      const AsyncStorage =
+        require("@react-native-async-storage/async-storage").default;
+      const token = await AsyncStorage.getItem("userToken");
+
       if (!token) {
-        showAlert('Authentication Error', 'Please login again', [{ text: "OK" }], 'error');
+        showAlert(
+          "Authentication Error",
+          "Please login again",
+          [{ text: "OK" }],
+          "error"
+        );
         setLoading(false);
         return;
       }
@@ -682,14 +698,14 @@ export default function VaxCardScreen() {
           "Download Started",
           `Vaccination certificate for ${currentProfile.name} is being downloaded. Check your browser's download folder.`,
           [{ text: "OK" }],
-          'success'
+          "success"
         );
       } else {
         showAlert(
           "Download Error",
           "Cannot open download link. Please try again.",
           [{ text: "OK" }],
-          'error'
+          "error"
         );
       }
     } catch (error: any) {
@@ -699,7 +715,7 @@ export default function VaxCardScreen() {
         error.message ||
           "Failed to download vaccination certificate. Please try again.",
         [{ text: "OK" }],
-        'error'
+        "error"
       );
     } finally {
       setLoading(false);
@@ -709,7 +725,12 @@ export default function VaxCardScreen() {
   const handleShare = async () => {
     const currentProfile = profiles[selectedIdx];
     if (!currentProfile?.healthCard) {
-      showAlert("No Data", "No health card data available to share", [{ text: "OK" }], 'warning');
+      showAlert(
+        "No Data",
+        "No health card data available to share",
+        [{ text: "OK" }],
+        "warning"
+      );
       return;
     }
 
@@ -723,7 +744,7 @@ export default function VaxCardScreen() {
         "No Vaccinations",
         "No completed vaccinations found to generate certificate.",
         [{ text: "OK" }],
-        'info'
+        "info"
       );
       return;
     }
@@ -734,17 +755,28 @@ export default function VaxCardScreen() {
       // Check if sharing is available on this device
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {
-        showAlert('Sharing Not Available', 'Sharing is not available on this device', [{ text: "OK" }], 'warning');
+        showAlert(
+          "Sharing Not Available",
+          "Sharing is not available on this device",
+          [{ text: "OK" }],
+          "warning"
+        );
         setLoading(false);
         return;
       }
 
       // Get auth token
-      const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-      const token = await AsyncStorage.getItem('userToken');
-      
+      const AsyncStorage =
+        require("@react-native-async-storage/async-storage").default;
+      const token = await AsyncStorage.getItem("userToken");
+
       if (!token) {
-        showAlert('Authentication Error', 'Please login again', [{ text: "OK" }], 'error');
+        showAlert(
+          "Authentication Error",
+          "Please login again",
+          [{ text: "OK" }],
+          "error"
+        );
         setLoading(false);
         return;
       }
@@ -753,28 +785,28 @@ export default function VaxCardScreen() {
       const downloadUrl = `${API_BASE_URL}/api/health-card/download-certificate/${currentProfile.healthCard._id}?token=${encodeURIComponent(token)}`;
 
       // Define file path
-      const fileName = `VaxSync_Certificate_${currentProfile.name.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
-      const fileUri = (documentDirectory || cacheDirectory || '') + fileName;
+      const fileName = `VaxSync_Certificate_${currentProfile.name.replace(/\s+/g, "_")}_${Date.now()}.pdf`;
+      const fileUri = (documentDirectory || cacheDirectory || "") + fileName;
 
       // Download the PDF file
       const downloadResult = await downloadAsync(downloadUrl, fileUri);
 
       if (downloadResult.status !== 200) {
-        throw new Error('Failed to download certificate');
+        throw new Error("Failed to download certificate");
       }
 
       // Share the downloaded PDF file
       await Sharing.shareAsync(downloadResult.uri, {
-        mimeType: 'application/pdf',
+        mimeType: "application/pdf",
         dialogTitle: `Vaccination Certificate - ${currentProfile.name}`,
-        UTI: 'com.adobe.pdf',
+        UTI: "com.adobe.pdf",
       });
 
       showAlert(
         "Shared Successfully",
         `Vaccination certificate for ${currentProfile.name} has been shared.`,
         [{ text: "OK" }],
-        'success'
+        "success"
       );
     } catch (error: any) {
       console.error("Error sharing certificate:", error);
@@ -783,7 +815,7 @@ export default function VaxCardScreen() {
         error.message ||
           "Failed to share vaccination certificate. Please try again.",
         [{ text: "OK" }],
-        'error'
+        "error"
       );
     } finally {
       setLoading(false);
@@ -797,7 +829,12 @@ export default function VaxCardScreen() {
   ) => {
     const currentProfile = profiles[selectedIdx];
     if (!currentProfile?.healthCard) {
-      showAlert("Error", "No health card data available", [{ text: "OK" }], 'error');
+      showAlert(
+        "Error",
+        "No health card data available",
+        [{ text: "OK" }],
+        "error"
+      );
       return;
     }
 
@@ -832,14 +869,17 @@ export default function VaxCardScreen() {
               // Reload all health card data (skip error alerts to prevent navigation issues)
               try {
                 await loadAllHealthCards(true);
-                
+
                 // Ensure selectedIdx is still valid after reload
-                setSelectedIdx(prev => {
+                setSelectedIdx((prev) => {
                   // Get the new profiles length after reload
                   return prev; // Keep current if still valid
                 });
               } catch (reloadError: any) {
-                console.error("Error reloading health cards after delete:", reloadError);
+                console.error(
+                  "Error reloading health cards after delete:",
+                  reloadError
+                );
                 // Continue anyway - the delete was successful
                 // The data will reload when user navigates away and comes back
               }
@@ -850,7 +890,7 @@ export default function VaxCardScreen() {
                   "Success",
                   `${vaccineName} dose ${doseNumber} has been deleted successfully.`,
                   [{ text: "OK" }],
-                  'success'
+                  "success"
                 );
               }, 100);
             } catch (error: any) {
@@ -860,7 +900,7 @@ export default function VaxCardScreen() {
                 error.message ||
                   "Failed to delete vaccination. Please try again.",
                 [{ text: "OK" }],
-                'error'
+                "error"
               );
             } finally {
               setLoading(false);
@@ -868,33 +908,38 @@ export default function VaxCardScreen() {
           },
         },
       ],
-      'warning'
+      "warning"
     );
   };
 
   // Calculate completion stats for progress display
   const completionStats = {
     total: profile?.vaccines?.length || 0,
-    completed: profile?.vaccines?.filter((v) => {
-      const completedDoses = v.doses.filter(d => d.status === 'completed' || d.verified);
-      const cancelledDoses = v.doses.filter(d => d.status === 'cancelled');
-      const activeDoses = v.totalDoses - cancelledDoses.length;
-      return completedDoses.length === activeDoses;
-    }).length || 0,
-    verified: profile?.vaccines?.filter((v) => v.doses.every((d) => d.verified || d.status === 'completed')).length || 0,
+    completed:
+      profile?.vaccines?.filter((v) => {
+        const completedDoses = v.doses.filter(
+          (d) => d.status === "completed" || d.verified
+        );
+        const cancelledDoses = v.doses.filter((d) => d.status === "cancelled");
+        const activeDoses = v.totalDoses - cancelledDoses.length;
+        return completedDoses.length === activeDoses;
+      }).length || 0,
+    verified:
+      profile?.vaccines?.filter((v) =>
+        v.doses.every((d) => d.verified || d.status === "completed")
+      ).length || 0,
   };
 
   // Function to add pending doses for incomplete vaccines
   const addPendingDoses = (vaccines: Vaccine[]): Vaccine[] => {
     return vaccines.map((vaccine) => {
       // Get all existing dose numbers
-      const existingDoseNumbers = vaccine.doses.map(d => d.doseNumber);
+      const existingDoseNumbers = vaccine.doses.map((d) => d.doseNumber);
       const pendingDoses: VaccineDose[] = [];
 
       // Find the highest dose number that exists (completed or cancelled)
-      const maxExistingDose = existingDoseNumbers.length > 0 
-        ? Math.max(...existingDoseNumbers) 
-        : 0;
+      const maxExistingDose =
+        existingDoseNumbers.length > 0 ? Math.max(...existingDoseNumbers) : 0;
 
       // Only add pending doses AFTER the last existing dose
       // This prevents deleted doses from reappearing as pending
@@ -913,7 +958,9 @@ export default function VaxCardScreen() {
 
       return {
         ...vaccine,
-        doses: [...vaccine.doses, ...pendingDoses].sort((a, b) => a.doseNumber - b.doseNumber),
+        doses: [...vaccine.doses, ...pendingDoses].sort(
+          (a, b) => a.doseNumber - b.doseNumber
+        ),
       };
     });
   };
@@ -923,15 +970,36 @@ export default function VaxCardScreen() {
   const filteredVaccines = vaccinesWithPending.filter((vaccine) => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch =
-      (typeof vaccine.name === 'string' ? vaccine.name : String(vaccine.name || '')).toLowerCase().includes(searchLower) ||
+      (typeof vaccine.name === "string"
+        ? vaccine.name
+        : String(vaccine.name || "")
+      )
+        .toLowerCase()
+        .includes(searchLower) ||
       vaccine.doses.some(
         (dose) =>
-          (typeof dose.date === 'string' ? dose.date : String(dose.date)).toLowerCase().includes(searchLower) ||
-          (typeof dose.batch === 'string' ? dose.batch : String(dose.batch || '')).toLowerCase().includes(searchLower) ||
-          (typeof dose.provider === 'string' ? dose.provider : String(dose.provider || '')).toLowerCase().includes(searchLower)
+          (typeof dose.date === "string" ? dose.date : String(dose.date))
+            .toLowerCase()
+            .includes(searchLower) ||
+          (typeof dose.batch === "string"
+            ? dose.batch
+            : String(dose.batch || "")
+          )
+            .toLowerCase()
+            .includes(searchLower) ||
+          (typeof dose.provider === "string"
+            ? dose.provider
+            : String(dose.provider || "")
+          )
+            .toLowerCase()
+            .includes(searchLower)
       );
 
-    const matchesFilter = filterType === "all" || (typeof vaccine.type === 'string' ? vaccine.type : String(vaccine.type || '')) === filterType;
+    const matchesFilter =
+      filterType === "all" ||
+      (typeof vaccine.type === "string"
+        ? vaccine.type
+        : String(vaccine.type || "")) === filterType;
 
     return matchesSearch && matchesFilter;
   });
@@ -1138,7 +1206,9 @@ export default function VaxCardScreen() {
         {/* No profiles state */}
         {!loading && profiles.length === 0 && !error && (
           <View className="flex-1 justify-center items-center py-20">
-            <Text className="text-gray-600 text-lg mb-4">No profiles found</Text>
+            <Text className="text-gray-600 text-lg mb-4">
+              No profiles found
+            </Text>
             <Text className="text-gray-500 text-center px-8">
               Please create a health card to get started
             </Text>
@@ -1151,124 +1221,130 @@ export default function VaxCardScreen() {
             <Text className="text-lg font-bold text-gray-800 mb-4 px-4">
               Profiles
             </Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 16 }}
-          >
-            {profiles.map((p, index) => {
-              const isSelected = index === selectedIdx;
-              const completedCount = p.vaccines?.filter(
-                (v) => v.doses.length === v.totalDoses
-              ).length || 0;
-              const hasHealthCard = !!p.healthCard;
-              const completionPercentage =
-                p.vaccines?.length > 0
-                  ? Math.round((completedCount / p.vaccines.length) * 100)
-                  : 0;
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingHorizontal: 16 }}
+            >
+              {profiles.map((p, index) => {
+                const isSelected = index === selectedIdx;
+                const completedCount =
+                  p.vaccines?.filter((v) => v.doses.length === v.totalDoses)
+                    .length || 0;
+                const hasHealthCard = !!p.healthCard;
+                const completionPercentage =
+                  p.vaccines?.length > 0
+                    ? Math.round((completedCount / p.vaccines.length) * 100)
+                    : 0;
 
-              return (
-                <TouchableOpacity
-                  key={p.id}
-                  onPress={() => handleProfileSwitch(index)}
-                  className={`mr-4 p-4 rounded-2xl min-w-36 shadow-sm border-2 ${
-                    isSelected
-                      ? "bg-blue-500 border-blue-500 shadow-lg"
-                      : "bg-white border-gray-100"
-                  }`}
-                  style={{
-                    transform: isSelected ? [{ scale: 1.05 }] : [{ scale: 1 }],
-                    elevation: isSelected ? 8 : 2,
-                  }}
-                >
-                  <View className="items-center">
-                    <View className="relative mb-3">
-                      <View
-                        className={`w-14 h-14 rounded-full items-center justify-center ${
-                          isSelected ? "bg-white/20" : "bg-blue-100"
+                return (
+                  <TouchableOpacity
+                    key={p.id}
+                    onPress={() => handleProfileSwitch(index)}
+                    className={`mr-4 p-4 rounded-2xl min-w-36 shadow-sm border-2 ${
+                      isSelected
+                        ? "bg-blue-500 border-blue-500 shadow-lg"
+                        : "bg-white border-gray-100"
+                    }`}
+                    style={{
+                      transform: isSelected
+                        ? [{ scale: 1.05 }]
+                        : [{ scale: 1 }],
+                      elevation: isSelected ? 8 : 2,
+                    }}
+                  >
+                    <View className="items-center">
+                      <View className="relative mb-3">
+                        <View
+                          className={`w-14 h-14 rounded-full items-center justify-center ${
+                            isSelected ? "bg-white/20" : "bg-blue-100"
+                          }`}
+                        >
+                          <Ionicons
+                            name="person"
+                            size={28}
+                            color={isSelected ? "white" : "#3b82f6"}
+                          />
+                        </View>
+                        {hasHealthCard && (
+                          <View className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full items-center justify-center border-2 border-white">
+                            <Ionicons
+                              name="checkmark"
+                              size={12}
+                              color="white"
+                            />
+                          </View>
+                        )}
+                      </View>
+
+                      <Text
+                        className={`font-bold text-center text-base mb-1 ${
+                          isSelected ? "text-white" : "text-gray-800"
                         }`}
                       >
-                        <Ionicons
-                          name="person"
-                          size={28}
-                          color={isSelected ? "white" : "#3b82f6"}
+                        {p.healthCard
+                          ? p.healthCard.fullName.split(" ")[0]
+                          : p.name.split(" ")[0]}
+                      </Text>
+
+                      <Text
+                        className={`text-sm text-center mb-2 ${
+                          isSelected ? "text-blue-100" : "text-gray-500"
+                        }`}
+                      >
+                        {p.healthCard
+                          ? p.healthCard.cardType === "dependent"
+                            ? "Dependent"
+                            : "User"
+                          : p.relation}
+                      </Text>
+
+                      {/* Progress Bar */}
+                      <View
+                        className={`w-full h-2 rounded-full mb-2 ${
+                          isSelected ? "bg-white/20" : "bg-gray-200"
+                        }`}
+                      >
+                        <View
+                          className={`h-full rounded-full ${
+                            isSelected ? "bg-white" : "bg-blue-500"
+                          }`}
+                          style={{ width: `${completionPercentage}%` }}
                         />
                       </View>
-                      {hasHealthCard && (
-                        <View className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full items-center justify-center border-2 border-white">
-                          <Ionicons name="checkmark" size={12} color="white" />
-                        </View>
-                      )}
-                    </View>
 
-                    <Text
-                      className={`font-bold text-center text-base mb-1 ${
-                        isSelected ? "text-white" : "text-gray-800"
-                      }`}
-                    >
-                      {p.healthCard
-                        ? p.healthCard.fullName.split(" ")[0]
-                        : p.name.split(" ")[0]}
-                    </Text>
-
-                    <Text
-                      className={`text-sm text-center mb-2 ${
-                        isSelected ? "text-blue-100" : "text-gray-500"
-                      }`}
-                    >
-                      {p.healthCard
-                        ? p.healthCard.cardType === "dependent"
-                          ? "Dependent"
-                          : "User"
-                        : p.relation}
-                    </Text>
-
-                    {/* Progress Bar */}
-                    <View
-                      className={`w-full h-2 rounded-full mb-2 ${
-                        isSelected ? "bg-white/20" : "bg-gray-200"
-                      }`}
-                    >
                       <View
-                        className={`h-full rounded-full ${
-                          isSelected ? "bg-white" : "bg-blue-500"
-                        }`}
-                        style={{ width: `${completionPercentage}%` }}
-                      />
-                    </View>
-
-                    <View
-                      className={`px-3 py-1 rounded-full ${
-                        isSelected
-                          ? "bg-white/20"
-                          : completionPercentage === 100
-                          ? "bg-green-100"
-                          : completionPercentage > 0
-                          ? "bg-blue-100"
-                          : "bg-gray-100"
-                      }`}
-                    >
-                      <Text
-                        className={`text-xs font-semibold ${
+                        className={`px-3 py-1 rounded-full ${
                           isSelected
-                            ? "text-white"
+                            ? "bg-white/20"
                             : completionPercentage === 100
-                            ? "text-green-700"
-                            : completionPercentage > 0
-                            ? "text-blue-700"
-                            : "text-gray-600"
+                              ? "bg-green-100"
+                              : completionPercentage > 0
+                                ? "bg-blue-100"
+                                : "bg-gray-100"
                         }`}
                       >
-                        {hasHealthCard
-                          ? `${completionPercentage}% complete`
-                          : "Loading..."}
-                      </Text>
+                        <Text
+                          className={`text-xs font-semibold ${
+                            isSelected
+                              ? "text-white"
+                              : completionPercentage === 100
+                                ? "text-green-700"
+                                : completionPercentage > 0
+                                  ? "text-blue-700"
+                                  : "text-gray-600"
+                          }`}
+                        >
+                          {hasHealthCard
+                            ? `${completionPercentage}% complete`
+                            : "Loading..."}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
         )}
 
@@ -1402,18 +1478,24 @@ export default function VaxCardScreen() {
               </View>
             ) : (
               filteredVaccines.slice(0, 5).map((vaccine, index) => {
-                const completedDoses = vaccine.doses.filter((d) => d.status === 'completed' || d.verified);
-                const cancelledDoses = vaccine.doses.filter((d) => d.status === 'cancelled');
+                const completedDoses = vaccine.doses.filter(
+                  (d) => d.status === "completed" || d.verified
+                );
+                const cancelledDoses = vaccine.doses.filter(
+                  (d) => d.status === "cancelled"
+                );
                 const activeDoses = vaccine.totalDoses - cancelledDoses.length;
-                const latestDose =
-                  completedDoses[completedDoses.length - 1] ||
-                  vaccine.doses[vaccine.doses.length - 1] ||
-                  { provider: 'N/A', date: 'N/A' };
-                const allVerified =
-                  completedDoses.length === activeDoses;
+                const latestDose = completedDoses[completedDoses.length - 1] ||
+                  vaccine.doses[vaccine.doses.length - 1] || {
+                    provider: "N/A",
+                    date: "N/A",
+                  };
+                const allVerified = completedDoses.length === activeDoses;
                 const isExpanded = expandedVaccines.includes(vaccine.id);
                 const completionPercentage =
-                  activeDoses > 0 ? (completedDoses.length / activeDoses) * 100 : 0;
+                  activeDoses > 0
+                    ? (completedDoses.length / activeDoses) * 100
+                    : 0;
                 const config = vaccineConfig[vaccine.type];
 
                 return (
@@ -1465,7 +1547,7 @@ export default function VaxCardScreen() {
                             <View className="flex-1">
                               <View className="flex-row items-center mb-2">
                                 <Text className="font-bold text-gray-800 text-xl flex-1">
-                                  {vaccine.name || 'Unknown Vaccine'}
+                                  {vaccine.name || "Unknown Vaccine"}
                                 </Text>
                                 {allVerified && (
                                   <View className="bg-green-500 rounded-full px-4 py-2 ml-2 shadow-sm">
@@ -1489,7 +1571,7 @@ export default function VaxCardScreen() {
                                   color="#6b7280"
                                 />
                                 <Text className="text-sm text-gray-600 ml-1 flex-1">
-                                  {latestDose?.provider || 'N/A'}
+                                  {latestDose?.provider || "N/A"}
                                 </Text>
                               </View>
                               <View className="flex-row items-center">
@@ -1499,23 +1581,27 @@ export default function VaxCardScreen() {
                                   color="#6b7280"
                                 />
                                 <Text className="text-sm text-gray-600 ml-1">
-                                  {latestDose?.date 
-                                    ? (typeof latestDose.date === 'string' 
-                                        ? new Date(latestDose.date).toLocaleDateString('en-US', { 
-                                            year: 'numeric', 
-                                            month: 'short', 
-                                            day: 'numeric' 
-                                          })
-                                        : new Date(latestDose.date).toLocaleDateString('en-US', { 
-                                            year: 'numeric', 
-                                            month: 'short', 
-                                            day: 'numeric' 
-                                          }))
-                                    : 'N/A'}
+                                  {latestDose?.date
+                                    ? typeof latestDose.date === "string"
+                                      ? new Date(
+                                          latestDose.date
+                                        ).toLocaleDateString("en-US", {
+                                          year: "numeric",
+                                          month: "short",
+                                          day: "numeric",
+                                        })
+                                      : new Date(
+                                          latestDose.date
+                                        ).toLocaleDateString("en-US", {
+                                          year: "numeric",
+                                          month: "short",
+                                          day: "numeric",
+                                        })
+                                    : "N/A"}
                                 </Text>
                                 <View className="ml-3 bg-gray-100 rounded-full px-2 py-1">
                                   <Text className="text-xs font-medium text-gray-600 capitalize">
-                                    {vaccine.type || 'Unknown'}
+                                    {vaccine.type || "Unknown"}
                                   </Text>
                                 </View>
                               </View>
@@ -1538,20 +1624,24 @@ export default function VaxCardScreen() {
                                     COMPLETED
                                   </Text>
                                   {latestDose?.date !== "Pending" &&
-                                    latestDose?.date !== "TBD" && 
-                                    latestDose?.date !== "N/A" && 
+                                    latestDose?.date !== "TBD" &&
+                                    latestDose?.date !== "N/A" &&
                                     latestDose?.date && (
                                       <Text className="text-xs text-green-600 text-center mt-1">
                                         {(() => {
                                           try {
                                             // Try to parse the date string
-                                            const completionDate = new Date(latestDose.date);
-                                            
+                                            const completionDate = new Date(
+                                              latestDose.date
+                                            );
+
                                             // Check if date is valid
-                                            if (isNaN(completionDate.getTime())) {
+                                            if (
+                                              isNaN(completionDate.getTime())
+                                            ) {
                                               return null; // Don't show if date is invalid
                                             }
-                                            
+
                                             const today = new Date();
                                             const diffTime =
                                               today.getTime() -
@@ -1565,7 +1655,10 @@ export default function VaxCardScreen() {
                                               return "1 day ago";
                                             if (diffDays > 1 && diffDays < 30)
                                               return `${diffDays} days ago`;
-                                            if (diffDays >= 30 && diffDays < 365) {
+                                            if (
+                                              diffDays >= 30 &&
+                                              diffDays < 365
+                                            ) {
                                               const months = Math.floor(
                                                 diffDays / 30
                                               );
@@ -1600,8 +1693,7 @@ export default function VaxCardScreen() {
                                   size={60}
                                 />
                                 <Text className="text-xs text-gray-500 mt-1 text-center">
-                                  {completedDoses.length}/{activeDoses}{" "}
-                                  doses
+                                  {completedDoses.length}/{activeDoses} doses
                                 </Text>
                               </View>
                             )}
@@ -1623,7 +1715,7 @@ export default function VaxCardScreen() {
                             <Text className="text-base font-bold text-gray-800 mb-3">
                               Dose Timeline
                             </Text>
-                            
+
                             {/* Compact Timeline View */}
                             <View>
                               {vaccine.doses.map((dose, doseIndex) => (
@@ -1635,27 +1727,29 @@ export default function VaxCardScreen() {
                                   <View className="mr-3" style={{ width: 36 }}>
                                     <View
                                       className={`w-9 h-9 rounded-full items-center justify-center shadow-sm ${
-                                        dose.status === 'cancelled'
+                                        dose.status === "cancelled"
                                           ? "bg-red-100 border-2 border-red-300"
                                           : dose.verified
-                                          ? "bg-green-100 border-2 border-green-300"
-                                          : "bg-yellow-100 border-2 border-yellow-300"
+                                            ? "bg-green-100 border-2 border-green-300"
+                                            : "bg-yellow-100 border-2 border-yellow-300"
                                       }`}
                                     >
-                                      <Text className={`font-bold text-sm ${
-                                        dose.status === 'cancelled'
-                                          ? "text-red-600"
-                                          : dose.verified
-                                          ? "text-green-600"
-                                          : "text-yellow-600"
-                                      }`}>
+                                      <Text
+                                        className={`font-bold text-sm ${
+                                          dose.status === "cancelled"
+                                            ? "text-red-600"
+                                            : dose.verified
+                                              ? "text-green-600"
+                                              : "text-yellow-600"
+                                        }`}
+                                      >
                                         {dose.doseNumber}
                                       </Text>
                                     </View>
                                     {doseIndex < vaccine.doses.length - 1 && (
-                                      <View 
-                                        className="bg-gray-200 ml-4 mt-1" 
-                                        style={{ width: 2, height: 30 }} 
+                                      <View
+                                        className="bg-gray-200 ml-4 mt-1"
+                                        style={{ width: 2, height: 30 }}
                                       />
                                     )}
                                   </View>
@@ -1669,71 +1763,106 @@ export default function VaxCardScreen() {
                                           <Text className="text-sm font-bold text-gray-800">
                                             Dose {dose.doseNumber}
                                           </Text>
-                                          <View className={`ml-2 px-2 py-0.5 rounded-full ${
-                                            dose.status === 'cancelled'
-                                              ? "bg-red-100"
-                                              : dose.verified
-                                              ? "bg-green-100"
-                                              : "bg-yellow-100"
-                                          }`}>
-                                            <Text className={`text-xs font-semibold ${
-                                              dose.status === 'cancelled'
-                                                ? "text-red-600"
+                                          <View
+                                            className={`ml-2 px-2 py-0.5 rounded-full ${
+                                              dose.status === "cancelled"
+                                                ? "bg-red-100"
                                                 : dose.verified
-                                                ? "text-green-600"
-                                                : "text-yellow-600"
-                                            }`}>
-                                              {dose.status === 'cancelled' ? "Cancelled" : dose.verified ? "✓ Done" : "Pending"}
+                                                  ? "bg-green-100"
+                                                  : "bg-yellow-100"
+                                            }`}
+                                          >
+                                            <Text
+                                              className={`text-xs font-semibold ${
+                                                dose.status === "cancelled"
+                                                  ? "text-red-600"
+                                                  : dose.verified
+                                                    ? "text-green-600"
+                                                    : "text-yellow-600"
+                                              }`}
+                                            >
+                                              {dose.status === "cancelled"
+                                                ? "Cancelled"
+                                                : dose.verified
+                                                  ? "✓ Done"
+                                                  : "Pending"}
                                             </Text>
                                           </View>
                                         </View>
                                         <View className="flex-row items-center">
-                                          <Ionicons name="calendar-outline" size={11} color="#6b7280" />
+                                          <Ionicons
+                                            name="calendar-outline"
+                                            size={11}
+                                            color="#6b7280"
+                                          />
                                           <Text className="text-xs text-gray-600 ml-1">
-                                            {dose.date 
-                                              ? (typeof dose.date === 'string' 
-                                                  ? (dose.date === 'Pending' || dose.date === 'TBD' ? dose.date : new Date(dose.date).toLocaleDateString('en-US', { 
-                                                      year: 'numeric', 
-                                                      month: 'short', 
-                                                      day: 'numeric' 
-                                                    }))
-                                                  : new Date(dose.date).toLocaleDateString('en-US', { 
-                                                      year: 'numeric', 
-                                                      month: 'short', 
-                                                      day: 'numeric' 
-                                                    }))
-                                              : 'N/A'}
+                                            {dose.date
+                                              ? typeof dose.date === "string"
+                                                ? dose.date === "Pending" ||
+                                                  dose.date === "TBD"
+                                                  ? dose.date
+                                                  : new Date(
+                                                      dose.date
+                                                    ).toLocaleDateString(
+                                                      "en-US",
+                                                      {
+                                                        year: "numeric",
+                                                        month: "short",
+                                                        day: "numeric",
+                                                      }
+                                                    )
+                                                : new Date(
+                                                    dose.date
+                                                  ).toLocaleDateString(
+                                                    "en-US",
+                                                    {
+                                                      year: "numeric",
+                                                      month: "short",
+                                                      day: "numeric",
+                                                    }
+                                                  )
+                                              : "N/A"}
                                           </Text>
                                         </View>
                                       </View>
 
                                       {/* Action Buttons */}
                                       <View className="flex-row items-center">
-                                        {(dose.verified || dose.status === 'completed') && dose.status !== 'cancelled' && (
-                                          <TouchableOpacity
-                                            onPress={() => {
-                                              if (
-                                                dose.verified &&
-                                                dose.date !== "Pending" &&
-                                                dose.date !== "TBD"
-                                              ) {
-                                                const vaccination = {
-                                                  vaccineName: vaccine.name,
-                                                  doseNumber: dose.doseNumber,
-                                                  totalDoses: vaccine.totalDoses,
-                                                  dateCompleted: new Date(dose.date),
-                                                };
-                                                generateInstructionsAndShowPopup(
-                                                  vaccination as HealthCardVaccination
-                                                );
-                                              }
-                                            }}
-                                            className="bg-blue-50 rounded-lg p-2 mr-1"
-                                          >
-                                            <Ionicons name="medical" size={16} color="#3b82f6" />
-                                          </TouchableOpacity>
-                                        )}
-                                        {(dose.verified || dose.status === 'cancelled') && (
+                                        {(dose.verified ||
+                                          dose.status === "completed") &&
+                                          dose.status !== "cancelled" && (
+                                            <TouchableOpacity
+                                              onPress={() => {
+                                                if (
+                                                  dose.verified &&
+                                                  dose.date !== "Pending" &&
+                                                  dose.date !== "TBD"
+                                                ) {
+                                                  const vaccination = {
+                                                    vaccineName: vaccine.name,
+                                                    doseNumber: dose.doseNumber,
+                                                    totalDoses:
+                                                      vaccine.totalDoses,
+                                                    dateCompleted: new Date(
+                                                      dose.date
+                                                    ),
+                                                  };
+                                                  generateInstructionsAndShowPopup(
+                                                    vaccination as HealthCardVaccination
+                                                  );
+                                                }
+                                              }}
+                                              className="bg-blue-50 rounded-lg p-2 mr-1"
+                                            >
+                                              <Ionicons
+                                                name="medical"
+                                                size={16}
+                                                color="#3b82f6"
+                                              />
+                                            </TouchableOpacity>
+                                          )}
+                                        {(dose.verified ||
+                                          dose.status === "cancelled") && (
                                           <TouchableOpacity
                                             onPress={() =>
                                               handleDeleteVaccination(
@@ -1743,7 +1872,11 @@ export default function VaxCardScreen() {
                                             }
                                             className="bg-red-50 rounded-lg p-2"
                                           >
-                                            <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                                            <Ionicons
+                                              name="trash-outline"
+                                              size={16}
+                                              color="#ef4444"
+                                            />
                                           </TouchableOpacity>
                                         )}
                                       </View>
@@ -1752,29 +1885,49 @@ export default function VaxCardScreen() {
                                     {/* Compact Details - Inline */}
                                     <View className="flex-row flex-wrap">
                                       <View className="flex-row items-center mr-3 mb-1">
-                                        <Ionicons name="medkit" size={12} color="#3b82f6" />
+                                        <Ionicons
+                                          name="medkit"
+                                          size={12}
+                                          color="#3b82f6"
+                                        />
                                         <Text className="text-xs text-gray-700 ml-1 font-medium">
                                           {dose.provider}
                                         </Text>
                                       </View>
                                       <View className="flex-row items-center mr-3 mb-1">
-                                        <Ionicons name="barcode-outline" size={12} color="#6b7280" />
+                                        <Ionicons
+                                          name="barcode-outline"
+                                          size={12}
+                                          color="#6b7280"
+                                        />
                                         <Text className="text-xs text-gray-600 ml-1 font-mono">
                                           {dose.batch}
                                         </Text>
                                       </View>
-                                      {dose.facility && dose.facility !== "TBD" && (
-                                        <View className="flex-row items-center mr-3 mb-1">
-                                          <Ionicons name="business" size={12} color="#6b7280" />
-                                          <Text className="text-xs text-gray-600 ml-1 font-medium">
-                                            {dose.facility}
-                                          </Text>
-                                        </View>
-                                      )}
+                                      {dose.facility &&
+                                        dose.facility !== "TBD" && (
+                                          <View className="flex-row items-center mr-3 mb-1">
+                                            <Ionicons
+                                              name="business"
+                                              size={12}
+                                              color="#6b7280"
+                                            />
+                                            <Text className="text-xs text-gray-600 ml-1 font-medium">
+                                              {dose.facility}
+                                            </Text>
+                                          </View>
+                                        )}
                                       {dose.notes && (
                                         <View className="flex-row items-center mb-1 w-full mt-1">
-                                          <Ionicons name="document-text" size={12} color="#6b7280" />
-                                          <Text className="text-xs text-gray-600 ml-1 italic flex-1" numberOfLines={1}>
+                                          <Ionicons
+                                            name="document-text"
+                                            size={12}
+                                            color="#6b7280"
+                                          />
+                                          <Text
+                                            className="text-xs text-gray-600 ml-1 italic flex-1"
+                                            numberOfLines={1}
+                                          >
                                             {dose.notes}
                                           </Text>
                                         </View>
@@ -1811,22 +1964,26 @@ export default function VaxCardScreen() {
                 </View>
                 <View className="bg-blue-50 rounded-2xl px-4 py-2">
                   <Text className="text-sm font-bold text-blue-700">
-                    {profile?.vaccines?.flatMap((v) => v?.doses || []).length || 0} doses
+                    {profile?.vaccines?.flatMap((v) => v?.doses || []).length ||
+                      0}{" "}
+                    doses
                   </Text>
                 </View>
               </View>
 
-              {(profile?.vaccines
-                ?.flatMap((v) => v?.doses?.map((dose) => ({ vaccine: v, dose })) || [])
-                ?.filter((item) => item && item.vaccine && item.dose)
-                ?.sort(
-                  (a, b) => {
+              {(
+                profile?.vaccines
+                  ?.flatMap(
+                    (v) => v?.doses?.map((dose) => ({ vaccine: v, dose })) || []
+                  )
+                  ?.filter((item) => item && item.vaccine && item.dose)
+                  ?.sort((a, b) => {
                     const dateA = new Date(a.dose.date).getTime();
                     const dateB = new Date(b.dose.date).getTime();
                     return dateB - dateA;
-                  }
-                )
-                ?.slice(0, 5) || []) // Show only recent 5
+                  })
+                  ?.slice(0, 5) || []
+              ) // Show only recent 5
                 .map((item, i, arr) => {
                   const config = vaccineConfig[item.vaccine.type];
                   const isLatest = i === 0;
@@ -1842,7 +1999,10 @@ export default function VaxCardScreen() {
                             isLatest ? "shadow-lg" : ""
                           }`}
                           style={{
-                            backgroundColor: item.dose.status === 'cancelled' ? '#ef4444' : config.color,
+                            backgroundColor:
+                              item.dose.status === "cancelled"
+                                ? "#ef4444"
+                                : config.color,
                             transform:
                               i === 0
                                 ? [
@@ -1856,10 +2016,14 @@ export default function VaxCardScreen() {
                                 : [],
                           }}
                         >
-                          <Ionicons 
-                            name={item.dose.status === 'cancelled' ? "close" : "checkmark"} 
-                            size={12} 
-                            color="white" 
+                          <Ionicons
+                            name={
+                              item.dose.status === "cancelled"
+                                ? "close"
+                                : "checkmark"
+                            }
+                            size={12}
+                            color="white"
                           />
                         </Animated.View>
                         {i < arr.length - 1 && (
@@ -1887,7 +2051,7 @@ export default function VaxCardScreen() {
                                 Dose {item.dose.doseNumber}
                               </Text>
                             </View>
-                            {item.dose.status === 'cancelled' && (
+                            {item.dose.status === "cancelled" && (
                               <View className="ml-2 px-3 py-1 rounded-full bg-red-100">
                                 <Text className="text-xs font-semibold text-red-700">
                                   Cancelled
@@ -1907,19 +2071,26 @@ export default function VaxCardScreen() {
                         <View className="flex-row items-center mb-2">
                           <Ionicons name="calendar" size={16} color="#6b7280" />
                           <Text className="text-gray-600 font-medium ml-2">
-                            {typeof item.dose.date === 'string' 
-                              ? (item.dose.date === 'Pending' || item.dose.date === 'TBD' 
-                                  ? item.dose.date 
-                                  : new Date(item.dose.date).toLocaleDateString('en-US', { 
-                                      year: 'numeric', 
-                                      month: 'short', 
-                                      day: 'numeric' 
-                                    }))
-                              : new Date(item.dose.date).toLocaleDateString('en-US', { 
-                                  year: 'numeric', 
-                                  month: 'short', 
-                                  day: 'numeric' 
-                                })}
+                            {typeof item.dose.date === "string"
+                              ? item.dose.date === "Pending" ||
+                                item.dose.date === "TBD"
+                                ? item.dose.date
+                                : new Date(item.dose.date).toLocaleDateString(
+                                    "en-US",
+                                    {
+                                      year: "numeric",
+                                      month: "short",
+                                      day: "numeric",
+                                    }
+                                  )
+                              : new Date(item.dose.date).toLocaleDateString(
+                                  "en-US",
+                                  {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  }
+                                )}
                           </Text>
                         </View>
 
@@ -1946,21 +2117,25 @@ export default function VaxCardScreen() {
                     </View>
                   );
                 })}
-                
-                {/* Show More Indicator */}
-                {filteredVaccines.length > 5 && (
-                  <View className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 mx-4 mb-4">
-                    <View className="flex-row items-center justify-center">
-                      <Ionicons name="information-circle" size={20} color="#3b82f6" />
-                      <Text className="text-sm font-semibold text-blue-700 ml-2">
-                        Showing 5 of {filteredVaccines.length} recent activities
-                      </Text>
-                    </View>
-                    <Text className="text-xs text-center text-gray-600 mt-2">
-                      Use search or filters to find specific vaccines
+
+              {/* Show More Indicator */}
+              {filteredVaccines.length > 5 && (
+                <View className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 mx-4 mb-4">
+                  <View className="flex-row items-center justify-center">
+                    <Ionicons
+                      name="information-circle"
+                      size={20}
+                      color="#3b82f6"
+                    />
+                    <Text className="text-sm font-semibold text-blue-700 ml-2">
+                      Showing 5 of {filteredVaccines.length} recent activities
                     </Text>
                   </View>
-                )}
+                  <Text className="text-xs text-center text-gray-600 mt-2">
+                    Use search or filters to find specific vaccines
+                  </Text>
+                </View>
+              )}
             </View>
           </ScrollView>
         </Animated.View>
@@ -2093,20 +2268,24 @@ export default function VaxCardScreen() {
                                 </Text>
                                 <Text
                                   className={`text-sm font-medium ${
-                                    dose.status === 'cancelled'
+                                    dose.status === "cancelled"
                                       ? "text-red-600"
                                       : dose.verified
-                                      ? "text-green-600"
-                                      : "text-yellow-600"
+                                        ? "text-green-600"
+                                        : "text-yellow-600"
                                   }`}
                                 >
-                                  {dose.status === 'cancelled' ? "Cancelled" : dose.verified ? "Completed" : "Pending"}
+                                  {dose.status === "cancelled"
+                                    ? "Cancelled"
+                                    : dose.verified
+                                      ? "Completed"
+                                      : "Pending"}
                                 </Text>
                               </View>
                             </View>
 
                             <View className="flex-row items-center">
-                              {dose.status === 'cancelled' ? (
+                              {dose.status === "cancelled" ? (
                                 <View className="flex-row items-center">
                                   <View className="bg-red-100 rounded-xl px-4 py-3 mr-2">
                                     <Text className="text-sm font-semibold text-red-700">
@@ -2170,19 +2349,26 @@ export default function VaxCardScreen() {
                                     Date
                                   </Text>
                                   <Text className="text-sm font-semibold text-gray-800">
-                                    {dose.date 
-                                      ? (typeof dose.date === 'string' 
-                                          ? (dose.date === 'Pending' || dose.date === 'TBD' ? dose.date : new Date(dose.date).toLocaleDateString('en-US', { 
-                                              year: 'numeric', 
-                                              month: 'short', 
-                                              day: 'numeric' 
-                                            }))
-                                          : new Date(dose.date).toLocaleDateString('en-US', { 
-                                              year: 'numeric', 
-                                              month: 'short', 
-                                              day: 'numeric' 
-                                            }))
-                                      : 'N/A'}
+                                    {dose.date
+                                      ? typeof dose.date === "string"
+                                        ? dose.date === "Pending" ||
+                                          dose.date === "TBD"
+                                          ? dose.date
+                                          : new Date(
+                                              dose.date
+                                            ).toLocaleDateString("en-US", {
+                                              year: "numeric",
+                                              month: "short",
+                                              day: "numeric",
+                                            })
+                                        : new Date(
+                                            dose.date
+                                          ).toLocaleDateString("en-US", {
+                                            year: "numeric",
+                                            month: "short",
+                                            day: "numeric",
+                                          })
+                                      : "N/A"}
                                   </Text>
                                 </View>
                               </View>
@@ -2279,7 +2465,9 @@ export default function VaxCardScreen() {
           message={customAlert.message}
           buttons={customAlert.buttons}
           icon={customAlert.icon}
-          onClose={() => setCustomAlert(prev => ({ ...prev, visible: false }))}
+          onClose={() =>
+            setCustomAlert((prev) => ({ ...prev, visible: false }))
+          }
         />
       </View>
     </SafeAreaView>

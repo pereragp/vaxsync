@@ -6,6 +6,7 @@ import {
   getMyProfile,
   logoutUser,
   updateProfile,
+  changePassword,
 } from "../../controllers/userControllers/userController";
 import {
   addDependent,
@@ -28,6 +29,7 @@ router.get("/profile", protect, getMyProfile);
 //User profile routes
 router.get("/:id", getUserById);
 router.put("/profile/update", protect, updateProfile);
+router.put("/change-password", protect, changePassword); //Reset password route
 
 // Protected dependent routes
 router.post("/new-dependent", protect, addDependent);

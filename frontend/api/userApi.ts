@@ -300,6 +300,27 @@ class UserAPI {
       throw error;
     }
   }
+
+  //Reset passwrod
+  async changePassword(passwordData: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<{ message: string }> {
+    try {
+      const response = await this.makeAuthenticatedRequest<{ message: string }>(
+        "/change-password",
+        {
+          method: "PUT",
+          body: JSON.stringify(passwordData),
+        }
+      );
+      return response;
+    } catch (error) {
+      console.error("Error changing password: ", error);
+      throw error;
+    }
+  }
 }
 
 export default new UserAPI();

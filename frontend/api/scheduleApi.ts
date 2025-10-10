@@ -8,25 +8,29 @@ const API_BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
 // Helper function to get authentication token
 const getAuthToken = async (): Promise<string | null> => {
   try {
-    const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-    return await AsyncStorage.getItem('userToken');
+    const AsyncStorage =
+      require("@react-native-async-storage/async-storage").default;
+    return await AsyncStorage.getItem("userToken");
   } catch (error) {
-    console.error('Error getting auth token:', error);
+    console.error("Error getting auth token:", error);
     return null;
   }
 };
 
 // Helper function to make authenticated requests
-const makeAuthenticatedRequest = async (url: string, options: RequestInit = {}): Promise<Response> => {
+const makeAuthenticatedRequest = async (
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> => {
   const token = await getAuthToken();
-  
+
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
     ...(options.headers as Record<string, string>),
   };
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   return fetch(url, {
@@ -207,10 +211,13 @@ const scheduleAPI = {
     scheduleData: CreateScheduleRequest
   ): Promise<VaccineSchedule> {
     try {
-      const response = await makeAuthenticatedRequest(`${API_BASE_URL}/api/v1/schedule`, {
-        method: "POST",
-        body: JSON.stringify(scheduleData),
-      });
+      const response = await makeAuthenticatedRequest(
+        `${API_BASE_URL}/api/v1/schedule`,
+        {
+          method: "POST",
+          body: JSON.stringify(scheduleData),
+        }
+      );
 
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}`;
@@ -290,7 +297,9 @@ const scheduleAPI = {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.message || `Failed to add dose: ${response.statusText}`);
+      throw new Error(
+        errorData.message || `Failed to add dose: ${response.statusText}`
+      );
     }
 
     const data: ScheduleResponse = await response.json();
@@ -405,10 +414,10 @@ const scheduleAPI = {
       (dose) => dose.status === "cancelled"
     ).length;
     const activeDoses = schedule.totalDoses - cancelledDoses;
-    
+
     // If all doses are cancelled, return 0
     if (activeDoses === 0) return 0;
-    
+
     return Math.round((completedDoses / activeDoses) * 100);
   },
 
