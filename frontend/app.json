@@ -39,6 +39,11 @@
         "INTERNET",
         "ACCESS_NETWORK_STATE"
       ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDhfgoyumPBmt0HVYBc8QzFZ6LJDAGI1Uc"
+        }
+      },
       "edgeToEdgeEnabled": true
     },
     "web": {
