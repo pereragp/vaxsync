@@ -15,6 +15,10 @@ import {
   removeDependent,
 } from "../../controllers/userControllers/dependentController";
 import protect from "../../middleware/auth";
+import {
+  forgotPassword,
+  resetPassword,
+} from "../../controllers/userControllers/authController";
 
 const router = express.Router();
 
@@ -22,6 +26,9 @@ const router = express.Router();
 router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.post("/logout", protect, logoutUser);
+
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
 // Protected route to get current user's profile
 router.get("/profile", protect, getMyProfile);
