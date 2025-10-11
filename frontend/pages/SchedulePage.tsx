@@ -1816,7 +1816,7 @@ export default function SchedulePage() {
                             </Text>
                           </View>
                           <View className="flex-row items-center bg-purple-50 px-2.5 py-1.5 rounded-lg border border-purple-200">
-                            <Ionicons name="touch" size={14} color="#8b5cf6" />
+                            <Ionicons name="hand-left-outline" size={14} color="#8b5cf6" />
                             <Text className="text-xs font-medium text-purple-700 ml-1.5">
                               Tap to expand
                             </Text>
