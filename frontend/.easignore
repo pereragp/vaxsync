@@ -1,0 +1,88 @@
+# CRITICAL: Exclude large directories that consume most space
+node_modules/
+dist/
+.expo/
+.expo-shared/
+
+# Build artifacts and cache
+build/
+.gradle/
+.gradle*
+*.apk
+*.aab
+coverage/
+*.log
+logs/
+
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Cache directories
+.cache/
+.parcel-cache
+.npm
+.eslintcache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Temporary files
+tmp/
+temp/
+*.pid
+*.seed
+*.pid.lock
+
+# Package manager files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.yarn-integrity
+*.tgz
+jspm_packages/
+
+# Large media files
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.wmv
+*.flv
+*.webm
+*.psd
+*.ai
+*.tiff
+*.tif
+
+# Archive files
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz

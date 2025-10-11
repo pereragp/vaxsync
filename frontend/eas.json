@@ -1,0 +1,36 @@
+{
+  "cli": {
+    "version": ">= 16.0.0"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "gradleCommand": ":app:assembleDebug",
+        "buildType": "apk"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      }
+    },
+    "production": {
+      "android": {
+        "buildType": "apk"
+      },
+      "autoIncrement": false,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://192.168.1.32:5000"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+
+  
+}
+
