@@ -7,11 +7,6 @@
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1e40af"
-    },
     "extra": {
       "eas": {
         "projectId": "283dab38-62ae-40ce-98a1-180c9a484844"
@@ -53,12 +48,6 @@
     },
     "plugins": [
       "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "backgroundColor": "#1e40af"
-        }
-      ],
       [
         "expo-notifications",
         {
