@@ -9,6 +9,7 @@ export interface IUser extends Document {
     password: string;
     dateOfBirth: Date;
     gender: string;
+    bloodType: string;
     phone: string;
     avatar?: string;
     dependents: Types.ObjectId[];
@@ -103,6 +104,7 @@ export interface IHealthCard extends Document {
         facility?: string;
         certificateNumber?: string;
         notes?: string;
+        status?: "completed" | "cancelled";
     }[];
     createdAt: Date;
     updatedAt: Date;

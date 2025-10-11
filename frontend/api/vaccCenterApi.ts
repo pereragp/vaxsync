@@ -1,6 +1,6 @@
 // Base URL configuration
-const BASE_URL = 'http://172.29.6.227:5000'; // Your backend URL
-export const Googele_API_KEY = 'AIzaSyDhfgoyumPBmt0HVYBc8QzFZ6LJDAGI1Uc'; // Google API Key
+const BASE_URL = "http://192.168.1.32:5000"; // Your backend URL
+export const Googele_API_KEY = "AIzaSyDhfgoyumPBmt0HVYBc8QzFZ6LJDAGI1Uc"; // Google API Key
 
 // Types
 export interface VaccinationCenter {
@@ -39,32 +39,51 @@ export class ApiError extends Error {
 // Network timeout
 const TIMEOUT_DURATION = 10000;
 const timeoutPromise = (ms: number) =>
-  new Promise<never>((_, reject) => setTimeout(() => reject(new ApiError("Request timeout", 408)), ms));
+  new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new ApiError("Request timeout", 408)), ms)
+  );
 
 // Generic request helper
-const apiRequest = async <T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> => {
+const apiRequest = async <T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<ApiResponse<T>> => {
   const config: RequestInit = {
-    headers: { "Content-Type": "application/json", Accept: "application/json", ...options.headers },
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...options.headers,
+    },
     ...options,
   };
 
   try {
     const fetchPromise = fetch(`${BASE_URL}${endpoint}`, config);
-    const response = (await Promise.race([fetchPromise, timeoutPromise(TIMEOUT_DURATION)])) as Response;
+    const response = (await Promise.race([
+      fetchPromise,
+      timeoutPromise(TIMEOUT_DURATION),
+    ])) as Response;
 
     if (!response.ok) {
       const errorText = await response.text();
       let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
-      try { const json = JSON.parse(errorText); errorMessage = json.message || errorMessage; } catch {}
+      try {
+        const json = JSON.parse(errorText);
+        errorMessage = json.message || errorMessage;
+      } catch {}
       throw new ApiError(errorMessage, response.status);
     }
 
     const data: ApiResponse<T> = await response.json();
-    if (!data.success) throw new ApiError(data.message || data.error || "API request failed");
+    if (!data.success)
+      throw new ApiError(data.message || data.error || "API request failed");
     return data;
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    if (error instanceof TypeError && error.message.includes("Network request failed")) {
+    if (
+      error instanceof TypeError &&
+      error.message.includes("Network request failed")
+    ) {
       throw new ApiError(
         `Cannot connect to server. Check if backend is running on ${BASE_URL}`,
         0,
@@ -76,14 +95,21 @@ const apiRequest = async <T>(endpoint: string, options: RequestInit = {}): Promi
 };
 
 // Helper to calculate distance
-const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+const calculateDistance = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+): number => {
   const R = 6371e3; // Earth's radius in meters
   const φ1 = (lat1 * Math.PI) / 180;
   const φ2 = (lat2 * Math.PI) / 180;
   const Δφ = ((lat2 - lat1) * Math.PI) / 180;
   const Δλ = ((lon2 - lon1) * Math.PI) / 180;
 
-  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
   return R * c; // Distance in meters
@@ -111,12 +137,19 @@ export const vaccCenterApi = {
     if (q) params.append("q", q);
 
     const queryString = params.toString() ? `?${params.toString()}` : "";
-    const response = await apiRequest<VaccinationCenter[]>(`/api/centers${queryString}`);
+    const response = await apiRequest<VaccinationCenter[]>(
+      `/api/centers${queryString}`
+    );
 
     // Add distance to each center
     const centers = (response.data || []).map((center) => ({
       ...center,
-      distance: calculateDistance(lat, lng, center.location.coordinates[1], center.location.coordinates[0]),
+      distance: calculateDistance(
+        lat,
+        lng,
+        center.location.coordinates[1],
+        center.location.coordinates[0]
+      ),
     }));
 
     return centers;
@@ -129,7 +162,9 @@ export const vaccCenterApi = {
     return response.data;
   },
 
-  addCenter: async (centerData: Partial<VaccinationCenter>): Promise<VaccinationCenter> => {
+  addCenter: async (
+    centerData: Partial<VaccinationCenter>
+  ): Promise<VaccinationCenter> => {
     const response = await apiRequest<VaccinationCenter>("/api/centers", {
       method: "POST",
       body: JSON.stringify(centerData),
@@ -140,15 +175,23 @@ export const vaccCenterApi = {
 
   // Get unique districts for filtering
   getDistricts: async (): Promise<string[]> => {
-    const response = await apiRequest<VaccinationCenter[]>("/api/centers?limit=1000");
-    const districts = [...new Set((response.data || []).map((c) => c.district))];
+    const response = await apiRequest<VaccinationCenter[]>(
+      "/api/centers?limit=1000"
+    );
+    const districts = [
+      ...new Set((response.data || []).map((c) => c.district)),
+    ];
     return districts.sort();
   },
 
   // Get unique vaccine types for filtering
   getVaccineTypes: async (): Promise<string[]> => {
-    const response = await apiRequest<VaccinationCenter[]>("/api/centers?limit=1000");
-    const types = [...new Set((response.data || []).flatMap((c) => c.vaccineTypes))];
+    const response = await apiRequest<VaccinationCenter[]>(
+      "/api/centers?limit=1000"
+    );
+    const types = [
+      ...new Set((response.data || []).flatMap((c) => c.vaccineTypes)),
+    ];
     return types.sort();
   },
 };

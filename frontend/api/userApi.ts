@@ -10,6 +10,7 @@ export interface User {
   email: string;
   dateOfBirth: string;
   gender: string;
+  bloodType: string;
   phone: string;
   avatar?: string;
   dependents: string[];
@@ -44,13 +45,18 @@ class UserAPI {
       });
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const error: any = new Error(`HTTP error! status: ${response.status}`);
+        error.status = response.status;
+        throw error;
       }
 
       const data = await response.json();
       return data;
-    } catch (error) {
-      console.error(`API request failed for ${endpoint}:`, error);
+    } catch (error: any) {
+      // Only log unexpected errors (not 401/403 authentication errors)
+      if (error.status !== 401 && error.status !== 403) {
+        console.error(`API request failed for ${endpoint}:`, error);
+      }
       throw error;
     }
   }
@@ -78,6 +84,7 @@ class UserAPI {
     // For React Native with AsyncStorage
     try {
       const AsyncStorage =
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         require("@react-native-async-storage/async-storage").default;
       return await AsyncStorage.getItem("userToken");
     } catch (error) {
@@ -103,6 +110,7 @@ class UserAPI {
     password: string;
     dateOfBirth: string;
     gender: string;
+    bloodType: string;
     phone: string;
   }): Promise<any> {
     return this.makeRequest<any>("/register", {
@@ -142,11 +150,47 @@ class UserAPI {
       email: userData.email,
       dateOfBirth: userData.dateOfBirth,
       gender: userData.gender,
+      bloodType: userData.bloodType || "",
       phone: userData.phone,
       avatar: userData.avatar || "",
       dependents: userData.dependents || [],
       createdAt: userData.createdAt || new Date().toISOString(),
       updatedAt: userData.updatedAt || new Date().toISOString(),
+    };
+  }
+
+  //Update user profile
+  async updateProfile(profileData: {
+    firstName?: string;
+    lastName?: string;
+    dateOfBirth?: string;
+    gender?: string;
+    bloodType?: string;
+    phone?: string;
+  }): Promise<User> {
+    const response = await this.makeAuthenticatedRequest<any>(
+      "/profile/update",
+      {
+        method: "PUT",
+        body: JSON.stringify(profileData),
+      }
+    );
+
+    //Match backend response to UI
+    return {
+      _id: response.user._id,
+      username: response.user.username || "unknown",
+      firstName: response.user.firstName,
+      lastName: response.user.lastName,
+      email: response.user.email,
+      dateOfBirth: response.user.dateOfBirth,
+      gender: response.user.gender,
+      bloodType: response.user.bloodType || "",
+      phone: response.user.phone,
+      avatar: response.user.avatar || "",
+      dependents: response.user.dependents || [],
+      createdAt: response.user.createdAt || new Date().toISOString(),
+      updatedAt: response.user.updatedAt || new Date().toISOString(),
     };
   }
 
@@ -163,12 +207,37 @@ class UserAPI {
       email: userData.email,
       dateOfBirth: userData.dateOfBirth,
       gender: userData.gender,
+      bloodType: userData.bloodType || "",
       phone: userData.phone,
       avatar: userData.avatar || "",
       dependents: userData.dependents || [],
       createdAt: userData.createdAt || new Date().toISOString(),
       updatedAt: userData.updatedAt || new Date().toISOString(),
     };
+  }
+
+  //Add new dependent
+  async addDependent(dependentData: {
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string;
+    gender: string;
+    dependentType: string;
+    guardianId: string;
+  }): Promise<Dependent> {
+    try {
+      const response = await this.makeAuthenticatedRequest<any>(
+        "/new-dependent",
+        {
+          method: "POST",
+          body: JSON.stringify(dependentData),
+        }
+      );
+      return response.dependent;
+    } catch (error) {
+      console.error("Error adding dependent: ", error);
+      throw error;
+    }
   }
 
   // Get dependents by guardian ID
@@ -184,6 +253,72 @@ class UserAPI {
         error
       );
       return [];
+    }
+  }
+
+  // Update dependent
+  async updateDependent(
+    guardianId: string,
+    dependentId: string,
+    updateData: {
+      firstName?: string;
+      lastName?: string;
+      dateOfBirth?: string;
+      gender?: string;
+      dependentType?: string;
+    }
+  ): Promise<Dependent> {
+    try {
+      const response = await this.makeAuthenticatedRequest<any>(
+        `/dependents/${guardianId}/${dependentId}`,
+        {
+          method: "PUT",
+          body: JSON.stringify(updateData),
+        }
+      );
+      return response.dependent;
+    } catch (error) {
+      console.error("Error updating dependent: ", error);
+      throw error;
+    }
+  }
+
+  // Remove dependent
+  async removeDependent(
+    guardianId: string,
+    dependentId: string
+  ): Promise<void> {
+    try {
+      await this.makeAuthenticatedRequest<any>(
+        `/dependents/${guardianId}/${dependentId}`,
+        {
+          method: "DELETE",
+        }
+      );
+    } catch (error) {
+      console.error("Error removing dependent: ", error);
+      throw error;
+    }
+  }
+
+  //Reset passwrod
+  async changePassword(passwordData: {
+    currentPassword: string;
+    newPassword: string;
+    confirmPassword: string;
+  }): Promise<{ message: string }> {
+    try {
+      const response = await this.makeAuthenticatedRequest<{ message: string }>(
+        "/change-password",
+        {
+          method: "PUT",
+          body: JSON.stringify(passwordData),
+        }
+      );
+      return response;
+    } catch (error) {
+      console.error("Error changing password: ", error);
+      throw error;
     }
   }
 }

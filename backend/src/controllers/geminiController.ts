@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import geminiService from '../services/geminiService';
-import { ApiResponse } from '../types';
+import { ApiResponse, AuthRequest } from '../types';
 
 export class GeminiController {
   /**
    * Generate post-vaccination instructions using Gemini AI and send as push notification
    */
-  static async generateVaccineInstructions(req: Request, res: Response): Promise<void> {
+  static async generateVaccineInstructions(req: AuthRequest, res: Response): Promise<void> {
     try {
       const {
         dateOfBirth,

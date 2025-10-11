@@ -6,6 +6,11 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "extra": {
+      "eas": {
+        "projectId": "283dab38-62ae-40ce-98a1-180c9a484844"
+      }
+    },
     "ios": {
       "supportsTablet": true
     },
@@ -22,6 +27,16 @@
         "expo-splash-screen",
         {
           "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#ffffff",
+          "sounds": ["./assets/sounds/notification.wav"],
+          "androidMode": "default",
+          "androidCollapsedTitle": "VaxSync"
         }
       ]
     ],

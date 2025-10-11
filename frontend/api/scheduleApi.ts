@@ -1,6 +1,43 @@
-const API_BASE_URL = "http://10.170.82.39:5000"; //Pramod URL
+//const API_BASE_URL = "http://192.168.1.3:5000"; //Pramod URL
 
-//const API_BASE_URL = 'http://10.170.82.39:5000/api/users'; // Mishen URL
+//const API_BASE_URL = 'http://192.168.1.3:5000/api/users'; // Mishen URL
+const API_BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
+
+//const API_BASE_URL = 'http://192.168.1.32:5000/api/users'; // Mishen URL
+
+// Helper function to get authentication token
+const getAuthToken = async (): Promise<string | null> => {
+  try {
+    const AsyncStorage =
+      require("@react-native-async-storage/async-storage").default;
+    return await AsyncStorage.getItem("userToken");
+  } catch (error) {
+    console.error("Error getting auth token:", error);
+    return null;
+  }
+};
+
+// Helper function to make authenticated requests
+const makeAuthenticatedRequest = async (
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> => {
+  const token = await getAuthToken();
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+};
 
 // Types for Schedule API
 export interface VaccineDose {
@@ -155,7 +192,7 @@ const scheduleAPI = {
     const url = `${API_BASE_URL}/api/v1/schedule${
       queryParams.toString() ? "?" + queryParams.toString() : ""
     }`;
-    const response = await fetch(url);
+    const response = await makeAuthenticatedRequest(url);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch schedules: ${response.statusText}`);
@@ -174,13 +211,13 @@ const scheduleAPI = {
     scheduleData: CreateScheduleRequest
   ): Promise<VaccineSchedule> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/v1/schedule`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(scheduleData),
-      });
+      const response = await makeAuthenticatedRequest(
+        `${API_BASE_URL}/api/v1/schedule`,
+        {
+          method: "POST",
+          body: JSON.stringify(scheduleData),
+        }
+      );
 
       if (!response.ok) {
         let errorMessage = `HTTP ${response.status}`;
@@ -206,13 +243,10 @@ const scheduleAPI = {
     scheduleId: string,
     updateData: Partial<VaccineSchedule>
   ): Promise<VaccineSchedule> {
-    const response = await fetch(
+    const response = await makeAuthenticatedRequest(
       `${API_BASE_URL}/api/v1/schedule/${scheduleId}`,
       {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(updateData),
       }
     );
@@ -231,13 +265,10 @@ const scheduleAPI = {
     doseNumber: number,
     doseData: UpdateDoseRequest
   ): Promise<VaccineSchedule> {
-    const response = await fetch(
+    const response = await makeAuthenticatedRequest(
       `${API_BASE_URL}/api/v1/schedule/${scheduleId}/doses/${doseNumber}`,
       {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
         body: JSON.stringify(doseData),
       }
     );
@@ -250,9 +281,34 @@ const scheduleAPI = {
     return data.data;
   },
 
+  // Add a new dose to existing schedule
+  async addDoseToSchedule(
+    scheduleId: string,
+    intervalDays: number,
+    notes?: string
+  ): Promise<VaccineSchedule> {
+    const response = await makeAuthenticatedRequest(
+      `${API_BASE_URL}/api/v1/schedule/${scheduleId}/doses`,
+      {
+        method: "POST",
+        body: JSON.stringify({ intervalDays, notes }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.message || `Failed to add dose: ${response.statusText}`
+      );
+    }
+
+    const data: ScheduleResponse = await response.json();
+    return data.data;
+  },
+
   // Delete vaccine schedule
   async deleteSchedule(scheduleId: string): Promise<void> {
-    const response = await fetch(
+    const response = await makeAuthenticatedRequest(
       `${API_BASE_URL}/api/v1/schedule/${scheduleId}`,
       {
         method: "DELETE",
@@ -349,12 +405,20 @@ const scheduleAPI = {
     return nextDose ? new Date(nextDose.dateScheduled) : null;
   },
 
-  // Helper function to calculate completion percentage
+  // Helper function to calculate completion percentage (excluding cancelled doses)
   getCompletionPercentage(schedule: VaccineSchedule): number {
     const completedDoses = schedule.doses.filter(
       (dose) => dose.status === "completed"
     ).length;
-    return Math.round((completedDoses / schedule.totalDoses) * 100);
+    const cancelledDoses = schedule.doses.filter(
+      (dose) => dose.status === "cancelled"
+    ).length;
+    const activeDoses = schedule.totalDoses - cancelledDoses;
+
+    // If all doses are cancelled, return 0
+    if (activeDoses === 0) return 0;
+
+    return Math.round((completedDoses / activeDoses) * 100);
   },
 
   // Helper function to check if schedule is overdue
@@ -394,7 +458,7 @@ const scheduleAPI = {
     const url = `${API_BASE_URL}/api/vaccines${
       queryParams.toString() ? "?" + queryParams.toString() : ""
     }`;
-    const response = await fetch(url);
+    const response = await makeAuthenticatedRequest(url);
 
     if (!response.ok) {
       throw new Error(`Failed to fetch vaccines: ${response.statusText}`);

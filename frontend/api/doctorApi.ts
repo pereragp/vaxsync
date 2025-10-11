@@ -1,4 +1,4 @@
-const BASE_URL = "http://10.170.82.39:5000"; //Pramod URL
+const BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
 
 // Types
 export interface Doctor {
