@@ -1,5 +1,5 @@
 // Base URL configuration
-const BASE_URL = "http://192.168.1.5:5000"; // Your backend URL
+const BASE_URL = "http://192.168.1.32:5000"; // Your backend URL
 export const Googele_API_KEY = "AIzaSyDhfgoyumPBmt0HVYBc8QzFZ6LJDAGI1Uc"; // Google API Key
 
 // Types
