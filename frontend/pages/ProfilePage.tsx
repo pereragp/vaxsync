@@ -472,20 +472,18 @@ export default function ProfilePage() {
 
   if (loading && !user) {
     return (
-      <SafeAreaView className="flex-1 bg-white">
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <View className="flex-1 bg-white">
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#175593" />
           <Text className="text-gray-600 mt-4">Loading profile...</Text>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView className="flex-1 bg-white">
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+      <View className="flex-1 bg-white">
         <View className="flex-1 justify-center items-center p-6">
           <Ionicons name="alert-circle" size={64} color="#ef4444" />
           <Text className="text-xl font-bold text-gray-800 mt-4 mb-2">
@@ -499,14 +497,12 @@ export default function ProfilePage() {
             <Text className="text-white font-medium">Try Again</Text>
           </TouchableOpacity>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1" edges={["top"]}>
-      <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
-
+    <View className="flex-1">
       <ScrollView
         className="flex-1 bg-gray-50"
         showsVerticalScrollIndicator={false}
@@ -2158,6 +2154,6 @@ export default function ProfilePage() {
         visible={showChangePasswordModal}
         onClose={() => setShowChangePasswordModal(false)}
       />
-    </SafeAreaView>
+    </View>
   );
 }
