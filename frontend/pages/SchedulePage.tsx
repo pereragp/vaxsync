@@ -1245,12 +1245,7 @@ export default function SchedulePage() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-    <SafeAreaView
-      className="flex-1"
-      edges={["top"]}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
-      
+    <View className="flex-1">
       {/* Enhanced Header with Gradient */}
       <LinearGradient
         colors={['#1e40af', '#3b82f6', '#60a5fa']}
@@ -3335,7 +3330,7 @@ export default function SchedulePage() {
           </View>
         </Modal>
       </View>
-    </SafeAreaView>
+    </View>
     </GestureHandlerRootView>
   );
 }

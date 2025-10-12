@@ -12,9 +12,7 @@ export default function HealthServicesPage() {
   const [activeTab, setActiveTab] = useState<ServiceTab>('doctors');
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
-      
+    <View className="flex-1 bg-gray-50">
       {/* Header with Gradient */}
       <LinearGradient
         colors={['#1e40af', '#3b82f6', '#60a5fa']}
@@ -118,6 +116,6 @@ export default function HealthServicesPage() {
       <View className="flex-1">
         {activeTab === 'doctors' ? <DoctorFinder /> : <VaccinationCenter />}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
