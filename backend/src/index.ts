@@ -11,9 +11,9 @@ import healthCardRoutes from "./routes/healthCard/healthCardRoutes";
 import scheduleRoutes from "./routes/scheduleRoutes/scheduleRoutes";
 import vaccineRoutes from "./routes/scheduleRoutes/vaccineRoutes";
 
-import doctorRoutes from './routes/doctorVaccRoutes/doctorRoutes';
-import geminiRoutes from './routes/geminiRoutes';
-import vaccCenterRoutes from './routes/doctorVaccRoutes/vaccinationCenterRoutes';
+import doctorRoutes from "./routes/doctorVaccRoutes/doctorRoutes";
+import geminiRoutes from "./routes/geminiRoutes";
+import vaccCenterRoutes from "./routes/doctorVaccRoutes/vaccinationCenterRoutes";
 
 // Load environment variables
 dotenv.config();
@@ -66,8 +66,8 @@ const startServer = async () => {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 VaxSync Backend running on port ${PORT}`);
       console.log(`🔗 Server URL: http://localhost:${PORT}`);
-      console.log(`📱 For mobile access: http://192.168.1.32:${PORT}`);
-      console.log(`💚 Health Check: http://192.168.1.32:${PORT}/health`);
+      console.log(`📱 For mobile access: http://192.168.1.6:${PORT}`);
+      console.log(`💚 Health Check: http://192.168.1.6:${PORT}/health`);
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);

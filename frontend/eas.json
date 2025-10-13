@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 16.0.0"
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
@@ -21,16 +22,13 @@
       "android": {
         "buildType": "apk"
       },
-      "autoIncrement": false,
+      "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.1.32:5000"
+        "EXPO_PUBLIC_API_URL": "http://192.168.1.6:5000"
       }
     }
   },
   "submit": {
     "production": {}
   }
-
-  
 }
-
