@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Modal,
   LayoutAnimation,
-  UIManager,
   Platform,
   Animated,
   Dimensions,
@@ -37,13 +36,8 @@ import CustomAlert from "../components/CustomAlert";
 import geminiAPI from "../api/geminiApi";
 import userAPI from "../api/userApi";
 
-// Enable LayoutAnimation for Android
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+// LayoutAnimation is enabled by default in React Native's New Architecture
+// No need to call setLayoutAnimationEnabledExperimental anymore
 
 interface VaccineDose {
   doseNumber: number;
@@ -1062,9 +1056,7 @@ export default function VaxCardScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1" edges={["top"]}>
-      <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
-
+    <View className="flex-1">
       {/* Enhanced Header with Gradient */}
       <LinearGradient
         colors={["#1e40af", "#3b82f6", "#60a5fa"]}
@@ -2470,6 +2462,6 @@ export default function VaxCardScreen() {
           }
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
