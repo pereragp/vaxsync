@@ -119,6 +119,22 @@ class UserAPI {
     });
   }
 
+  //Forgot Password Method
+  async forgotPassword(email: string): Promise<any> {
+    return this.makeRequest<any>("/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  //Reset Password Method
+  async resetPassword(token: string, newPassword: string): Promise<any> {
+    return this.makeRequest<any>("/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, newPassword }),
+    });
+  }
+
   //Logout Method
   async logout(): Promise<void> {
     try {

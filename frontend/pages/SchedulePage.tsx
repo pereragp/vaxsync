@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Modal,
   LayoutAnimation,
-  UIManager,
   Platform,
   Animated,
   Dimensions,
@@ -34,10 +33,8 @@ import AddSchedule from '../components/AddSchedule';
 import * as VaccineNotifications from '../services/vaccineNotificationService';
 import { sendScheduleCreatedNotification, sendScheduleUpdatedNotification, sendScheduleCancelledNotification } from '../services/vaccineNotificationHelpers';
 
-// Enable LayoutAnimation for Android
-if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+// LayoutAnimation is enabled by default in React Native's New Architecture
+// No need to call setLayoutAnimationEnabledExperimental anymore
 
 interface Profile {
   id: string;
@@ -1248,12 +1245,7 @@ export default function SchedulePage() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-    <SafeAreaView
-      className="flex-1"
-      edges={["top"]}
-    >
-      <StatusBar barStyle="light-content" backgroundColor="#1e40af" />
-      
+    <View className="flex-1">
       {/* Enhanced Header with Gradient */}
       <LinearGradient
         colors={['#1e40af', '#3b82f6', '#60a5fa']}
@@ -1816,7 +1808,7 @@ export default function SchedulePage() {
                             </Text>
                           </View>
                           <View className="flex-row items-center bg-purple-50 px-2.5 py-1.5 rounded-lg border border-purple-200">
-                            <Ionicons name="touch" size={14} color="#8b5cf6" />
+                            <Ionicons name="hand-left-outline" size={14} color="#8b5cf6" />
                             <Text className="text-xs font-medium text-purple-700 ml-1.5">
                               Tap to expand
                             </Text>
@@ -3338,7 +3330,7 @@ export default function SchedulePage() {
           </View>
         </Modal>
       </View>
-    </SafeAreaView>
+    </View>
     </GestureHandlerRootView>
   );
 }
