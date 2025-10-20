@@ -214,18 +214,41 @@ export default function SchedulePage() {
 
       const allHealthCards = await healthCardAPI.getAllHealthCards();
       
+      // Fetch dependents to get relationship types
+      let dependentsMap: { [key: string]: any } = {};
+      if (currentUser?._id) {
+        try {
+          const dependents = await userAPI.getDependents(currentUser._id);
+          dependentsMap = dependents.reduce((acc: any, dep: any) => {
+            acc[dep._id] = dep;
+            return acc;
+          }, {});
+        } catch (error) {
+          console.log('Could not fetch dependents:', error);
+        }
+      }
+      
       // Convert health cards to profiles
-      const newProfiles: Profile[] = allHealthCards.map((healthCard) => ({
-        id: healthCard._id,
-        name: healthCard.fullName,
-        dob: new Date(healthCard.dateOfBirth).toLocaleDateString(),
-        relation: healthCard.cardType === 'dependent' ? 'Dependent' : 'User',
-        idNumber: healthCard._id.slice(-8).toUpperCase(),
-        lastUpdated: new Date(healthCard.updatedAt).toLocaleDateString(),
-        healthCard: healthCard,
-        isDependent: healthCard.cardType === 'dependent',
-        dependentId: healthCard.cardType === 'dependent' ? healthCard.dependentId : undefined,
-      }));
+      const newProfiles: Profile[] = allHealthCards.map((healthCard) => {
+        let relation = 'User';
+        
+        if (healthCard.cardType === 'dependent' && healthCard.dependentId) {
+          const dependent = dependentsMap[healthCard.dependentId];
+          relation = dependent?.dependentType || 'Dependent';
+        }
+        
+        return {
+          id: healthCard._id,
+          name: healthCard.fullName,
+          dob: new Date(healthCard.dateOfBirth).toLocaleDateString(),
+          relation: relation,
+          idNumber: healthCard._id.slice(-8).toUpperCase(),
+          lastUpdated: new Date(healthCard.updatedAt).toLocaleDateString(),
+          healthCard: healthCard,
+          isDependent: healthCard.cardType === 'dependent',
+          dependentId: healthCard.cardType === 'dependent' ? healthCard.dependentId : undefined,
+        };
+      });
 
       setProfiles(newProfiles);
 
