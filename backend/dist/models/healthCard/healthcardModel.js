@@ -143,6 +143,11 @@ const healthCardSchema = new mongoose_1.Schema({
                 enum: ["completed", "cancelled"],
                 default: "completed",
             },
+            vaccinationType: {
+                type: String,
+                enum: ["routine", "travel", "occupational", "emergency"],
+                default: "routine",
+            },
         }],
 }, { timestamps: true });
 healthCardSchema.pre('save', function (next) {

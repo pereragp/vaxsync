@@ -76,6 +76,7 @@ export interface IVaccinationRecord extends Document {
     notes?: string;
   }[];
   overallStatus: "in_progress" | "completed" | "cancelled";
+  vaccinationType?: "routine" | "travel" | "occupational" | "emergency";
   healthcareProvider?: {
     name?: string;
   };
@@ -111,6 +112,7 @@ export interface IHealthCard extends Document {
     certificateNumber?: string;
     notes?: string;
     status?: "completed" | "cancelled";
+    vaccinationType?: "routine" | "travel" | "occupational" | "emergency";
   }[];
   createdAt: Date;
   updatedAt: Date;

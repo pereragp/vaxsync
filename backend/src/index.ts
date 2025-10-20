@@ -11,9 +11,9 @@ import healthCardRoutes from "./routes/healthCard/healthCardRoutes";
 import scheduleRoutes from "./routes/scheduleRoutes/scheduleRoutes";
 import vaccineRoutes from "./routes/scheduleRoutes/vaccineRoutes";
 
-import doctorRoutes from './routes/doctorVaccRoutes/doctorRoutes';
-import geminiRoutes from './routes/geminiRoutes';
-import vaccCenterRoutes from './routes/doctorVaccRoutes/vaccinationCenterRoutes';
+import doctorRoutes from "./routes/doctorVaccRoutes/doctorRoutes";
+import geminiRoutes from "./routes/geminiRoutes";
+import vaccCenterRoutes from "./routes/doctorVaccRoutes/vaccinationCenterRoutes";
 
 // Load environment variables
 dotenv.config();

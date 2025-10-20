@@ -127,7 +127,8 @@ class NotificationService {
         type: 'expo',
       };
     } catch (error) {
-      console.error('Error registering for push notifications:', error);
+      // Silently fail if Firebase is not configured - don't disturb users
+      // Firebase setup is optional for local development
       return null;
     }
   }
