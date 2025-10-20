@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL = "http://192.168.1.32:5000/api/users"; // Pramod URL
+const API_BASE_URL = "http://192.168.1.6:5000/api/users"; // Pramod URL
 
 export interface User {
   _id: string;
@@ -53,9 +53,14 @@ class UserAPI {
       const data = await response.json();
       return data;
     } catch (error: any) {
-      // Only log unexpected errors (not 401/403 authentication errors)
-      if (error.status !== 401 && error.status !== 403) {
-        console.error(`API request failed for ${endpoint}:`, error);
+      if (
+        error.status !== 401 &&
+        error.status !== 403 &&
+        error.status !== 404
+      ) {
+        console.log(`API request failed for ${endpoint}:`, error);
+      } else if (error.status === 404) {
+        console.log(`API request failed for ${endpoint}:`, error);
       }
       throw error;
     }
@@ -88,7 +93,7 @@ class UserAPI {
         require("@react-native-async-storage/async-storage").default;
       return await AsyncStorage.getItem("userToken");
     } catch (error) {
-      console.error("Error getting stored token:", error);
+      console.log("Error getting stored token:", error);
       return null;
     }
   }

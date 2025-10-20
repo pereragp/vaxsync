@@ -120,6 +120,16 @@ export default function ProfilePage() {
   const handleQuickEdit = (fieldName: string) => {
     if (!user) return;
 
+    if (fieldName === "email") {
+      showAlert(
+        "Email Cannot Be Changed",
+        "For security reasons, your email address cannot be changed.",
+        [{ text: "OK" }],
+        "warning"
+      );
+      return;
+    }
+
     setEditingField(fieldName);
 
     // Pre-populate with current values
@@ -234,7 +244,7 @@ export default function ProfilePage() {
         );
       } else if (error.message.includes("Network request failed")) {
         setError(
-          "Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.32:5000"
+          "Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.6:5000"
         );
       } else {
         setError(error.message || "Failed to load user data");
@@ -937,7 +947,7 @@ export default function ProfilePage() {
               </Text>
 
               <View className="space-y-2">
-                <TouchableOpacity className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex-row items-center justify-between">
+                {/* <TouchableOpacity className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex-row items-center justify-between">
                   <View className="flex-row items-center flex-1">
                     <View className="bg-purple-100 rounded-lg p-2 mr-3">
                       <Ionicons
@@ -951,7 +961,7 @@ export default function ProfilePage() {
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 {/* Change Password Button */}
                 <TouchableOpacity

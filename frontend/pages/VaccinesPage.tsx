@@ -30,7 +30,7 @@ import {
 } from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
-const API_BASE_URL = "http://192.168.1.32:5000";
+const API_BASE_URL = "http://192.168.1.6:5000";
 import InstructionsPopup from "../components/InstructionsPopup";
 import CustomAlert from "../components/CustomAlert";
 import geminiAPI from "../api/geminiApi";
@@ -1554,7 +1554,11 @@ export default function VaxCardScreen() {
                                 </View>
                               )}
                               <View className="mb-2">
-                                <Text className="font-bold text-gray-800 text-xl" numberOfLines={2} ellipsizeMode="tail">
+                                <Text
+                                  className="font-bold text-gray-800 text-xl"
+                                  numberOfLines={2}
+                                  ellipsizeMode="tail"
+                                >
                                   {vaccine.name || "Unknown Vaccine"}
                                 </Text>
                               </View>
@@ -2031,7 +2035,12 @@ export default function VaxCardScreen() {
                       <View className="flex-1 bg-gray-50 rounded-2xl p-4">
                         <View className="flex-row items-center justify-between mb-3">
                           <View className="flex-row items-center flex-wrap">
-                            <Text className="font-bold text-gray-800 text-lg" numberOfLines={1} ellipsizeMode="tail" style={{ maxWidth: '60%' }}>
+                            <Text
+                              className="font-bold text-gray-800 text-lg"
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                              style={{ maxWidth: "60%" }}
+                            >
                               {item.vaccine.name}
                             </Text>
                             <View
