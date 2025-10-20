@@ -111,6 +111,11 @@ const healthCardSchema = new Schema<IHealthCard>(
         enum: ["completed", "cancelled"],
         default: "completed",
       },
+      vaccinationType: {
+        type: String,
+        enum: ["routine", "travel", "occupational", "emergency"],
+        default: "routine",
+      },
     }],
   },
   { timestamps: true }

@@ -89,8 +89,8 @@ export default function AddSchedule({
     switch (step) {
       case 1:
         // Step 1: Vaccine Selection
-        if (!selectedVaccine) {
-          showAlert("Please select a vaccine to continue", "Validation error", [{ text: 'OK' }], 'warning');
+        if (!selectedVaccine && !vaccineSearchQuery.trim()) {
+          showAlert("Please select a vaccine or enter a custom vaccine name", "Validation error", [{ text: 'OK' }], 'warning');
           return false;
         }
         return true;
@@ -153,8 +153,8 @@ export default function AddSchedule({
       animationType="slide"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-black/50 justify-end">
-        <View className="bg-white rounded-t-3xl overflow-hidden" style={{ maxHeight: '90%' }}>
+      <View className="flex-1 bg-black/50" style={{ justifyContent: 'flex-end', paddingTop: 100 }}>
+        <View className="bg-white rounded-t-3xl overflow-hidden" style={{ height: '100%' }}>
           {/* Gradient Header with Step Indicator */}
           <View className="px-6 pt-8 pb-6 bg-blue-500 rounded-t-3xl">
             <View className="flex-row justify-between items-start mb-4">
@@ -219,6 +219,7 @@ export default function AddSchedule({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           nestedScrollEnabled={true}
+          contentContainerStyle={{ paddingBottom: 80 }}
         >
           {/* Step 1: Vaccine Selection */}
           {currentStep === 1 && (
@@ -254,7 +255,7 @@ export default function AddSchedule({
             {/* Vaccine List */}
             {(vaccineSearchQuery || availableVaccines.length > 0) && (
               <ScrollView 
-                className="max-h-40 bg-gray-50 rounded-lg"
+                className="max-h-64 bg-gray-50 rounded-lg"
                 nestedScrollEnabled={true}
                 showsVerticalScrollIndicator={true}
               >

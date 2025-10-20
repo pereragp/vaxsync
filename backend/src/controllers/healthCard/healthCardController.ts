@@ -41,7 +41,8 @@ export const syncVaccinesToHealthCard = async (scheduleId: string) => {
       facility: 'Health Center',
       certificateNumber: `CERT-${Date.now()}-${dose.doseNumber}`,
       notes: dose.notes || '',
-      status: 'completed' as const
+      status: 'completed' as const,
+      vaccinationType: schedule.vaccinationType || 'routine'
     }));
 
     // Prepare vaccination data for cancelled doses
@@ -55,7 +56,8 @@ export const syncVaccinesToHealthCard = async (scheduleId: string) => {
       facility: 'Health Center',
       certificateNumber: `CANCELLED-${Date.now()}-${dose.doseNumber}`,
       notes: dose.notes || 'Dose cancelled',
-      status: 'cancelled' as const
+      status: 'cancelled' as const,
+      vaccinationType: schedule.vaccinationType || 'routine'
     }));
 
     const vaccinationData = [...completedVaccinationData, ...cancelledVaccinationData];

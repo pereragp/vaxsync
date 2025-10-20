@@ -115,6 +115,14 @@ const vaccinationRecordSchema = new mongoose_1.Schema({
         },
         default: "in_progress",
     },
+    vaccinationType: {
+        type: String,
+        enum: {
+            values: ["routine", "travel", "occupational", "emergency"],
+            message: "Vaccination type must be one of: routine, travel, occupational, emergency",
+        },
+        default: "routine",
+    },
     healthcareProvider: {
         name: {
             type: String,
