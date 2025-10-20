@@ -32,129 +32,83 @@ var __importStar = (this && this.__importStar) || (function () {
         return result;
     };
 })();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const userSchema = new mongoose_1.Schema({
-    userId: {
+    username: {
         type: String,
-        required: true,
+        required: [true, "Username is required"],
         unique: true,
-        default: function () {
-            return 'USR' + Date.now() + Math.random().toString(36).substring(2, 7).toUpperCase();
-        }
-    },
-    name: {
-        type: String,
-        required: [true, 'Name is required'],
         trim: true,
-        minlength: [2, 'Name must be at least 2 characters long'],
-        maxlength: [50, 'Name cannot exceed 50 characters']
+        minlength: [3, "Username must be at least 3 characters long"],
+        maxlength: [10, "Username cannot exceed 30 characters"],
+    },
+    firstName: {
+        type: String,
+        required: [true, "First name is required"],
+        trim: true,
+        minlength: [2, "Name must be at least 2 characters long"],
+    },
+    lastName: {
+        type: String,
+        required: [true, "Last name is required"],
+        trim: true,
+        minlength: [2, "Name must be at least 2 characters long"],
     },
     email: {
         type: String,
-        required: [true, 'Email is required'],
-        unique: true,
+        required: [true, "Email is required"],
         lowercase: true,
-        match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address']
     },
     password: {
         type: String,
-        required: [true, 'Password is required'],
-        minlength: [6, 'Password must be at least 6 characters long']
+        required: [true, "Password is required"],
+        minlength: [6, "Password must be at least 6 characters long"],
     },
     dateOfBirth: {
         type: Date,
-        required: [true, 'Date of birth is required'],
-        validate: {
-            validator: function (value) {
-                return value <= new Date();
-            },
-            message: 'Date of birth cannot be in the future'
-        }
+        required: [true, "Date of birth is required"],
+    },
+    gender: {
+        type: String,
+        required: true,
+    },
+    bloodType: {
+        type: String,
+        required: [true, "Blood type is required"],
+        enum: {
+            values: ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"],
+            message: "Blood type must be one of: A+, A-, B+, B-, AB+, AB-, O+, O-",
+        },
     },
     phone: {
         type: String,
-        required: [true, 'Phone number is required'],
-        match: [/^\+?[1-9]\d{1,14}$/, 'Please enter a valid phone number']
+        required: [true, "Phone number is required"],
     },
     avatar: {
         type: String,
-        default: ''
+        default: "",
     },
-    role: {
-        type: String,
-        enum: {
-            values: ['user', 'parent', 'healthcare_provider', 'admin'],
-            message: 'Role must be one of: user, parent, healthcare_provider, admin'
+    dependents: [
+        {
+            type: mongoose_1.Schema.Types.ObjectId,
+            ref: "User",
         },
-        default: 'user'
-    },
-    verificationCode: {
-        type: String,
-        default: function () {
-            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        }
-    },
-    dependents: [{
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'User'
-        }],
-    guardians: [{
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'User'
-        }],
+    ],
     isActive: {
         type: Boolean,
-        default: true
+        default: true,
     },
     createdAt: {
         type: Date,
-        default: Date.now
+        default: Date.now,
     },
     updatedAt: {
         type: Date,
-        default: Date.now
-    }
-}, {
-    timestamps: true,
-    toJSON: {
-        transform: function (doc, ret) {
-            delete ret.password;
-            delete ret.__v;
-            return ret;
-        }
-    }
-});
-userSchema.pre('save', async function (next) {
-    if (!this.isModified('password'))
-        return next();
-    try {
-        const salt = await bcryptjs_1.default.genSalt(12);
-        this.password = await bcryptjs_1.default.hash(this.password, salt);
-        next();
-    }
-    catch (error) {
-        next(error);
-    }
-});
-userSchema.methods.comparePassword = async function (candidatePassword) {
-    try {
-        return await bcryptjs_1.default.compare(candidatePassword, this.password);
-    }
-    catch (error) {
-        throw new Error('Password comparison failed');
-    }
-};
-userSchema.pre('save', function (next) {
-    if (!this.isNew) {
-        this.updatedAt = new Date();
-    }
-    next();
-});
+        default: Date.now,
+    },
+}, { timestamps: true });
 userSchema.index({ phone: 1 });
-exports.default = mongoose_1.default.model('User', userSchema);
+const User = mongoose_1.default.model("User", userSchema);
+exports.default = User;
 //# sourceMappingURL=user.js.map

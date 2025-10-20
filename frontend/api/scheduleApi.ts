@@ -1,414 +1,485 @@
-const BASE_URL = 'http://localhost:5000/api/v1/schedule';
+//const API_BASE_URL = "http://192.168.1.3:5000"; //Pramod URL
 
-// Types for API responses
-export interface ApiResponse<T = any> {
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+
+// Helper function to get authentication token
+const getAuthToken = async (): Promise<string | null> => {
+  try {
+    const AsyncStorage =
+      require("@react-native-async-storage/async-storage").default;
+    return await AsyncStorage.getItem("userToken");
+  } catch (error) {
+    console.error("Error getting auth token:", error);
+    return null;
+  }
+};
+
+// Helper function to make authenticated requests
+const makeAuthenticatedRequest = async (
+  url: string,
+  options: RequestInit = {}
+): Promise<Response> => {
+  const token = await getAuthToken();
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  return fetch(url, {
+    ...options,
+    headers,
+  });
+};
+
+// Types for Schedule API
+export interface VaccineDose {
+  doseNumber: number;
+  dateScheduled: Date;
+  dateCompleted?: Date;
+  status: "scheduled" | "completed" | "missed" | "cancelled";
+  notes?: string;
+}
+
+export interface VaccineSchedule {
+  _id: string;
+  recordId: string;
+  userId: string;
+  dependentIds?: (
+    | string
+    | {
+        _id: string;
+        firstName: string;
+        lastName: string;
+        dateOfBirth: Date;
+        gender: string;
+        dependentType: string;
+      }
+  )[];
+  vaccineId?: string;
+  vaccineName: string;
+  totalDoses: number;
+  interval: number;
+  doses: VaccineDose[];
+  overallStatus: "in_progress" | "completed" | "cancelled";
+  vaccinationType?: "routine" | "travel" | "occupational" | "emergency";
+  healthcareProvider?: {
+    name?: string;
+  };
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  // Populated fields
+  vaccine?: {
+    _id: string;
+    name: string;
+    manufacturer?: string;
+    type: "routine" | "travel" | "emergency" | "seasonal";
+  };
+  dependents?: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    dateOfBirth: Date;
+    gender: string;
+    dependentType: string;
+  }[];
+}
+
+export interface CreateScheduleRequest {
+  vaccineId?: string;
+  vaccineName?: string;
+  totalDoses: number;
+  interval: number;
+  dependentId?: string;
+  healthcareProvider?: string;
+  notes?: string;
+  scheduleDate?: string; // ISO date string for the first dose
+  vaccinationType?: "routine" | "travel" | "occupational" | "emergency";
+}
+
+export interface UpdateDoseRequest {
+  status: "scheduled" | "completed" | "missed" | "cancelled";
+  dateCompleted?: string;
+  notes?: string;
+}
+
+export interface ScheduleResponse {
   success: boolean;
   message: string;
-  data?: T;
-  error?: string;
-  pagination?: PaginationInfo;
+  data: VaccineSchedule;
 }
 
-export interface PaginationInfo {
-  currentPage: number;
-  totalPages: number;
-  totalRecords: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
+export interface SchedulesResponse {
+  success: boolean;
+  message: string;
+  data: VaccineSchedule[];
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    totalRecords: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
+  };
 }
 
+// Vaccine types
 export interface Vaccine {
   _id: string;
   vaccineId: string;
   name: string;
   description: string;
-  manufacturer: string;
-  type: 'routine' | 'travel' | 'emergency' | 'seasonal';
-  ageGroups: {
+  manufacturer?: string;
+  type: "routine" | "travel" | "emergency" | "seasonal";
+  targetPopulation: "all" | "female" | "male" | "pregnant";
+  ageGroups?: {
     minAge: number;
     maxAge: number;
     doses: number;
     interval: number;
   }[];
-  sideEffects: string[];
-  contraindications: string[];
-  isActive: boolean;
-  createdAt: string;
-}
-
-export interface VaccinationSchedule {
-  _id: string;
-  recordId: string;
-  userId: string;
-  vaccineId?: string;
-  vaccineName: string;
-  totalDoses: number;
-  interval: number;
-  doses: {
+  doseSchedule?: {
+    pregnancyNumber: number;
     doseNumber: number;
-    dateScheduled: string;
-    dateCompleted?: string;
-    status: 'scheduled' | 'completed' | 'missed' | 'cancelled';
-    notes?: string;
+    weeksAfterPOA?: number;
+    weeksAfterPreviousDose?: number;
   }[];
-  overallStatus: 'in_progress' | 'completed' | 'cancelled';
-  healthcareProvider: {
-    name: string;
-    facility: string;
-    contact: string;
-  };
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  sideEffects?: string[];
+  isActive: boolean;
+  createdAt: Date;
 }
 
-export interface CreateScheduleRequest {
-  // For suggested vaccines
-  vaccineId?: string;
-  
-  // For manual entry
-  vaccineName?: string;
-  manufacturer?: string;
-  totalDoses?: number;
-  interval?: number;
-  
-  // Common fields
-  dateScheduled: string;
-  notes?: string;
-  healthcareProvider?: {
-    name?: string;
-    facility?: string;
-    contact?: string;
+export interface VaccinesResponse {
+  success: boolean;
+  message: string;
+  data: Vaccine[];
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    totalRecords: number;
+    hasNextPage: boolean;
+    hasPreviousPage: boolean;
   };
 }
 
-export interface UpdateScheduleRequest {
-  notes?: string;
-  healthcareProvider?: {
-    name?: string;
-    facility?: string;
-    contact?: string;
-  };
-}
+// Schedule API service
+const scheduleAPI = {
+  // Get all vaccine schedules for user and dependents
+  async getAllSchedules(params?: {
+    page?: number;
+    limit?: number;
+    dependentId?: string;
+    overallStatus?: string;
+    vaccineName?: string;
+  }): Promise<{ schedules: VaccineSchedule[]; pagination?: any }> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.dependentId)
+      queryParams.append("dependentId", params.dependentId);
+    if (params?.overallStatus)
+      queryParams.append("overallStatus", params.overallStatus);
+    if (params?.vaccineName)
+      queryParams.append("vaccineName", params.vaccineName);
 
-export interface UpdateDoseStatusRequest {
-  status: 'scheduled' | 'completed' | 'missed' | 'cancelled';
-  notes?: string;
-  dateCompleted?: string;
-}
+    const url = `${API_BASE_URL}/api/v1/schedule${
+      queryParams.toString() ? "?" + queryParams.toString() : ""
+    }`;
+    const response = await makeAuthenticatedRequest(url);
 
-export interface GetVaccinesParams {
-  page?: number;
-  limit?: number;
-  type?: 'routine' | 'travel' | 'emergency' | 'seasonal';
-  search?: string;
-}
-
-export interface GetSchedulesParams {
-  page?: number;
-  limit?: number;
-  status?: 'scheduled' | 'completed' | 'missed' | 'cancelled';
-  vaccineName?: string;
-}
-
-export interface GetUpcomingSchedulesParams {
-  days?: number;
-}
-
-// Helper function to get auth token
-const getAuthToken = (): string | null => {
-  // In a real app, you'd get this from secure storage
-  return localStorage.getItem('authToken') || null;
-};
-
-// Helper function to make API requests
-const apiRequest = async <T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> => {
-  const token = getAuthToken();
-  
-  const config: RequestInit = {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
-      ...options.headers,
-    },
-    ...options,
-  };
-
-  try {
-    const response = await fetch(`${BASE_URL}${endpoint}`, config);
-    const data = await response.json();
-    
     if (!response.ok) {
-      throw new Error(data.message || 'API request failed');
+      throw new Error(`Failed to fetch schedules: ${response.statusText}`);
     }
-    
-    return data;
-  } catch (error) {
-    console.error('API request error:', error);
-    throw error;
-  }
-};
 
-// Vaccine API functions
-export const vaccineApi = {
-  /**
-   * Get all available vaccines
-   */
-  getVaccines: async (params: GetVaccinesParams = {}): Promise<ApiResponse<Vaccine[]>> => {
-    const queryParams = new URLSearchParams();
-    
-    if (params.page) queryParams.append('page', params.page.toString());
-    if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.type) queryParams.append('type', params.type);
-    if (params.search) queryParams.append('search', params.search);
-    
-    const queryString = queryParams.toString();
-    return apiRequest<Vaccine[]>(`/vaccines${queryString ? `?${queryString}` : ''}`);
+    const data: SchedulesResponse = await response.json();
+
+    return {
+      schedules: data.data,
+      pagination: data.pagination,
+    };
   },
 
-  /**
-   * Get specific vaccine by ID
-   */
-  getVaccineById: async (vaccineId: string): Promise<ApiResponse<Vaccine>> => {
-    return apiRequest<Vaccine>(`/vaccines/${vaccineId}`);
-  },
-};
+  // Create new vaccine schedule
+  async createSchedule(
+    scheduleData: CreateScheduleRequest
+  ): Promise<VaccineSchedule> {
+    try {
+      const response = await makeAuthenticatedRequest(
+        `${API_BASE_URL}/api/v1/schedule`,
+        {
+          method: "POST",
+          body: JSON.stringify(scheduleData),
+        }
+      );
 
-// Schedule API functions
-export const scheduleApi = {
-  /**
-   * Create vaccination schedule (supports both suggested vaccines and manual entry)
-   */
-  createSchedule: async (
-    data: CreateScheduleRequest
-  ): Promise<ApiResponse<{ schedules: VaccinationSchedule[]; vaccine: any }>> => {
-    return apiRequest('/', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  },
+      if (!response.ok) {
+        let errorMessage = `HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch {
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(`Failed to create schedule: ${errorMessage}`);
+      }
 
-  /**
-   * Get user's vaccination schedules
-   */
-  getSchedules: async (params: GetSchedulesParams = {}): Promise<ApiResponse<VaccinationSchedule[]>> => {
-    const queryParams = new URLSearchParams();
-    
-    if (params.page) queryParams.append('page', params.page.toString());
-    if (params.limit) queryParams.append('limit', params.limit.toString());
-    if (params.status) queryParams.append('status', params.status);
-    if (params.vaccineName) queryParams.append('vaccineName', params.vaccineName);
-    
-    const queryString = queryParams.toString();
-    return apiRequest<VaccinationSchedule[]>(`${queryString ? `?${queryString}` : ''}`);
+      const data: ScheduleResponse = await response.json();
+      return data.data;
+    } catch (error) {
+      console.error("Create schedule API error:", error);
+      throw error;
+    }
   },
 
-  /**
-   * Get specific vaccination schedule by ID
-   */
-  getScheduleById: async (scheduleId: string): Promise<ApiResponse<VaccinationSchedule>> => {
-    return apiRequest<VaccinationSchedule>(`/${scheduleId}`);
-  },
-
-  /**
-   * Get upcoming vaccination schedules
-   */
-  getUpcomingSchedules: async (
-    params: GetUpcomingSchedulesParams = {}
-  ): Promise<ApiResponse<VaccinationSchedule[]>> => {
-    const queryParams = new URLSearchParams();
-    
-    if (params.days) queryParams.append('days', params.days.toString());
-    
-    const queryString = queryParams.toString();
-    return apiRequest<VaccinationSchedule[]>(`/upcoming${queryString ? `?${queryString}` : ''}`);
-  },
-
-  /**
-   * Update vaccination schedule
-   */
-  updateSchedule: async (
+  // Update vaccine schedule
+  async updateSchedule(
     scheduleId: string,
-    data: UpdateScheduleRequest
-  ): Promise<ApiResponse<VaccinationSchedule>> => {
-    return apiRequest<VaccinationSchedule>(`/${scheduleId}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    updateData: Partial<VaccineSchedule>
+  ): Promise<VaccineSchedule> {
+    const response = await makeAuthenticatedRequest(
+      `${API_BASE_URL}/api/v1/schedule/${scheduleId}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(updateData),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update schedule: ${response.statusText}`);
+    }
+
+    const data: ScheduleResponse = await response.json();
+    return data.data;
   },
 
-  /**
-   * Update individual dose status
-   */
-  updateDoseStatus: async (
+  // Update dose status
+  async updateDoseStatus(
     scheduleId: string,
     doseNumber: number,
-    data: UpdateDoseStatusRequest
-  ): Promise<ApiResponse<{ schedule: VaccinationSchedule; updatedDose: any }>> => {
-    return apiRequest(`/${scheduleId}/dose/${doseNumber}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    doseData: UpdateDoseRequest
+  ): Promise<VaccineSchedule> {
+    const response = await makeAuthenticatedRequest(
+      `${API_BASE_URL}/api/v1/schedule/${scheduleId}/doses/${doseNumber}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(doseData),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to update dose status: ${response.statusText}`);
+    }
+
+    const data: ScheduleResponse = await response.json();
+    return data.data;
   },
 
-  /**
-   * Delete vaccination schedule
-   */
-  deleteSchedule: async (scheduleId: string): Promise<ApiResponse<VaccinationSchedule>> => {
-    return apiRequest<VaccinationSchedule>(`/${scheduleId}`, {
-      method: 'DELETE',
-    });
+  // Add a new dose to existing schedule
+  async addDoseToSchedule(
+    scheduleId: string,
+    intervalDays: number,
+    notes?: string
+  ): Promise<VaccineSchedule> {
+    const response = await makeAuthenticatedRequest(
+      `${API_BASE_URL}/api/v1/schedule/${scheduleId}/doses`,
+      {
+        method: "POST",
+        body: JSON.stringify({ intervalDays, notes }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.message || `Failed to add dose: ${response.statusText}`
+      );
+    }
+
+    const data: ScheduleResponse = await response.json();
+    return data.data;
   },
 
-  /**
-   * Sync all completed doses to health card
-   */
-  syncHealthCard: async (): Promise<ApiResponse<{ syncedCount: number }>> => {
-    return apiRequest<{ syncedCount: number }>('/sync-health-card', {
-      method: 'POST',
-    });
-  },
-};
+  // Delete vaccine schedule
+  async deleteSchedule(scheduleId: string): Promise<void> {
+    const response = await makeAuthenticatedRequest(
+      `${API_BASE_URL}/api/v1/schedule/${scheduleId}`,
+      {
+        method: "DELETE",
+      }
+    );
 
-// Combined API object for easy imports
-export const scheduleService = {
-  ...vaccineApi,
-  ...scheduleApi,
-};
-
-// Utility functions
-export const scheduleUtils = {
-  /**
-   * Format date for display
-   */
-  formatDate: (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  },
-
-  /**
-   * Format date and time for display
-   */
-  formatDateTime: (dateString: string): string => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  },
-
-  /**
-   * Get status color for UI
-   */
-  getStatusColor: (status: string): string => {
-    switch (status) {
-      case 'scheduled':
-        return '#3b82f6'; // blue
-      case 'completed':
-        return '#10b981'; // green
-      case 'missed':
-        return '#ef4444'; // red
-      case 'cancelled':
-        return '#6b7280'; // gray
-      default:
-        return '#6b7280';
+    if (!response.ok) {
+      throw new Error(`Failed to delete schedule: ${response.statusText}`);
     }
   },
 
-  /**
-   * Get status icon for UI
-   */
-  getStatusIcon: (status: string): string => {
+  // Helper function to get schedule status color
+  getStatusColor(status: string): string {
     switch (status) {
-      case 'scheduled':
-        return '📅';
-      case 'completed':
-        return '✅';
-      case 'missed':
-        return '❌';
-      case 'cancelled':
-        return '🚫';
+      case "completed":
+        return "#10b981"; // green
+      case "in_progress":
+        return "#3b82f6"; // blue
+      case "cancelled":
+        return "#ef4444"; // red
       default:
-        return '❓';
+        return "#6b7280"; // gray
     }
   },
 
-  /**
-   * Check if schedule is overdue
-   */
-  isOverdue: (dateScheduled: string, status: string): boolean => {
-    if (status !== 'scheduled') return false;
-    const scheduledDate = new Date(dateScheduled);
-    const now = new Date();
-    return scheduledDate < now;
+  // Helper function to get dose status color
+  getDoseStatusColor(status: string): string {
+    switch (status) {
+      case "completed":
+        return "#10b981"; // green
+      case "scheduled":
+        return "#3b82f6"; // blue
+      case "missed":
+        return "#f59e0b"; // yellow
+      case "cancelled":
+        return "#ef4444"; // red
+      default:
+        return "#6b7280"; // gray
+    }
   },
 
-  /**
-   * Get days until scheduled date
-   */
-  getDaysUntil: (dateScheduled: string): number => {
-    const scheduledDate = new Date(dateScheduled);
-    const now = new Date();
-    const diffTime = scheduledDate.getTime() - now.getTime();
+  // Helper function to get status icon
+  getStatusIcon(status: string): string {
+    switch (status) {
+      case "completed":
+        return "checkmark-circle";
+      case "in_progress":
+        return "time";
+      case "cancelled":
+        return "close-circle";
+      default:
+        return "help-circle";
+    }
+  },
+
+  // Helper function to get dose status icon
+  getDoseStatusIcon(status: string): string {
+    switch (status) {
+      case "completed":
+        return "checkmark-circle";
+      case "scheduled":
+        return "calendar";
+      case "missed":
+        return "warning";
+      case "cancelled":
+        return "close-circle";
+      default:
+        return "help-circle";
+    }
+  },
+
+  // Helper function to format date
+  formatDate(date: Date | string): string {
+    const d = new Date(date);
+    return d.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  },
+
+  // Helper function to format time
+  formatTime(date: Date | string): string {
+    const d = new Date(date);
+    return d.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  },
+
+  // Helper function to get next due date
+  getNextDueDate(schedule: VaccineSchedule): Date | null {
+    const nextDose = schedule.doses.find((dose) => dose.status === "scheduled");
+    return nextDose ? new Date(nextDose.dateScheduled) : null;
+  },
+
+  // Helper function to calculate completion percentage (excluding cancelled doses)
+  getCompletionPercentage(schedule: VaccineSchedule): number {
+    const completedDoses = schedule.doses.filter(
+      (dose) => dose.status === "completed"
+    ).length;
+    const cancelledDoses = schedule.doses.filter(
+      (dose) => dose.status === "cancelled"
+    ).length;
+    const activeDoses = schedule.totalDoses - cancelledDoses;
+
+    // If all doses are cancelled, return 0
+    if (activeDoses === 0) return 0;
+
+    return Math.round((completedDoses / activeDoses) * 100);
+  },
+
+  // Helper function to check if schedule is overdue
+  isOverdue(schedule: VaccineSchedule): boolean {
+    const nextDue = this.getNextDueDate(schedule);
+    if (!nextDue) return false;
+    return nextDue < new Date();
+  },
+
+  // Helper function to get days until next dose
+  getDaysUntilNextDose(schedule: VaccineSchedule): number | null {
+    const nextDue = this.getNextDueDate(schedule);
+    if (!nextDue) return null;
+
+    const today = new Date();
+    const diffTime = nextDue.getTime() - today.getTime();
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   },
 
-  /**
-   * Get overall status color for UI
-   */
-  getOverallStatusColor: (status: string): string => {
-    switch (status) {
-      case 'in_progress':
-        return '#3b82f6'; // blue
-      case 'completed':
-        return '#10b981'; // green
-      case 'cancelled':
-        return '#6b7280'; // gray
-      default:
-        return '#6b7280';
+  // Get all available vaccines
+  async getAllVaccines(params?: {
+    page?: number;
+    limit?: number;
+    type?: string;
+    targetPopulation?: string;
+    isActive?: boolean;
+  }): Promise<{ vaccines: Vaccine[]; pagination?: any }> {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+    if (params?.type) queryParams.append("type", params.type);
+    if (params?.targetPopulation)
+      queryParams.append("targetPopulation", params.targetPopulation);
+    if (params?.isActive !== undefined)
+      queryParams.append("isActive", params.isActive.toString());
+
+    const url = `${API_BASE_URL}/api/vaccines${
+      queryParams.toString() ? "?" + queryParams.toString() : ""
+    }`;
+    const response = await makeAuthenticatedRequest(url);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch vaccines: ${response.statusText}`);
     }
+
+    const data: VaccinesResponse = await response.json();
+    return {
+      vaccines: data.data,
+      pagination: data.pagination,
+    };
   },
 
-  /**
-   * Get overall status icon for UI
-   */
-  getOverallStatusIcon: (status: string): string => {
-    switch (status) {
-      case 'in_progress':
-        return '🔄';
-      case 'completed':
-        return '✅';
-      case 'cancelled':
-        return '🚫';
-      default:
-        return '❓';
+  // Get vaccine by ID
+  async getVaccineById(vaccineId: string): Promise<Vaccine> {
+    const response = await fetch(`${API_BASE_URL}/api/vaccines/${vaccineId}`);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch vaccine: ${response.statusText}`);
     }
-  },
 
-  /**
-   * Get progress percentage for a schedule
-   */
-  getProgressPercentage: (schedule: VaccinationSchedule): number => {
-    const completedDoses = schedule.doses.filter(dose => dose.status === 'completed').length;
-    return Math.round((completedDoses / schedule.totalDoses) * 100);
-  },
-
-  /**
-   * Get next due dose for a schedule
-   */
-  getNextDueDose: (schedule: VaccinationSchedule) => {
-    return schedule.doses.find(dose => dose.status === 'scheduled');
+    const data: { success: boolean; message: string; data: Vaccine } =
+      await response.json();
+    return data.data;
   },
 };
 
-export default scheduleService;
+export default scheduleAPI;

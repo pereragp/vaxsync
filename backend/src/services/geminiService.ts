@@ -5,7 +5,7 @@ class GeminiService {
 
   constructor() {
     //const apiKey = process.env.GEMINI_API_KEY;
-    const apiKey = 'AIzaSyAOajTN7bvCGezTeqa_oVbKaYYQXFz5PVE';
+    const apiKey = 'AIzaSyA4E4nZU6Zbiqffo3sKrWy513u11kj5U3A';
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
@@ -23,59 +23,88 @@ class GeminiService {
     vaccineDate: Date;
     completedDoseNo: number;
   }): Promise<string> {
+    // Calculate age from date of birth (moved outside try block)
+    const age = Math.floor((Date.now() - new Date(userData.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
+    
     try {
       const model = this.genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-      // Calculate age from date of birth
-      const age = Math.floor((Date.now() - new Date(userData.dateOfBirth).getTime()) / (1000 * 60 * 60 * 24 * 365));
+      const prompt = `You are a medical AI assistant providing concise post-vaccination care advice. Generate a brief, point-wise response.
 
-      const prompt = `You are a medical AI assistant providing post-vaccination care instructions. 
-
-Based on the following vaccination details, provide comprehensive but concise post-vaccination care instructions:
-
-**Patient Information:**
-- Age: ${age} years old
-- Gender: ${userData.gender || 'Not specified'}
-
-**Vaccination Details:**
+**Input Variables:**
+- Age: ${age}
 - Vaccine: ${userData.vaccineName}
 - Completed Doses: ${userData.completedDoseNo} of ${userData.totalDoses}
-- Date: ${userData.vaccineDate.toLocaleDateString()}
 
-**Instructions:**
-Please provide post-vaccination care instructions including:
+**Required Response Format:**
+Provide a concise response with these sections (keep each section brief):
 
-1. **Immediate Care (First 24 hours):**
-   - What to expect (normal side effects)
-   - When to seek medical attention
-   - Activity restrictions
+1. **About ${userData.vaccineName}:**
+   - What it protects against (1-2 sentences)
+   - Why it's important (1 sentence)
 
-2. **Follow-up Care:**
-   - Timeline for next dose (if applicable)
-   - Monitoring requirements
-   - Lifestyle recommendations
+2. **Care Tips for Age ${age}:**
+   - Expected side effects (bullet points)
+   - Immediate care steps (bullet points)
 
-3. **Special Considerations:**
-   - Age-specific advice
-   - Any contraindications to watch for
+3. **Next 24 Hours:**
+   - Do's and don'ts (bullet points)
+   - When to call doctor (bullet points)
 
-**Format Requirements:**
-- Use clear, simple language
-- Include bullet points for easy reading
-- Keep instructions practical and actionable
-- End with a clear medical disclaimer
+4. **Remaining Doses:**
+   - ${userData.completedDoseNo < userData.totalDoses ? `Next dose in X weeks/months` : 'All doses completed'}
 
-**Important:** Include a prominent disclaimer that this is general information only and the patient should consult their healthcare provider for personalized medical advice.
+**Guidelines:**
+- Keep each section under 3 bullet points
+- Use simple, clear language
+- Focus on actionable advice
+- Total response should be concise and easy to scan
 
-Provide instructions in a structured, easy-to-read format suitable for a mobile app notification.`;
+**Response Format:**
+Use bullet points (•) and keep each point short (1 line max).`;
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
       
       return response.text();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating vaccine instructions:', error);
-      throw new Error('Failed to generate vaccine instructions');
+      
+      // Provide fallback instructions if API fails
+      const fallbackInstructions = `**About ${userData.vaccineName}:**
+• Protects against specific diseases
+• Important for maintaining health
+
+**Care Tips for Age ${age}:**
+• Expect mild soreness, fatigue, or low fever
+• Side effects usually resolve in 1-2 days
+
+**Next 24 Hours:**
+• Rest and stay hydrated
+• Apply cool compress if sore
+• Avoid strenuous activities
+
+**Remaining Doses:**
+${userData.completedDoseNo < userData.totalDoses ? `• Next dose scheduled by your healthcare provider` : '• All doses completed'}
+
+**When to Call Doctor:**
+• High fever (over 101°F)
+• Severe allergic reactions
+• Symptoms that worsen after 2-3 days`;
+      
+      // Provide more specific error messages
+      if (error.message?.includes('404')) {
+        console.log('Using fallback instructions due to model not found');
+        return fallbackInstructions;
+      } else if (error.message?.includes('API key')) {
+        throw new Error('Invalid API key. Please check your Gemini API configuration.');
+      } else if (error.message?.includes('quota')) {
+        console.log('Using fallback instructions due to quota exceeded');
+        return fallbackInstructions;
+      } else {
+        console.log('Using fallback instructions due to unknown error');
+        return fallbackInstructions;
+      }
     }
   }
 
