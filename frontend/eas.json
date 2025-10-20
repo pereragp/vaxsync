@@ -22,10 +22,7 @@
       "android": {
         "buildType": "apk"
       },
-      "autoIncrement": true,
-      "env": {
-        "EXPO_PUBLIC_API_URL": "http://192.168.1.32:5000"
-      }
+      "autoIncrement": true
     }
   },
   "submit": {

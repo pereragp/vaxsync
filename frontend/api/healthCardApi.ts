@@ -1,7 +1,5 @@
 //const API_BASE_URL = "http://192.168.1.3:5000"; //Pramod URL
-//const API_BASE_URL = 'http://192.168.1.3:5000/api/users'; // Mishen URL
-const API_BASE_URL = "http://192.168.1.32:5000"; //Pramod URL
-//const API_BASE_URL = 'http://192.168.1.32:5000/api/users'; // Mishen URL
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
 
 // Helper function to get authentication token
 const getAuthToken = async (): Promise<string | null> => {

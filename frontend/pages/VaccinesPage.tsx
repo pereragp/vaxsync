@@ -30,7 +30,7 @@ import {
 } from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
-const API_BASE_URL = "http://192.168.1.32:5000";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
 import InstructionsPopup from "../components/InstructionsPopup";
 import CustomAlert from "../components/CustomAlert";
 import geminiAPI from "../api/geminiApi";
