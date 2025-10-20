@@ -66,8 +66,8 @@ const startServer = async () => {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 VaxSync Backend running on port ${PORT}`);
       console.log(`🔗 Server URL: http://localhost:${PORT}`);
-      console.log(`📱 For mobile access: http://192.168.1.6:${PORT}`);
-      console.log(`💚 Health Check: http://192.168.1.6:${PORT}/health`);
+      console.log(`📱 For mobile access: http://192.168.1.32:${PORT}`);
+      console.log(`💚 Health Check: http://192.168.1.32:${PORT}/health`);
     });
   } catch (error) {
     console.error("❌ Failed to start server:", error);
