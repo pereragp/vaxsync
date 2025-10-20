@@ -41,7 +41,7 @@ export interface IVaccine extends Document {
   description: string;
   manufacturer: string;
   type: "routine" | "travel" | "emergency" | "seasonal";
-  targetPopulation: "all" | "female" | "male" | "pregnant" | "newborns" | "infants" | "children" | "adolescents" | "adults" | "elderly";
+  targetPopulation: "all" | "female" | "male" | "pregnant" | "newborns" | "infants" | "children" | "adolescents" | "adults" | "elderly" | "animals";
   ageGroups: {
     minAge: number;
     maxAge: number;
