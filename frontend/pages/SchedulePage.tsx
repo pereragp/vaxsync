@@ -214,17 +214,29 @@ export default function SchedulePage() {
 
       const allHealthCards = await healthCardAPI.getAllHealthCards();
       
-      // Fetch dependents to get relationship types
+      // Fetch dependents to get relationship types with retry mechanism
       let dependentsMap: { [key: string]: any } = {};
       if (currentUser?._id) {
-        try {
-          const dependents = await userAPI.getDependents(currentUser._id);
-          dependentsMap = dependents.reduce((acc: any, dep: any) => {
-            acc[dep._id] = dep;
-            return acc;
-          }, {});
-        } catch (error) {
-          console.log('Could not fetch dependents:', error);
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries) {
+          try {
+            const dependents = await userAPI.getDependents(currentUser._id);
+            dependentsMap = dependents.reduce((acc: any, dep: any) => {
+              acc[dep._id] = dep;
+              return acc;
+            }, {});
+            break; // Success, exit retry loop
+          } catch (error) {
+            retryCount++;
+            console.log(`Could not fetch dependents (attempt ${retryCount}/${maxRetries}):`, error);
+            
+            if (retryCount < maxRetries) {
+              // Wait 200ms before retry
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+          }
         }
       }
       
@@ -373,15 +385,19 @@ export default function SchedulePage() {
 
   // Load health card data when component mounts
   useEffect(() => {
-    loadHealthCardData();
-  }, []);
+    if (currentUser?._id) {
+      loadHealthCardData();
+    }
+  }, [currentUser]);
 
   // Reload profiles when page comes into focus
   useFocusEffect(
     useCallback(() => {
-      loadHealthCardData();
+      if (currentUser?._id) {
+        loadHealthCardData();
+      }
       checkFirstTimeUser();
-    }, [])
+    }, [currentUser])
   );
 
   // Check if it's user's first time and show tutorial
@@ -597,8 +613,10 @@ export default function SchedulePage() {
       setShowAddDependentModal(false);
       setCurrentDependentStep(1);
 
-      // Reload profiles
-      await loadHealthCardData();
+      // Reload profiles with a small delay to ensure data consistency
+      setTimeout(async () => {
+        await loadHealthCardData();
+      }, 500);
 
       showAlert('Success', 'Family member added successfully!', [{ text: 'OK' }], 'success');
     } catch (error: any) {
@@ -1781,9 +1799,17 @@ export default function SchedulePage() {
                                   isOverdue ? 'text-red-600 font-medium' : 'text-gray-600'
                                 }`}>
                                   {isOverdue 
-                                    ? `Overdue by ${Math.abs(daysUntilNext || 0)} days`
+                                    ? Math.abs(daysUntilNext || 0) === 0
+                                      ? 'Due today'
+                                      : Math.abs(daysUntilNext || 0) === 1
+                                        ? 'Overdue by 1 day'
+                                        : `Overdue by ${Math.abs(daysUntilNext || 0)} days`
                                     : daysUntilNext !== null 
-                                      ? `Next dose in ${daysUntilNext} days`
+                                      ? daysUntilNext === 0
+                                        ? 'Due today'
+                                        : daysUntilNext === 1
+                                          ? 'Next dose tomorrow'
+                                          : `Next dose in ${daysUntilNext} days`
                                       : 'Next dose scheduled'
                                   }
                                 </Text>

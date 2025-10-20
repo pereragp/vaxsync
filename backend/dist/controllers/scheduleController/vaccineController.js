@@ -24,7 +24,7 @@ class VaccinationController {
                 description,
                 manufacturer,
                 type: type || "routine",
-                targetPopulation: targetPopulation || "female"
+                targetPopulation: targetPopulation || "all"
             });
             const savedVaccine = await vaccine.save();
             res.status(201).json({
