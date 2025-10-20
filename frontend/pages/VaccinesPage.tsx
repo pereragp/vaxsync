@@ -30,7 +30,7 @@ import {
 } from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
-const API_BASE_URL = "http://192.168.1.6:5000";
+const API_BASE_URL = "http://192.168.1.32:5000";
 import InstructionsPopup from "../components/InstructionsPopup";
 import CustomAlert from "../components/CustomAlert";
 import geminiAPI from "../api/geminiApi";
@@ -1537,12 +1537,9 @@ export default function VaxCardScreen() {
                               />
                             </View>
                             <View className="flex-1">
-                              <View className="flex-row items-center mb-2">
-                                <Text className="font-bold text-gray-800 text-xl flex-1">
-                                  {vaccine.name || "Unknown Vaccine"}
-                                </Text>
-                                {allVerified && (
-                                  <View className="bg-green-500 rounded-full px-4 py-2 ml-2 shadow-sm">
+                              {allVerified && (
+                                <View className="flex-row justify-end mb-2">
+                                  <View className="bg-green-500 rounded-full px-4 py-2 shadow-sm">
                                     <View className="flex-row items-center">
                                       <Ionicons
                                         name="shield-checkmark"
@@ -1554,7 +1551,12 @@ export default function VaxCardScreen() {
                                       </Text>
                                     </View>
                                   </View>
-                                )}
+                                </View>
+                              )}
+                              <View className="mb-2">
+                                <Text className="font-bold text-gray-800 text-xl" numberOfLines={2} ellipsizeMode="tail">
+                                  {vaccine.name || "Unknown Vaccine"}
+                                </Text>
                               </View>
                               <View className="flex-row items-center mb-1">
                                 <Ionicons
@@ -2029,7 +2031,7 @@ export default function VaxCardScreen() {
                       <View className="flex-1 bg-gray-50 rounded-2xl p-4">
                         <View className="flex-row items-center justify-between mb-3">
                           <View className="flex-row items-center flex-wrap">
-                            <Text className="font-bold text-gray-800 text-lg">
+                            <Text className="font-bold text-gray-800 text-lg" numberOfLines={1} ellipsizeMode="tail" style={{ maxWidth: '60%' }}>
                               {item.vaccine.name}
                             </Text>
                             <View

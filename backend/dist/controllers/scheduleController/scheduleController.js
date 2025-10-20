@@ -12,7 +12,7 @@ const healthCardController_1 = require("../healthCard/healthCardController");
 class ScheduleController {
     static async createVaccineSchedule(req, res) {
         try {
-            const { vaccineId, vaccineName, totalDoses, interval, dependentId, healthcareProvider, notes, scheduleDate } = req.body;
+            const { vaccineId, vaccineName, totalDoses, interval, dependentId, healthcareProvider, notes, scheduleDate, vaccinationType } = req.body;
             const userId = req.user?._id;
             if (!userId) {
                 res.status(401).json({
@@ -55,6 +55,7 @@ class ScheduleController {
                 vaccineName: vaccineName || vaccineData?.name,
                 totalDoses,
                 interval,
+                vaccinationType: vaccinationType || 'routine',
                 healthcareProvider: healthcareProvider ? { name: healthcareProvider } : undefined,
                 notes,
                 doses: Array.from({ length: totalDoses }, (_, index) => ({
@@ -137,7 +138,7 @@ class ScheduleController {
     static async updateVaccineSchedule(req, res) {
         try {
             const { scheduleId } = req.params;
-            const { vaccineName, healthcareProvider, notes, scheduleDate, interval, doses } = req.body;
+            const { vaccineName, healthcareProvider, notes, scheduleDate, interval, doses, vaccinationType } = req.body;
             const userId = req.user?._id;
             if (!userId) {
                 res.status(401).json({
@@ -175,6 +176,8 @@ class ScheduleController {
                 updateData.notes = notes;
             if (interval !== undefined)
                 updateData.interval = interval;
+            if (vaccinationType)
+                updateData.vaccinationType = vaccinationType;
             if (doses && Array.isArray(doses)) {
                 updateData.doses = doses;
             }

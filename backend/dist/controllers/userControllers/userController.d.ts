@@ -8,5 +8,6 @@ declare const loginUser: (req: Request, res: Response) => Promise<Response<any, 
 declare const getMyProfile: (req: AuthenticatedRequest, res: Response) => Promise<Response<any, Record<string, any>>>;
 declare const logoutUser: (req: AuthenticatedRequest, res: Response) => Promise<Response<any, Record<string, any>>>;
 declare const updateProfile: (req: AuthenticatedRequest, res: Response) => Promise<Response<any, Record<string, any>>>;
-export { registerUser, getUserById, loginUser, getMyProfile, logoutUser, updateProfile, };
+declare const changePassword: (req: AuthenticatedRequest, res: Response) => Promise<Response<any, Record<string, any>>>;
+export { registerUser, getUserById, loginUser, getMyProfile, logoutUser, updateProfile, changePassword, };
 //# sourceMappingURL=userController.d.ts.map

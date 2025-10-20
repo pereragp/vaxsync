@@ -32,8 +32,8 @@ export function useNotifications(): NotificationHookReturn {
     expoPushToken: null,
   });
 
-  const notificationListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notificationListener = useRef<Notifications.Subscription | undefined>(undefined);
+  const responseListener = useRef<Notifications.Subscription | undefined>(undefined);
 
   useEffect(() => {
     // Listener for notifications received while app is foregrounded
@@ -61,10 +61,10 @@ export function useNotifications(): NotificationHookReturn {
 
     return () => {
       if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+        notificationListener.current.remove();
       }
       if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+        responseListener.current.remove();
       }
     };
   }, []);
@@ -97,16 +97,16 @@ export function useNotifications(): NotificationHookReturn {
         // TODO: Send token to your backend
         // await sendTokenToBackend(tokenData.token);
       } else {
+        // Silently fail - don't show error to users if push notifications aren't available
         setState((prev) => ({
           ...prev,
-          error: 'Failed to get push token',
           isLoading: false,
         }));
       }
     } catch (error: any) {
+      // Silently fail - don't disturb users with push notification errors
       setState((prev) => ({
         ...prev,
-        error: error.message || 'Failed to register for push notifications',
         isLoading: false,
       }));
     }

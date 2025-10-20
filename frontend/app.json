@@ -40,8 +40,7 @@
         "googleMaps": {
           "apiKey": "AIzaSyDhfgoyumPBmt0HVYBc8QzFZ6LJDAGI1Uc"
         }
-      },
-      "edgeToEdgeEnabled": true
+      }
     },
     "web": {
       "bundler": "metro",
