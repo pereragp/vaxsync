@@ -13,6 +13,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import UserAPI from "../api/userApi";
+import CustomAlert from "./CustomAlert";
 
 interface ForgotPasswordModalProps {
   visible: boolean;
@@ -43,6 +44,26 @@ export default function ForgotPasswordModal({
     general?: string;
   }>({});
 
+  // CustomAlert state
+  const [alertVisible, setAlertVisible] = useState(false);
+  const [alertTitle, setAlertTitle] = useState("");
+  const [alertMessage, setAlertMessage] = useState("");
+  const [alertIcon, setAlertIcon] = useState<
+    "success" | "error" | "warning" | "info" | "question"
+  >("error");
+
+  // Helper function to show alert
+  const showAlert = (
+    title: string,
+    message: string,
+    icon: "success" | "error" | "warning" | "info" | "question" = "error"
+  ) => {
+    setAlertTitle(title);
+    setAlertMessage(message);
+    setAlertIcon(icon);
+    setAlertVisible(true);
+  };
+
   const handleSendResetEmail = async () => {
     // Basic validation
     if (!email.trim()) {
@@ -64,15 +85,24 @@ export default function ForgotPasswordModal({
       // Move to reset step
       setCurrentStep("reset");
     } catch (error: any) {
+      // Log error to console
+      console.log(
+        `API request failed for /forgot-password: [Error: ${error.message || error}]`
+      );
+
       // Handle different types of errors
       if (error.status === 404) {
-        setErrors({ email: "No account found with this email address" });
+        const errorMsg = "No account found with this email address";
+        setErrors({ email: errorMsg });
+        showAlert("Account Not Found", errorMsg, "error");
       } else if (error.message) {
         setErrors({ general: error.message });
+        showAlert("Error", error.message, "error");
       } else {
-        setErrors({
-          general: "Network error. Please check your connection and try again.",
-        });
+        const errorMsg =
+          "Network error. Please check your connection and try again.";
+        setErrors({ general: errorMsg });
+        showAlert("Network Error", errorMsg, "error");
       }
     } finally {
       setLoading(false);
@@ -116,7 +146,10 @@ export default function ForgotPasswordModal({
       onSuccess();
       handleClose();
     } catch (error: any) {
-      console.error("Reset password error:", error);
+      // Log error to console
+      console.log(
+        `API request failed for /reset-password: [Error: ${error.message || error}]`
+      );
 
       let errorMessage = "Failed to reset password. Please try again.";
 
@@ -128,6 +161,7 @@ export default function ForgotPasswordModal({
       }
 
       setErrors({ general: errorMessage });
+      showAlert("Reset Password Failed", errorMessage, "error");
     } finally {
       setLoading(false);
     }
@@ -261,7 +295,8 @@ export default function ForgotPasswordModal({
                         lineHeight: 22,
                       }}
                     >
-                      Enter your email address and we will send you a reset token.
+                      Enter your email address and we will send you a reset
+                      token.
                     </Text>
 
                     {/* General Error */}
@@ -787,6 +822,21 @@ export default function ForgotPasswordModal({
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      <CustomAlert
+        visible={alertVisible}
+        title={alertTitle}
+        message={alertMessage}
+        icon={alertIcon}
+        buttons={[
+          {
+            text: "OK",
+            onPress: () => setAlertVisible(false),
+            style: "default",
+          },
+        ]}
+        onClose={() => setAlertVisible(false)}
+      />
     </Modal>
   );
 }
