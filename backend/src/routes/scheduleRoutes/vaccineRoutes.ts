@@ -29,8 +29,8 @@ const createVaccineValidation = [
     .withMessage('Type must be one of: routine, travel, emergency, seasonal'),
   body('targetPopulation')
     .optional()
-    .isIn(['all', 'female', 'male', 'pregnant'])
-    .withMessage('Target population must be one of: all, female, male, pregnant')
+    .isIn(['all', 'female', 'male', 'pregnant', 'newborns', 'infants', 'children', 'adolescents', 'adults', 'elderly', 'animals'])
+    .withMessage('Target population must be one of: all, female, male, pregnant, newborns, infants, children, adolescents, adults, elderly, animals')
 ];
 
 // Validation rules for vaccine update
@@ -58,8 +58,8 @@ const updateVaccineValidation = [
     .withMessage('Type must be one of: routine, travel, emergency, seasonal'),
   body('targetPopulation')
     .optional()
-    .isIn(['all', 'female', 'male', 'pregnant'])
-    .withMessage('Target population must be one of: all, female, male, pregnant'),
+    .isIn(['all', 'female', 'male', 'pregnant', 'newborns', 'infants', 'children', 'adolescents', 'adults', 'elderly', 'animals'])
+    .withMessage('Target population must be one of: all, female, male, pregnant, newborns, infants, children, adolescents, adults, elderly, animals'),
   body('isActive')
     .optional()
     .isBoolean()

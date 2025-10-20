@@ -259,50 +259,61 @@ export default function AddSchedule({
                 nestedScrollEnabled={true}
                 showsVerticalScrollIndicator={true}
               >
-                {availableVaccines
-                  .filter(vaccine => 
-                    !vaccineSearchQuery || 
-                    vaccine.name.toLowerCase().includes(vaccineSearchQuery.toLowerCase()) ||
-                    vaccine.description.toLowerCase().includes(vaccineSearchQuery.toLowerCase())
-                  )
-                  .map((vaccine) => (
-                    <TouchableOpacity
-                      key={vaccine._id}
-                      onPress={() => {
-                        setSelectedVaccine(vaccine);
-                        setVaccineSearchQuery(vaccine.name);
-                      }}
-                      className={`p-3 border-b border-gray-200 ${
-                        selectedVaccine?._id === vaccine._id ? 'bg-blue-50' : 'bg-white'
-                      }`}
-                    >
-                      <View className="flex-row items-center justify-between">
-                        <View className="flex-1">
-                          <Text className="font-medium text-gray-800">{vaccine.name}</Text>
-                          <Text className="text-sm text-gray-600">{vaccine.description}</Text>
-                          <View className="flex-row items-center mt-1">
-                            <View 
-                              className="px-2 py-1 rounded-full mr-2"
-                              style={{ backgroundColor: vaccineTypeConfig[vaccine.type]?.bgColor || '#f3f4f6' }}
-                            >
-                              <Text 
-                                className="text-xs font-medium capitalize"
-                                style={{ color: vaccineTypeConfig[vaccine.type]?.color || '#6b7280' }}
+                {availableVaccines.length === 0 ? (
+                  <View className="p-6 items-center">
+                    <Ionicons name="search-outline" size={40} color="#9ca3af" />
+                    <Text className="text-gray-500 text-center mt-3">
+                      {profile?.relation === 'Pet' 
+                        ? 'No animal vaccines available. Please add pet vaccines with targetPopulation "animals".'
+                        : 'No vaccines available for this profile.'}
+                    </Text>
+                  </View>
+                ) : (
+                  availableVaccines
+                    .filter(vaccine => 
+                      !vaccineSearchQuery || 
+                      vaccine.name.toLowerCase().includes(vaccineSearchQuery.toLowerCase()) ||
+                      vaccine.description.toLowerCase().includes(vaccineSearchQuery.toLowerCase())
+                    )
+                    .map((vaccine) => (
+                      <TouchableOpacity
+                        key={vaccine._id}
+                        onPress={() => {
+                          setSelectedVaccine(vaccine);
+                          setVaccineSearchQuery(vaccine.name);
+                        }}
+                        className={`p-3 border-b border-gray-200 ${
+                          selectedVaccine?._id === vaccine._id ? 'bg-blue-50' : 'bg-white'
+                        }`}
+                      >
+                        <View className="flex-row items-center justify-between">
+                          <View className="flex-1">
+                            <Text className="font-medium text-gray-800">{vaccine.name}</Text>
+                            <Text className="text-sm text-gray-600">{vaccine.description}</Text>
+                            <View className="flex-row items-center mt-1">
+                              <View 
+                                className="px-2 py-1 rounded-full mr-2"
+                                style={{ backgroundColor: vaccineTypeConfig[vaccine.type]?.bgColor || '#f3f4f6' }}
                               >
-                                {vaccine.type}
-                              </Text>
+                                <Text 
+                                  className="text-xs font-medium capitalize"
+                                  style={{ color: vaccineTypeConfig[vaccine.type]?.color || '#6b7280' }}
+                                >
+                                  {vaccine.type}
+                                </Text>
+                              </View>
+                              {vaccine.manufacturer && (
+                                <Text className="text-xs text-gray-500">{vaccine.manufacturer}</Text>
+                              )}
                             </View>
-                            {vaccine.manufacturer && (
-                              <Text className="text-xs text-gray-500">{vaccine.manufacturer}</Text>
-                            )}
                           </View>
+                          {selectedVaccine?._id === vaccine._id && (
+                            <Ionicons name="checkmark-circle" size={20} color="#3b82f6" />
+                          )}
                         </View>
-                        {selectedVaccine?._id === vaccine._id && (
-                          <Ionicons name="checkmark-circle" size={20} color="#3b82f6" />
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  ))}
+                      </TouchableOpacity>
+                    ))
+                )}
               </ScrollView>
             )}
 

@@ -143,7 +143,7 @@ export default function SchedulePage() {
   });
   const [showRelationshipDropdown, setShowRelationshipDropdown] = useState(false);
   const genderOptions = ["Male", "Female", "Other"];
-  const dependentTypeOptions = ["Child", "Spouse", "Parent", "Sibling", "Other"];
+  const dependentTypeOptions = ["Child", "Spouse", "Parent", "Sibling", "Pet", "Other"];
 
   // Animations
   const cardAnimations = useRef<{[key: string]: Animated.Value}>({});
@@ -518,7 +518,19 @@ export default function SchedulePage() {
   const loadAvailableVaccines = async () => {
     try {
       const { vaccines } = await scheduleAPI.getAllVaccines({ isActive: true });
-      setAvailableVaccines(vaccines);
+      
+      // Filter vaccines based on profile type
+      let filteredVaccines = vaccines;
+      
+      if (profile?.relation === 'Pet') {
+        // For pets, show only vaccines with targetPopulation 'animals'
+        filteredVaccines = vaccines.filter(v => v.targetPopulation === 'animals');
+      } else {
+        // For humans, exclude animal vaccines
+        filteredVaccines = vaccines.filter(v => v.targetPopulation !== 'animals');
+      }
+      
+      setAvailableVaccines(filteredVaccines);
     } catch (error: any) {
       console.error('Error loading vaccines:', error);
       showAlert('Error', 'Failed to load available vaccines', [{ text: 'OK' }], 'error');
@@ -535,8 +547,8 @@ export default function SchedulePage() {
     switch (step) {
       case 1:
         // Step 1: Personal Details
-        if (!dependentForm.firstName.trim() || !dependentForm.lastName.trim()) {
-          showAlert('Please enter first and last name', 'Validation error', [{ text: 'OK' }], 'warning');
+        if (!dependentForm.firstName.trim()) {
+          showAlert('Please enter first name', 'Validation error', [{ text: 'OK' }], 'warning');
           return false;
         }
         if (!dependentForm.dateOfBirth) {
@@ -592,7 +604,7 @@ export default function SchedulePage() {
 
       const dependentData = {
         firstName: dependentForm.firstName.trim(),
-        lastName: dependentForm.lastName.trim(),
+        lastName: dependentForm.lastName.trim() || '-', // Use '-' if last name is empty
         dateOfBirth: dependentForm.dateOfBirth,
         gender: dependentForm.gender,
         dependentType: dependentForm.dependentType,
@@ -2911,7 +2923,7 @@ export default function SchedulePage() {
                         {/* Last Name */}
                         <View className="mb-3">
                           <Text className="text-xs font-semibold text-gray-600 mb-1.5 ml-1">
-                            LAST NAME *
+                            LAST NAME (Optional)
                           </Text>
                           <View className="flex-row items-center bg-white rounded-xl p-3 border-2 border-blue-100 shadow-sm">
                             <View className="w-8 h-8 rounded-lg bg-blue-100 items-center justify-center mr-2.5">

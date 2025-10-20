@@ -44,7 +44,7 @@ class VaccinationController {
     }
     static async getAllVaccines(req, res) {
         try {
-            const { page = 1, limit = 10, type, targetPopulation, isActive } = req.query;
+            const { page, limit, type, targetPopulation, isActive } = req.query;
             const filter = {};
             if (type)
                 filter.type = type;
@@ -52,28 +52,48 @@ class VaccinationController {
                 filter.targetPopulation = targetPopulation;
             if (isActive !== undefined)
                 filter.isActive = isActive === 'true';
-            const pageNum = parseInt(page);
-            const limitNum = parseInt(limit);
-            const skip = (pageNum - 1) * limitNum;
-            const vaccines = await vaccinesModel_1.default.find(filter)
-                .sort({ createdAt: -1 })
-                .skip(skip)
-                .limit(limitNum)
-                .lean();
-            const totalVaccines = await vaccinesModel_1.default.countDocuments(filter);
-            const totalPages = Math.ceil(totalVaccines / limitNum);
-            res.status(200).json({
-                success: true,
-                message: "Vaccines retrieved successfully",
-                data: vaccines,
-                pagination: {
-                    currentPage: pageNum,
-                    totalPages,
-                    totalRecords: totalVaccines,
-                    hasNextPage: pageNum < totalPages,
-                    hasPreviousPage: pageNum > 1
-                }
-            });
+            const usePagination = page !== undefined || limit !== undefined;
+            if (usePagination) {
+                const pageNum = parseInt(page) || 1;
+                const limitNum = parseInt(limit) || 10;
+                const skip = (pageNum - 1) * limitNum;
+                const vaccines = await vaccinesModel_1.default.find(filter)
+                    .sort({ createdAt: -1 })
+                    .skip(skip)
+                    .limit(limitNum)
+                    .lean();
+                const totalVaccines = await vaccinesModel_1.default.countDocuments(filter);
+                const totalPages = Math.ceil(totalVaccines / limitNum);
+                res.status(200).json({
+                    success: true,
+                    message: "Vaccines retrieved successfully",
+                    data: vaccines,
+                    pagination: {
+                        currentPage: pageNum,
+                        totalPages,
+                        totalRecords: totalVaccines,
+                        hasNextPage: pageNum < totalPages,
+                        hasPreviousPage: pageNum > 1
+                    }
+                });
+            }
+            else {
+                const vaccines = await vaccinesModel_1.default.find(filter)
+                    .sort({ createdAt: -1 })
+                    .lean();
+                res.status(200).json({
+                    success: true,
+                    message: "Vaccines retrieved successfully",
+                    data: vaccines,
+                    pagination: {
+                        currentPage: 1,
+                        totalPages: 1,
+                        totalRecords: vaccines.length,
+                        hasNextPage: false,
+                        hasPreviousPage: false
+                    }
+                });
+            }
         }
         catch (error) {
             console.error("Error fetching vaccines:", error);
