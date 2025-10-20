@@ -30,7 +30,7 @@ import {
 } from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
-const API_BASE_URL = "http://192.168.1.32:5000";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
 import InstructionsPopup from "../components/InstructionsPopup";
 import CustomAlert from "../components/CustomAlert";
 import geminiAPI from "../api/geminiApi";
@@ -155,8 +155,8 @@ export default function VaxCardScreen() {
     try {
       const userData = await userAPI.getCurrentUser();
       setCurrentUser(userData);
-      // Load health card data after getting user
-      loadAllHealthCards();
+      // Load health card data after getting user, passing userId directly
+      loadAllHealthCards(false, userData._id);
     } catch (error: any) {
       console.error("Error loading current user:", error);
       setError("Failed to load user data. Please log in again.");
@@ -302,32 +302,69 @@ export default function VaxCardScreen() {
   };
 
   // Load all health cards for user and dependents
-  const loadAllHealthCards = async (skipErrorAlerts: boolean = false) => {
+  const loadAllHealthCards = async (skipErrorAlerts: boolean = false, userIdOverride?: string) => {
     try {
       setLoading(true);
       setError(null);
 
       const allHealthCards = await healthCardAPI.getAllHealthCards();
+      
+      // Fetch dependents to get relationship types with retry mechanism
+      // Use userIdOverride if provided, otherwise use currentUser._id
+      const userId = userIdOverride || currentUser?._id;
+      let dependentsMap: { [key: string]: any } = {};
+      if (userId) {
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries) {
+          try {
+            const dependents = await userAPI.getDependents(userId);
+            dependentsMap = dependents.reduce((acc: any, dep: any) => {
+              acc[dep._id] = dep;
+              return acc;
+            }, {});
+            break; // Success, exit retry loop
+          } catch (error) {
+            retryCount++;
+            console.log(`Could not fetch dependents (attempt ${retryCount}/${maxRetries}):`, error);
+            
+            if (retryCount < maxRetries) {
+              // Wait 200ms before retry
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+          }
+        }
+      }
 
       // Convert health cards to profiles
       const newProfiles: Profile[] = allHealthCards.map(
-        (healthCard, index) => ({
-          id: healthCard._id,
-          name: healthCard.fullName,
-          dob: new Date(healthCard.dateOfBirth).toLocaleDateString(),
-          relation: healthCard.cardType === "dependent" ? "Dependent" : "User",
-          idNumber: healthCard._id.slice(-8).toUpperCase(),
-          lastUpdated: new Date(healthCard.updatedAt).toLocaleDateString(),
-          vaccines: healthCard.completedVaccinations
-            ? healthCardAPI.groupVaccinationsByName(
-                healthCard.completedVaccinations
-              )
-            : [],
-          healthCard: healthCard,
-          isDependent: healthCard.cardType === "dependent",
-          dependentId:
-            healthCard.cardType === "dependent" ? healthCard._id : undefined,
-        })
+        (healthCard, index) => {
+          let relation = 'User';
+          
+          if (healthCard.cardType === 'dependent' && healthCard.dependentId) {
+            const dependent = dependentsMap[healthCard.dependentId];
+            relation = dependent?.dependentType || 'Dependent';
+          }
+          
+          return {
+            id: healthCard._id,
+            name: healthCard.fullName,
+            dob: new Date(healthCard.dateOfBirth).toLocaleDateString(),
+            relation: relation,
+            idNumber: healthCard._id.slice(-8).toUpperCase(),
+            lastUpdated: new Date(healthCard.updatedAt).toLocaleDateString(),
+            vaccines: healthCard.completedVaccinations
+              ? healthCardAPI.groupVaccinationsByName(
+                  healthCard.completedVaccinations
+                )
+              : [],
+            healthCard: healthCard,
+            isDependent: healthCard.cardType === "dependent",
+            dependentId:
+              healthCard.cardType === "dependent" ? healthCard._id : undefined,
+          };
+        }
       );
 
       setProfiles(newProfiles);
@@ -1284,11 +1321,7 @@ export default function VaxCardScreen() {
                           isSelected ? "text-blue-100" : "text-gray-500"
                         }`}
                       >
-                        {p.healthCard
-                          ? p.healthCard.cardType === "dependent"
-                            ? "Dependent"
-                            : "User"
-                          : p.relation}
+                        {p.relation}
                       </Text>
 
                       {/* Progress Bar */}

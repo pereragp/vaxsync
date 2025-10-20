@@ -5,7 +5,7 @@ class GeminiService {
 
   constructor() {
     //const apiKey = process.env.GEMINI_API_KEY;
-    const apiKey = 'AIzaSyAOajTN7bvCGezTeqa_oVbKaYYQXFz5PVE';
+    const apiKey = 'AIzaSyA4E4nZU6Zbiqffo3sKrWy513u11kj5U3A';
     if (!apiKey) {
       throw new Error('GEMINI_API_KEY environment variable is required');
     }
