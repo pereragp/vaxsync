@@ -42,9 +42,9 @@ const vaccineSchema = new Schema<IVaccine>(
     targetPopulation: {
       type: String,
       enum: {
-        values: ["all", "female", "male", "pregnant", "newborns", "infants", "children", "adolescents", "adults", "elderly"],
+        values: ["all", "female", "male", "pregnant", "newborns", "infants", "children", "adolescents", "adults", "elderly", "animals"],
         message:
-          "Target population must be one of: all, female, male, pregnant, newborns, infants, children, adolescents, adults, elderly",
+          "Target population must be one of: all, female, male, pregnant, newborns, infants, children, adolescents, adults, elderly, animals",
       },
       default: "all",
     },  
