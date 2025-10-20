@@ -180,6 +180,47 @@ export default function ProfilePage() {
           firstName: quickEditValue.firstName.trim(),
           lastName: quickEditValue.lastName.trim(),
         };
+      } else if (editingField === "phone") {
+        // Validate phone number - must be exactly 10 digits
+        const phoneNumber = quickEditValue.phone.trim();
+        
+        // Remove any non-digit characters for validation
+        const digitsOnly = phoneNumber.replace(/\D/g, '');
+        
+        if (!phoneNumber) {
+          showAlert(
+            "Phone number is required",
+            "Validation error",
+            [{ text: "OK" }],
+            "warning"
+          );
+          setLoading(false);
+          return;
+        }
+        
+        if (digitsOnly.length !== 10) {
+          showAlert(
+            "Phone number must be exactly 10 digits",
+            "Validation error",
+            [{ text: "OK" }],
+            "warning"
+          );
+          setLoading(false);
+          return;
+        }
+        
+        if (!/^\d{10}$/.test(digitsOnly)) {
+          showAlert(
+            "Phone number must contain only digits",
+            "Validation error",
+            [{ text: "OK" }],
+            "warning"
+          );
+          setLoading(false);
+          return;
+        }
+        
+        updateData = { phone: digitsOnly };
       } else if (editingField) {
         updateData = { [editingField]: quickEditValue[editingField] };
       }
@@ -244,7 +285,7 @@ export default function ProfilePage() {
         );
       } else if (error.message.includes("Network request failed")) {
         setError(
-          "Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.6:5000"
+          "Cannot connect to backend server. Please ensure the backend is running on http://192.168.1.32:5000"
         );
       } else {
         setError(error.message || "Failed to load user data");
@@ -1813,24 +1854,37 @@ export default function ProfilePage() {
                     {editingField === "phone" && (
                       <View>
                         <Text className="text-xs font-semibold text-gray-600 mb-2">
-                          PHONE NUMBER *
+                          PHONE NUMBER * (10 digits)
                         </Text>
                         <View className="flex-row items-center bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
                           <Ionicons name="call" size={20} color="#10b981" />
                           <TextInput
                             className="flex-1 ml-3 text-gray-800 font-medium"
-                            placeholder="Enter phone number"
+                            placeholder="Enter 10-digit phone number"
                             value={quickEditValue.phone}
-                            onChangeText={(text) =>
-                              setQuickEditValue({
-                                ...quickEditValue,
-                                phone: text,
-                              })
-                            }
+                            onChangeText={(text) => {
+                              // Allow only digits and limit to 10 characters
+                              const digitsOnly = text.replace(/\D/g, '');
+                              if (digitsOnly.length <= 10) {
+                                setQuickEditValue({
+                                  ...quickEditValue,
+                                  phone: digitsOnly,
+                                });
+                              }
+                            }}
                             placeholderTextColor="#9ca3af"
                             keyboardType="phone-pad"
+                            maxLength={10}
                           />
                         </View>
+                        <Text className={`text-xs mt-2 ${
+                          quickEditValue.phone.length === 10 
+                            ? 'text-green-600 font-semibold' 
+                            : 'text-gray-500'
+                        }`}>
+                          {quickEditValue.phone.length}/10 digits
+                          {quickEditValue.phone.length === 10 && ' ✓'}
+                        </Text>
                       </View>
                     )}
 
