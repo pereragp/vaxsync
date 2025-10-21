@@ -143,7 +143,7 @@ export default function SchedulePage() {
   });
   const [showRelationshipDropdown, setShowRelationshipDropdown] = useState(false);
   const genderOptions = ["Male", "Female", "Other"];
-  const dependentTypeOptions = ["Child", "Spouse", "Parent", "Sibling", "Other"];
+  const dependentTypeOptions = ["Child", "Spouse", "Parent", "Sibling", "Pet", "Other"];
 
   // Animations
   const cardAnimations = useRef<{[key: string]: Animated.Value}>({});
@@ -214,18 +214,53 @@ export default function SchedulePage() {
 
       const allHealthCards = await healthCardAPI.getAllHealthCards();
       
+      // Fetch dependents to get relationship types with retry mechanism
+      let dependentsMap: { [key: string]: any } = {};
+      if (currentUser?._id) {
+        let retryCount = 0;
+        const maxRetries = 3;
+        
+        while (retryCount < maxRetries) {
+          try {
+            const dependents = await userAPI.getDependents(currentUser._id);
+            dependentsMap = dependents.reduce((acc: any, dep: any) => {
+              acc[dep._id] = dep;
+              return acc;
+            }, {});
+            break; // Success, exit retry loop
+          } catch (error) {
+            retryCount++;
+            console.log(`Could not fetch dependents (attempt ${retryCount}/${maxRetries}):`, error);
+            
+            if (retryCount < maxRetries) {
+              // Wait 200ms before retry
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+          }
+        }
+      }
+      
       // Convert health cards to profiles
-      const newProfiles: Profile[] = allHealthCards.map((healthCard) => ({
-        id: healthCard._id,
-        name: healthCard.fullName,
-        dob: new Date(healthCard.dateOfBirth).toLocaleDateString(),
-        relation: healthCard.cardType === 'dependent' ? 'Dependent' : 'User',
-        idNumber: healthCard._id.slice(-8).toUpperCase(),
-        lastUpdated: new Date(healthCard.updatedAt).toLocaleDateString(),
-        healthCard: healthCard,
-        isDependent: healthCard.cardType === 'dependent',
-        dependentId: healthCard.cardType === 'dependent' ? healthCard.dependentId : undefined,
-      }));
+      const newProfiles: Profile[] = allHealthCards.map((healthCard) => {
+        let relation = 'User';
+        
+        if (healthCard.cardType === 'dependent' && healthCard.dependentId) {
+          const dependent = dependentsMap[healthCard.dependentId];
+          relation = dependent?.dependentType || 'Dependent';
+        }
+        
+        return {
+          id: healthCard._id,
+          name: healthCard.fullName,
+          dob: new Date(healthCard.dateOfBirth).toLocaleDateString(),
+          relation: relation,
+          idNumber: healthCard._id.slice(-8).toUpperCase(),
+          lastUpdated: new Date(healthCard.updatedAt).toLocaleDateString(),
+          healthCard: healthCard,
+          isDependent: healthCard.cardType === 'dependent',
+          dependentId: healthCard.cardType === 'dependent' ? healthCard.dependentId : undefined,
+        };
+      });
 
       setProfiles(newProfiles);
 
@@ -350,15 +385,19 @@ export default function SchedulePage() {
 
   // Load health card data when component mounts
   useEffect(() => {
-    loadHealthCardData();
-  }, []);
+    if (currentUser?._id) {
+      loadHealthCardData();
+    }
+  }, [currentUser]);
 
   // Reload profiles when page comes into focus
   useFocusEffect(
     useCallback(() => {
-      loadHealthCardData();
+      if (currentUser?._id) {
+        loadHealthCardData();
+      }
       checkFirstTimeUser();
-    }, [])
+    }, [currentUser])
   );
 
   // Check if it's user's first time and show tutorial
@@ -479,7 +518,19 @@ export default function SchedulePage() {
   const loadAvailableVaccines = async () => {
     try {
       const { vaccines } = await scheduleAPI.getAllVaccines({ isActive: true });
-      setAvailableVaccines(vaccines);
+      
+      // Filter vaccines based on profile type
+      let filteredVaccines = vaccines;
+      
+      if (profile?.relation === 'Pet') {
+        // For pets, show only vaccines with targetPopulation 'animals'
+        filteredVaccines = vaccines.filter(v => v.targetPopulation === 'animals');
+      } else {
+        // For humans, exclude animal vaccines
+        filteredVaccines = vaccines.filter(v => v.targetPopulation !== 'animals');
+      }
+      
+      setAvailableVaccines(filteredVaccines);
     } catch (error: any) {
       console.error('Error loading vaccines:', error);
       showAlert('Error', 'Failed to load available vaccines', [{ text: 'OK' }], 'error');
@@ -496,8 +547,8 @@ export default function SchedulePage() {
     switch (step) {
       case 1:
         // Step 1: Personal Details
-        if (!dependentForm.firstName.trim() || !dependentForm.lastName.trim()) {
-          showAlert('Please enter first and last name', 'Validation error', [{ text: 'OK' }], 'warning');
+        if (!dependentForm.firstName.trim()) {
+          showAlert('Please enter first name', 'Validation error', [{ text: 'OK' }], 'warning');
           return false;
         }
         if (!dependentForm.dateOfBirth) {
@@ -553,7 +604,7 @@ export default function SchedulePage() {
 
       const dependentData = {
         firstName: dependentForm.firstName.trim(),
-        lastName: dependentForm.lastName.trim(),
+        lastName: dependentForm.lastName.trim() || '-', // Use '-' if last name is empty
         dateOfBirth: dependentForm.dateOfBirth,
         gender: dependentForm.gender,
         dependentType: dependentForm.dependentType,
@@ -574,8 +625,10 @@ export default function SchedulePage() {
       setShowAddDependentModal(false);
       setCurrentDependentStep(1);
 
-      // Reload profiles
-      await loadHealthCardData();
+      // Reload profiles with a small delay to ensure data consistency
+      setTimeout(async () => {
+        await loadHealthCardData();
+      }, 500);
 
       showAlert('Success', 'Family member added successfully!', [{ text: 'OK' }], 'success');
     } catch (error: any) {
@@ -1758,9 +1811,17 @@ export default function SchedulePage() {
                                   isOverdue ? 'text-red-600 font-medium' : 'text-gray-600'
                                 }`}>
                                   {isOverdue 
-                                    ? `Overdue by ${Math.abs(daysUntilNext || 0)} days`
+                                    ? Math.abs(daysUntilNext || 0) === 0
+                                      ? 'Due today'
+                                      : Math.abs(daysUntilNext || 0) === 1
+                                        ? 'Overdue by 1 day'
+                                        : `Overdue by ${Math.abs(daysUntilNext || 0)} days`
                                     : daysUntilNext !== null 
-                                      ? `Next dose in ${daysUntilNext} days`
+                                      ? daysUntilNext === 0
+                                        ? 'Due today'
+                                        : daysUntilNext === 1
+                                          ? 'Next dose tomorrow'
+                                          : `Next dose in ${daysUntilNext} days`
                                       : 'Next dose scheduled'
                                   }
                                 </Text>
@@ -2862,7 +2923,7 @@ export default function SchedulePage() {
                         {/* Last Name */}
                         <View className="mb-3">
                           <Text className="text-xs font-semibold text-gray-600 mb-1.5 ml-1">
-                            LAST NAME *
+                            LAST NAME (Optional)
                           </Text>
                           <View className="flex-row items-center bg-white rounded-xl p-3 border-2 border-blue-100 shadow-sm">
                             <View className="w-8 h-8 rounded-lg bg-blue-100 items-center justify-center mr-2.5">

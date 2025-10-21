@@ -34,7 +34,8 @@ const syncVaccinesToHealthCard = async (scheduleId) => {
             facility: 'Health Center',
             certificateNumber: `CERT-${Date.now()}-${dose.doseNumber}`,
             notes: dose.notes || '',
-            status: 'completed'
+            status: 'completed',
+            vaccinationType: schedule.vaccinationType || 'routine'
         }));
         const cancelledVaccinationData = cancelledDoses.map(dose => ({
             vaccineName: schedule.vaccineName,
@@ -46,7 +47,8 @@ const syncVaccinesToHealthCard = async (scheduleId) => {
             facility: 'Health Center',
             certificateNumber: `CANCELLED-${Date.now()}-${dose.doseNumber}`,
             notes: dose.notes || 'Dose cancelled',
-            status: 'cancelled'
+            status: 'cancelled',
+            vaccinationType: schedule.vaccinationType || 'routine'
         }));
         const vaccinationData = [...completedVaccinationData, ...cancelledVaccinationData];
         const isUserSchedule = !schedule.dependentIds || schedule.dependentIds.length === 0;

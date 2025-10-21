@@ -1,5 +1,5 @@
 // Base URL configuration
-const BASE_URL = "http://10.170.82.39:5000"; // Your backend URL
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
 export const Googele_API_KEY = "AIzaSyDhfgoyumPBmt0HVYBc8QzFZ6LJDAGI1Uc"; // Google API Key
 
 // Types

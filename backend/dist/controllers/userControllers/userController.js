@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateProfile = exports.logoutUser = exports.getMyProfile = exports.loginUser = exports.getUserById = exports.registerUser = void 0;
+exports.changePassword = exports.updateProfile = exports.logoutUser = exports.getMyProfile = exports.loginUser = exports.getUserById = exports.registerUser = void 0;
 const user_1 = __importDefault(require("../../models/userModels/user"));
 const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
@@ -56,7 +56,7 @@ const registerUser = async (req, res) => {
                 dateOfBirth: savedUser.dateOfBirth,
                 userId: savedUser._id,
                 cardType: "user",
-                dependents: []
+                dependents: [],
             });
             await userHealthCard.save();
             console.log(`Health card automatically created for user: ${savedUser._id}`);
@@ -257,4 +257,51 @@ const updateProfile = async (req, res) => {
     }
 };
 exports.updateProfile = updateProfile;
+const changePassword = async (req, res) => {
+    try {
+        const { currentPassword, newPassword, confirmPassword } = req.body;
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            return res.status(400).json({
+                message: "All the fields are required",
+            });
+        }
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({
+                message: "New password and confirm password fields doesn't match",
+            });
+        }
+        if (newPassword.length < 6) {
+            return res.status(400).json({
+                message: "New password must be atleast 6 characters long.",
+            });
+        }
+        const user = await user_1.default.findById(req.user._id);
+        if (!user) {
+            return res.status(400).json({ message: "User not found" });
+        }
+        const isCurrentPasswordValid = await bcryptjs_1.default.compare(currentPassword, user.password);
+        if (!isCurrentPasswordValid) {
+            return res.status(400).json({
+                message: "Current passwrod is incorrect",
+            });
+        }
+        const isSamePassword = await bcryptjs_1.default.compare(newPassword, user.password);
+        if (isSamePassword) {
+            return res.status(400).json({
+                message: "New password must be different from the existing password",
+            });
+        }
+        const salt = await bcryptjs_1.default.genSalt(10);
+        const hashedNewPassword = await bcryptjs_1.default.hash(newPassword, salt);
+        await user_1.default.findByIdAndUpdate(req.user._id, { password: hashedNewPassword, updatedAt: new Date() }, { new: true });
+        return res.status(200).json({
+            message: "Password changed successfully",
+        });
+    }
+    catch (error) {
+        console.error("Error changing password: ", error);
+        return res.status(500).json({ message: "Server error", error });
+    }
+};
+exports.changePassword = changePassword;
 //# sourceMappingURL=userController.js.map

@@ -30,7 +30,7 @@ import {
 } from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
 
-const API_BASE_URL = "http://10.170.82.39:5000";
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
 import InstructionsPopup from "../components/InstructionsPopup";
 import CustomAlert from "../components/CustomAlert";
 import geminiAPI from "../api/geminiApi";
@@ -155,8 +155,8 @@ export default function VaxCardScreen() {
     try {
       const userData = await userAPI.getCurrentUser();
       setCurrentUser(userData);
-      // Load health card data after getting user
-      loadAllHealthCards();
+      // Load health card data after getting user, passing userId directly
+      loadAllHealthCards(false, userData._id);
     } catch (error: any) {
       console.error("Error loading current user:", error);
       setError("Failed to load user data. Please log in again.");
@@ -302,20 +302,61 @@ export default function VaxCardScreen() {
   };
 
   // Load all health cards for user and dependents
-  const loadAllHealthCards = async (skipErrorAlerts: boolean = false) => {
+  const loadAllHealthCards = async (
+    skipErrorAlerts: boolean = false,
+    userIdOverride?: string
+  ) => {
     try {
       setLoading(true);
       setError(null);
 
       const allHealthCards = await healthCardAPI.getAllHealthCards();
 
+      // Fetch dependents to get relationship types with retry mechanism
+      // Use userIdOverride if provided, otherwise use currentUser._id
+      const userId = userIdOverride || currentUser?._id;
+      let dependentsMap: { [key: string]: any } = {};
+      if (userId) {
+        let retryCount = 0;
+        const maxRetries = 3;
+
+        while (retryCount < maxRetries) {
+          try {
+            const dependents = await userAPI.getDependents(userId);
+            dependentsMap = dependents.reduce((acc: any, dep: any) => {
+              acc[dep._id] = dep;
+              return acc;
+            }, {});
+            break; // Success, exit retry loop
+          } catch (error) {
+            retryCount++;
+            console.log(
+              `Could not fetch dependents (attempt ${retryCount}/${maxRetries}):`,
+              error
+            );
+
+            if (retryCount < maxRetries) {
+              // Wait 200ms before retry
+              await new Promise((resolve) => setTimeout(resolve, 200));
+            }
+          }
+        }
+      }
+
       // Convert health cards to profiles
-      const newProfiles: Profile[] = allHealthCards.map(
-        (healthCard, index) => ({
+      const newProfiles: Profile[] = allHealthCards.map((healthCard, index) => {
+        let relation = "User";
+
+        if (healthCard.cardType === "dependent" && healthCard.dependentId) {
+          const dependent = dependentsMap[healthCard.dependentId];
+          relation = dependent?.dependentType || "Dependent";
+        }
+
+        return {
           id: healthCard._id,
           name: healthCard.fullName,
           dob: new Date(healthCard.dateOfBirth).toLocaleDateString(),
-          relation: healthCard.cardType === "dependent" ? "Dependent" : "User",
+          relation: relation,
           idNumber: healthCard._id.slice(-8).toUpperCase(),
           lastUpdated: new Date(healthCard.updatedAt).toLocaleDateString(),
           vaccines: healthCard.completedVaccinations
@@ -327,8 +368,8 @@ export default function VaxCardScreen() {
           isDependent: healthCard.cardType === "dependent",
           dependentId:
             healthCard.cardType === "dependent" ? healthCard._id : undefined,
-        })
-      );
+        };
+      });
 
       setProfiles(newProfiles);
     } catch (error: any) {
@@ -1284,11 +1325,7 @@ export default function VaxCardScreen() {
                           isSelected ? "text-blue-100" : "text-gray-500"
                         }`}
                       >
-                        {p.healthCard
-                          ? p.healthCard.cardType === "dependent"
-                            ? "Dependent"
-                            : "User"
-                          : p.relation}
+                        {p.relation}
                       </Text>
 
                       {/* Progress Bar */}
@@ -1537,12 +1574,9 @@ export default function VaxCardScreen() {
                               />
                             </View>
                             <View className="flex-1">
-                              <View className="flex-row items-center mb-2">
-                                <Text className="font-bold text-gray-800 text-xl flex-1">
-                                  {vaccine.name || "Unknown Vaccine"}
-                                </Text>
-                                {allVerified && (
-                                  <View className="bg-green-500 rounded-full px-4 py-2 ml-2 shadow-sm">
+                              {allVerified && (
+                                <View className="flex-row justify-end mb-2">
+                                  <View className="bg-green-500 rounded-full px-4 py-2 shadow-sm">
                                     <View className="flex-row items-center">
                                       <Ionicons
                                         name="shield-checkmark"
@@ -1554,7 +1588,16 @@ export default function VaxCardScreen() {
                                       </Text>
                                     </View>
                                   </View>
-                                )}
+                                </View>
+                              )}
+                              <View className="mb-2">
+                                <Text
+                                  className="font-bold text-gray-800 text-xl"
+                                  numberOfLines={2}
+                                  ellipsizeMode="tail"
+                                >
+                                  {vaccine.name || "Unknown Vaccine"}
+                                </Text>
                               </View>
                               <View className="flex-row items-center mb-1">
                                 <Ionicons
@@ -2029,7 +2072,12 @@ export default function VaxCardScreen() {
                       <View className="flex-1 bg-gray-50 rounded-2xl p-4">
                         <View className="flex-row items-center justify-between mb-3">
                           <View className="flex-row items-center flex-wrap">
-                            <Text className="font-bold text-gray-800 text-lg">
+                            <Text
+                              className="font-bold text-gray-800 text-lg"
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                              style={{ maxWidth: "60%" }}
+                            >
                               {item.vaccine.name}
                             </Text>
                             <View

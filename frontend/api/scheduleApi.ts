@@ -1,9 +1,6 @@
 //const API_BASE_URL = "http://192.168.1.3:5000"; //Pramod URL
 
-//const API_BASE_URL = 'http://192.168.1.3:5000/api/users'; // Mishen URL
-const API_BASE_URL = "http://10.170.82.39:5000"; //Pramod URL
-
-//const API_BASE_URL = 'http://10.170.82.39:5000/api/users'; // Mishen URL
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
 
 // Helper function to get authentication token
 const getAuthToken = async (): Promise<string | null> => {
@@ -138,7 +135,18 @@ export interface Vaccine {
   description: string;
   manufacturer?: string;
   type: "routine" | "travel" | "emergency" | "seasonal";
-  targetPopulation: "all" | "female" | "male" | "pregnant";
+  targetPopulation:
+    | "all"
+    | "female"
+    | "male"
+    | "pregnant"
+    | "newborns"
+    | "infants"
+    | "children"
+    | "adolescents"
+    | "adults"
+    | "elderly"
+    | "animals";
   ageGroups?: {
     minAge: number;
     maxAge: number;

@@ -20,7 +20,8 @@ export class ScheduleController {
         dependentId, 
         healthcareProvider, 
         notes,
-        scheduleDate 
+        scheduleDate,
+        vaccinationType 
       } = req.body;
 
       const userId = req.user?._id;
@@ -73,6 +74,7 @@ export class ScheduleController {
         vaccineName: vaccineName || vaccineData?.name,
         totalDoses,
         interval,
+        vaccinationType: vaccinationType || 'routine',
         healthcareProvider: healthcareProvider ? { name: healthcareProvider } : undefined,
         notes,
         doses: Array.from({ length: totalDoses }, (_, index) => ({
@@ -173,7 +175,7 @@ export class ScheduleController {
   static async updateVaccineSchedule(req: AuthRequest, res: Response): Promise<void> {
     try {
       const { scheduleId } = req.params;
-      const { vaccineName, healthcareProvider, notes, scheduleDate, interval, doses } = req.body;
+      const { vaccineName, healthcareProvider, notes, scheduleDate, interval, doses, vaccinationType } = req.body;
 
       const userId = req.user?._id;
       if (!userId) {
@@ -217,6 +219,7 @@ export class ScheduleController {
       if (healthcareProvider) updateData.healthcareProvider = healthcareProvider;
       if (notes !== undefined) updateData.notes = notes;
       if (interval !== undefined) updateData.interval = interval;
+      if (vaccinationType) updateData.vaccinationType = vaccinationType;
 
       // If doses are provided directly (custom intervals), use them
       if (doses && Array.isArray(doses)) {

@@ -5,11 +5,16 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "extra": {
       "eas": {
-        "projectId": "283dab38-62ae-40ce-98a1-180c9a484844"
+        "projectId": "cf9adc5a-0af6-41db-bcb6-cbda3f5d1930"
       }
     },
     "ios": {
@@ -23,6 +28,11 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#1e40af"
       },
+      "splash": {
+        "image": "./assets/images/splash.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#ffffff"
+      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
@@ -32,14 +42,15 @@
         "USE_EXACT_ALARM",
         "VIBRATE",
         "INTERNET",
-        "ACCESS_NETWORK_STATE"
+        "ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ],
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyDhfgoyumPBmt0HVYBc8QzFZ6LJDAGI1Uc"
         }
-      },
-      "edgeToEdgeEnabled": true
+      }
     },
     "web": {
       "bundler": "metro",
@@ -76,6 +87,7 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "owner": "group59"
   }
 }

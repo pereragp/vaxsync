@@ -25,7 +25,7 @@ export class VaccinationController {
         description,
         manufacturer,
         type: type || "routine",
-        targetPopulation: targetPopulation || "female"
+        targetPopulation: targetPopulation || "all"
       });
 
       const savedVaccine = await vaccine.save();
@@ -48,7 +48,7 @@ export class VaccinationController {
   // Get all vaccines from database
   static async getAllVaccines(req: Request, res: Response): Promise<void> {
     try {
-      const { page = 1, limit = 10, type, targetPopulation, isActive } = req.query;
+      const { page, limit, type, targetPopulation, isActive } = req.query;
       
       // Build filter object
       const filter: any = {};
@@ -56,31 +56,54 @@ export class VaccinationController {
       if (targetPopulation) filter.targetPopulation = targetPopulation;
       if (isActive !== undefined) filter.isActive = isActive === 'true';
 
-      const pageNum = parseInt(page as string);
-      const limitNum = parseInt(limit as string);
-      const skip = (pageNum - 1) * limitNum;
+      // If no pagination params provided, return all vaccines
+      const usePagination = page !== undefined || limit !== undefined;
+      
+      if (usePagination) {
+        const pageNum = parseInt(page as string) || 1;
+        const limitNum = parseInt(limit as string) || 10;
+        const skip = (pageNum - 1) * limitNum;
 
-      const vaccines = await Vaccine.find(filter)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limitNum)
-        .lean();
+        const vaccines = await Vaccine.find(filter)
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(limitNum)
+          .lean();
 
-      const totalVaccines = await Vaccine.countDocuments(filter);
-      const totalPages = Math.ceil(totalVaccines / limitNum);
+        const totalVaccines = await Vaccine.countDocuments(filter);
+        const totalPages = Math.ceil(totalVaccines / limitNum);
 
-      res.status(200).json({
-        success: true,
-        message: "Vaccines retrieved successfully",
-        data: vaccines,
-        pagination: {
-          currentPage: pageNum,
-          totalPages,
-          totalRecords: totalVaccines,
-          hasNextPage: pageNum < totalPages,
-          hasPreviousPage: pageNum > 1
-        }
-      } as ApiResponse<IVaccine[]>);
+        res.status(200).json({
+          success: true,
+          message: "Vaccines retrieved successfully",
+          data: vaccines,
+          pagination: {
+            currentPage: pageNum,
+            totalPages,
+            totalRecords: totalVaccines,
+            hasNextPage: pageNum < totalPages,
+            hasPreviousPage: pageNum > 1
+          }
+        } as ApiResponse<IVaccine[]>);
+      } else {
+        // Return all vaccines without pagination
+        const vaccines = await Vaccine.find(filter)
+          .sort({ createdAt: -1 })
+          .lean();
+
+        res.status(200).json({
+          success: true,
+          message: "Vaccines retrieved successfully",
+          data: vaccines,
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalRecords: vaccines.length,
+            hasNextPage: false,
+            hasPreviousPage: false
+          }
+        } as ApiResponse<IVaccine[]>);
+      }
     } catch (error: any) {
       console.error("Error fetching vaccines:", error);
       res.status(500).json({

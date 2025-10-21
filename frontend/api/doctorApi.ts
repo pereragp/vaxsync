@@ -1,4 +1,4 @@
-const BASE_URL = "http://10.170.82.39:5000"; //Pramod URL
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
 
 // Types
 export interface Doctor {

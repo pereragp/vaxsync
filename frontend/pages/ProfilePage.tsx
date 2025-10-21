@@ -48,6 +48,7 @@ export default function ProfilePage() {
     "Spouse",
     "Parent",
     "Sibling",
+    "Pet",
     "Other",
   ];
 
@@ -120,6 +121,16 @@ export default function ProfilePage() {
   const handleQuickEdit = (fieldName: string) => {
     if (!user) return;
 
+    if (fieldName === "email") {
+      showAlert(
+        "Email Cannot Be Changed",
+        "For security reasons, your email address cannot be changed.",
+        [{ text: "OK" }],
+        "warning"
+      );
+      return;
+    }
+
     setEditingField(fieldName);
 
     // Pre-populate with current values
@@ -170,6 +181,47 @@ export default function ProfilePage() {
           firstName: quickEditValue.firstName.trim(),
           lastName: quickEditValue.lastName.trim(),
         };
+      } else if (editingField === "phone") {
+        // Validate phone number - must be exactly 10 digits
+        const phoneNumber = quickEditValue.phone.trim();
+
+        // Remove any non-digit characters for validation
+        const digitsOnly = phoneNumber.replace(/\D/g, "");
+
+        if (!phoneNumber) {
+          showAlert(
+            "Phone number is required",
+            "Validation error",
+            [{ text: "OK" }],
+            "warning"
+          );
+          setLoading(false);
+          return;
+        }
+
+        if (digitsOnly.length !== 10) {
+          showAlert(
+            "Phone number must be exactly 10 digits",
+            "Validation error",
+            [{ text: "OK" }],
+            "warning"
+          );
+          setLoading(false);
+          return;
+        }
+
+        if (!/^\d{10}$/.test(digitsOnly)) {
+          showAlert(
+            "Phone number must contain only digits",
+            "Validation error",
+            [{ text: "OK" }],
+            "warning"
+          );
+          setLoading(false);
+          return;
+        }
+
+        updateData = { phone: digitsOnly };
       } else if (editingField) {
         updateData = { [editingField]: quickEditValue[editingField] };
       }
@@ -234,7 +286,7 @@ export default function ProfilePage() {
         );
       } else if (error.message.includes("Network request failed")) {
         setError(
-          "Cannot connect to backend server. Please ensure the backend is running on http://10.170.82.39:5000"
+          `Cannot connect to backend server. Please ensure the backend is running on ${process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000"}`
         );
       } else {
         setError(error.message || "Failed to load user data");
@@ -322,9 +374,9 @@ export default function ProfilePage() {
     switch (step) {
       case 1:
         // Step 1: Personal Details
-        if (!dependentForm.firstName.trim() || !dependentForm.lastName.trim()) {
+        if (!dependentForm.firstName.trim()) {
           showAlert(
-            "Please enter first and last name",
+            "Please enter first name",
             "Validation error",
             [{ text: "OK" }],
             "warning"
@@ -405,7 +457,7 @@ export default function ProfilePage() {
       //Call the backend API
       const newDependent = await userAPI.addDependent({
         firstName: dependentForm.firstName.trim(),
-        lastName: dependentForm.lastName.trim(),
+        lastName: dependentForm.lastName.trim() || "-", // Use '-' if last name is empty
         dateOfBirth: dependentForm.dateOfBirth,
         gender: dependentForm.gender.trim(),
         dependentType: dependentForm.dependentType.trim(),
@@ -567,10 +619,10 @@ export default function ProfilePage() {
                   <Ionicons name="people" size={18} color="#1e40af" />
                 </View>
                 <Text className="text-2xl font-bold text-blue-600">
-                  {dependents.length}
+                  {dependents.filter((d) => d.dependentType !== "Pet").length}
                 </Text>
                 <Text className="text-xs text-gray-600 font-medium">
-                  Family Members
+                  Family
                 </Text>
               </View>
 
@@ -578,14 +630,12 @@ export default function ProfilePage() {
 
               <View className="items-center">
                 <View className="flex-row items-center mb-1">
-                  <Ionicons name="shield-checkmark" size={18} color="#10b981" />
+                  <Ionicons name="paw" size={18} color="#10b981" />
                 </View>
                 <Text className="text-2xl font-bold text-green-600">
-                  {dependents.length + 1}
+                  {dependents.filter((d) => d.dependentType === "Pet").length}
                 </Text>
-                <Text className="text-xs text-gray-600 font-medium">
-                  Health Records
-                </Text>
+                <Text className="text-xs text-gray-600 font-medium">Pets</Text>
               </View>
 
               <View className="w-px bg-gray-300" />
@@ -866,8 +916,8 @@ export default function ProfilePage() {
             </View>
           </View>
 
-          {/* Dependents Section */}
-          <View className="px-4 pb-6">
+          {/* Family Members Section */}
+          <View className="px-4 pb-4">
             <View className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
               <View className="flex-row items-center justify-between mb-4">
                 <View>
@@ -875,8 +925,12 @@ export default function ProfilePage() {
                     Family Members
                   </Text>
                   <Text className="text-sm text-gray-500">
-                    {dependents.length} dependent
-                    {dependents.length !== 1 ? "s" : ""}
+                    {dependents.filter((d) => d.dependentType !== "Pet").length}{" "}
+                    member
+                    {dependents.filter((d) => d.dependentType !== "Pet")
+                      .length !== 1
+                      ? "s"
+                      : ""}
                   </Text>
                 </View>
                 <TouchableOpacity
@@ -892,13 +946,14 @@ export default function ProfilePage() {
                 </TouchableOpacity>
               </View>
 
-              {dependents.length === 0 ? (
+              {dependents.filter((d) => d.dependentType !== "Pet").length ===
+              0 ? (
                 <View className="bg-blue-50 rounded-2xl p-8 items-center border border-blue-100">
                   <View className="bg-blue-100 rounded-full p-4 mb-3">
                     <Ionicons name="people" size={48} color="#3b82f6" />
                   </View>
                   <Text className="text-gray-800 font-semibold text-center">
-                    No dependents added yet
+                    No family members added yet
                   </Text>
                   <Text className="text-gray-600 text-sm text-center mt-2 mb-4">
                     Add family members to manage their vaccination records
@@ -911,19 +966,91 @@ export default function ProfilePage() {
                     className="bg-blue-500 rounded-xl px-6 py-3"
                   >
                     <Text className="text-white font-semibold">
-                      Add First Dependent
+                      Add First Member
                     </Text>
                   </TouchableOpacity>
                 </View>
               ) : (
                 <View className="space-y-3">
-                  {dependents.map((dependent) => (
-                    <DependentCard
-                      key={dependent._id}
-                      dependent={dependent}
-                      onPress={handleDependentPress}
-                    />
-                  ))}
+                  {dependents
+                    .filter((d) => d.dependentType !== "Pet")
+                    .map((dependent) => (
+                      <DependentCard
+                        key={dependent._id}
+                        dependent={dependent}
+                        onPress={handleDependentPress}
+                      />
+                    ))}
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Pets Section */}
+          <View className="px-4 pb-6">
+            <View className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+              <View className="flex-row items-center justify-between mb-4">
+                <View>
+                  <Text className="text-lg font-bold text-gray-800">
+                    Pets 🐾
+                  </Text>
+                  <Text className="text-sm text-gray-500">
+                    {dependents.filter((d) => d.dependentType === "Pet").length}{" "}
+                    pet
+                    {dependents.filter((d) => d.dependentType === "Pet")
+                      .length !== 1
+                      ? "s"
+                      : ""}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    setShowAddDependentModal(true);
+                    setCurrentDependentStep(1);
+                  }}
+                  className="bg-green-500 rounded-xl px-4 py-3 flex-row items-center shadow-lg"
+                  style={{ elevation: 4 }}
+                >
+                  <Ionicons name="paw" size={18} color="white" />
+                  <Text className="text-white font-semibold ml-2">Add Pet</Text>
+                </TouchableOpacity>
+              </View>
+
+              {dependents.filter((d) => d.dependentType === "Pet").length ===
+              0 ? (
+                <View className="bg-green-50 rounded-2xl p-8 items-center border border-green-100">
+                  <View className="bg-green-100 rounded-full p-4 mb-3">
+                    <Ionicons name="paw" size={48} color="#10b981" />
+                  </View>
+                  <Text className="text-gray-800 font-semibold text-center">
+                    No pets added yet
+                  </Text>
+                  <Text className="text-gray-600 text-sm text-center mt-2 mb-4">
+                    Add your pets to track their vaccination records
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      setShowAddDependentModal(true);
+                      setCurrentDependentStep(1);
+                    }}
+                    className="bg-green-500 rounded-xl px-6 py-3"
+                  >
+                    <Text className="text-white font-semibold">
+                      Add First Pet
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View className="space-y-3">
+                  {dependents
+                    .filter((d) => d.dependentType === "Pet")
+                    .map((dependent) => (
+                      <DependentCard
+                        key={dependent._id}
+                        dependent={dependent}
+                        onPress={handleDependentPress}
+                      />
+                    ))}
                 </View>
               )}
             </View>
@@ -937,7 +1064,7 @@ export default function ProfilePage() {
               </Text>
 
               <View className="space-y-2">
-                <TouchableOpacity className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex-row items-center justify-between">
+                {/* <TouchableOpacity className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex-row items-center justify-between">
                   <View className="flex-row items-center flex-1">
                     <View className="bg-purple-100 rounded-lg p-2 mr-3">
                       <Ionicons
@@ -951,7 +1078,7 @@ export default function ProfilePage() {
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 {/* Change Password Button */}
                 <TouchableOpacity
@@ -1189,7 +1316,7 @@ export default function ProfilePage() {
                         {/* Last Name */}
                         <View className="mb-3">
                           <Text className="text-xs font-semibold text-gray-600 mb-1.5 ml-1">
-                            LAST NAME *
+                            LAST NAME (Optional)
                           </Text>
                           <View className="flex-row items-center bg-white rounded-xl p-3 border-2 border-blue-100 shadow-sm">
                             <View className="w-8 h-8 rounded-lg bg-blue-100 items-center justify-center mr-2.5">
@@ -1803,24 +1930,39 @@ export default function ProfilePage() {
                     {editingField === "phone" && (
                       <View>
                         <Text className="text-xs font-semibold text-gray-600 mb-2">
-                          PHONE NUMBER *
+                          PHONE NUMBER * (10 digits)
                         </Text>
                         <View className="flex-row items-center bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
                           <Ionicons name="call" size={20} color="#10b981" />
                           <TextInput
                             className="flex-1 ml-3 text-gray-800 font-medium"
-                            placeholder="Enter phone number"
+                            placeholder="Enter 10-digit phone number"
                             value={quickEditValue.phone}
-                            onChangeText={(text) =>
-                              setQuickEditValue({
-                                ...quickEditValue,
-                                phone: text,
-                              })
-                            }
+                            onChangeText={(text) => {
+                              // Allow only digits and limit to 10 characters
+                              const digitsOnly = text.replace(/\D/g, "");
+                              if (digitsOnly.length <= 10) {
+                                setQuickEditValue({
+                                  ...quickEditValue,
+                                  phone: digitsOnly,
+                                });
+                              }
+                            }}
                             placeholderTextColor="#9ca3af"
                             keyboardType="phone-pad"
+                            maxLength={10}
                           />
                         </View>
+                        <Text
+                          className={`text-xs mt-2 ${
+                            quickEditValue.phone.length === 10
+                              ? "text-green-600 font-semibold"
+                              : "text-gray-500"
+                          }`}
+                        >
+                          {quickEditValue.phone.length}/10 digits
+                          {quickEditValue.phone.length === 10 && " ✓"}
+                        </Text>
                       </View>
                     )}
 
