@@ -1,4 +1,5 @@
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000";
+import { checkApiResponse, handleApiError } from "../utils/apiErrorHandler";
 
 // Helper function to get authentication token
 const getAuthToken = async (): Promise<string | null> => {
@@ -17,18 +18,28 @@ const makeAuthenticatedRequest = async (
   url: string,
   options: RequestInit = {}
 ): Promise<Response> => {
-  const token = await getAuthToken();
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(options.headers as Record<string, string>),
-  };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+  try {
+    const token = await getAuthToken();
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(options.headers as Record<string, string>),
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+    
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
+
+    // Check for 401 and other errors (doesn't consume body)
+    await checkApiResponse(response);
+    
+    return response;
+  } catch (error: any) {
+    return handleApiError(error, url);
   }
-  return fetch(url, {
-    ...options,
-    headers,
-  });
 };
 
 export interface GeminiInstructionsRequest {

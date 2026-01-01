@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { handleApiResponse, handleApiError } from "../utils/apiErrorHandler";
 
 const API_BASE_URL = `${process.env.EXPO_PUBLIC_API_URL}/api/users`;
 
@@ -44,25 +45,9 @@ class UserAPI {
         },
       });
 
-      if (!response.ok) {
-        const error: any = new Error(`HTTP error! status: ${response.status}`);
-        error.status = response.status;
-        throw error;
-      }
-
-      const data = await response.json();
-      return data;
+      return await handleApiResponse<T>(response);
     } catch (error: any) {
-      if (
-        error.status !== 401 &&
-        error.status !== 403 &&
-        error.status !== 404
-      ) {
-        console.log(`API request failed for ${endpoint}:`, error);
-      } else if (error.status === 404) {
-        console.log(`API request failed for ${endpoint}:`, error);
-      }
-      throw error;
+      return handleApiError(error, endpoint);
     }
   }
 
